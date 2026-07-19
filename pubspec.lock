@@ -322,10 +322,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_onnxruntime
-      sha256: "616f0e296840edb63278c647baf4475232d21cba45478ff26348e474f3f6a913"
+      sha256: "82ef1a1f52c6f5cbd3edafc1ac3b07fbf12e6af785a96fa7913afe1471c5e957"
       url: "https://pub.dev"
     source: hosted
-    version: "1.8.0"
+    version: "1.8.2"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
@@ -369,7 +369,7 @@ packages:
     source: hosted
     version: "4.1.2"
   image:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: image
       sha256: "6300175e00616bbc832e2fc91bfa4d776af5402c81c7151bee6905bb08473c52"
@@ -548,10 +548,10 @@ packages:
     dependency: transitive
     description:
       name: meta
-      sha256: "1741988757a65eb6b36abe716829688cf01910bbf91c34354ff7ec1c3de2b349"
+      sha256: "23f08335362185a5ea2ad3a4e597f1375e78bce8a040df5c600c8d3552ef2394"
       url: "https://pub.dev"
     source: hosted
-    version: "1.18.0"
+    version: "1.17.0"
   mime:
     dependency: transitive
     description:
@@ -785,10 +785,10 @@ packages:
     dependency: transitive
     description:
       name: test_api
-      sha256: "949a932224383300f01be9221c39180316445ecb8e7547f70a41a35bf421fb9e"
+      sha256: "8161c84903fd860b26bfdefb7963b3f0b68fee7adea0f59ef805ecca346f0c7a"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.11"
+    version: "0.7.10"
   typed_data:
     dependency: transitive
     description:
