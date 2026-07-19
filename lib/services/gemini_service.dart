@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as img;
 import '../config/env.dart';
 import '../models/clothing_attributes.dart';
 import '../models/clothing_size.dart';
@@ -158,9 +159,18 @@ class GeminiService {
     required String sizeLabel,
     String? model,
   }) async {
+    final stopwatch = Stopwatch()..start();
+    // 원본(종종 3000px대) 그대로 보내면 업로드+처리 시간이 1분을 넘기는
+    // 경우가 확인돼, OCR 전송본만 1280px로 축소한다(원본 imageBytes는
+    // 호출부에서 저장하지 않으므로 여기서만 축소해도 무방).
+    final resizedBytes = await compute(_resizeForOcr, imageBytes);
+    debugPrint(
+        '[TIMING] extractSizeFromChart resize: ${imageBytes.length}B -> '
+        '${resizedBytes.length}B in ${stopwatch.elapsedMilliseconds}ms');
+
     final parts = <Map<String, dynamic>>[
       {'text': _buildSizeChartExtractionPrompt(category: category, sizeLabel: sizeLabel)},
-      {'inlineData': {'mimeType': 'image/jpeg', 'data': base64Encode(imageBytes)}},
+      {'inlineData': {'mimeType': 'image/jpeg', 'data': base64Encode(resizedBytes)}},
     ];
 
     final requestBody = jsonEncode({
@@ -192,7 +202,34 @@ class GeminiService {
     }
 
     final text = _extractTextFromResponse(response.body);
-    return ClothingSize.fromJson(_parseJsonObject(text));
+    final result = ClothingSize.fromJson(_parseJsonObject(text));
+    debugPrint(
+        '[TIMING] extractSizeFromChart total: ${stopwatch.elapsedMilliseconds}ms');
+    return result;
+  }
+
+  // compute()로 별도 isolate에서 돌려 디코딩/인코딩이 메인 스레드를
+  // 막지 않게 한다. 긴 변이 1280px를 넘을 때만 축소하고(작은 숫자가
+  // 안 읽히지 않도록 1024px 밑으로는 절대 내리지 않음), JPEG 82%로
+  // 압축해 업로드 바이트를 줄인다.
+  static Uint8List _resizeForOcr(Uint8List bytes) {
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return bytes;
+
+    const maxDimension = 1280;
+    final isLandscape = decoded.width >= decoded.height;
+    final longestSide = isLandscape ? decoded.width : decoded.height;
+
+    final resized = longestSide > maxDimension
+        ? img.copyResize(
+            decoded,
+            width: isLandscape ? maxDimension : null,
+            height: isLandscape ? null : maxDimension,
+            interpolation: img.Interpolation.average,
+          )
+        : decoded;
+
+    return Uint8List.fromList(img.encodeJpg(resized, quality: 82));
   }
 
   static String _buildSizeChartExtractionPrompt({
