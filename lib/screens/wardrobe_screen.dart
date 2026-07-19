@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -125,6 +125,17 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   // 폴백한다 — 등록 자체를 막지 않는다.
   bool _isBgRemoverReady = false;
 
+  // BackgroundRemover.instance는 앱 전역 싱글톤인데, 이 화면은 하단 탭을
+  // 전환할 때마다(IndexedStack 없이 switch로 새로 생성/폐기됨) State가
+  // 통째로 다시 만들어진다. 예전에는 initState에서 initializeOrt(),
+  // dispose에서 dispose()를 매번 호출했는데, 탭을 나갔다 들어오면 이전
+  // 화면의 비동기 dispose(세션 close)와 새 화면의 initializeOrt(세션
+  // 재생성)가 같은 싱글톤 위에서 경합해 네이티브 ONNX 세션이 깨지고
+  // JNI GetMethodID가 널 클래스 참조를 만나 SIGABRT로 죽는 크래시가
+  // 있었다. static Future로 앱 수명 동안 초기화를 한 번만 수행하고,
+  // 화면을 나가도 절대 dispose하지 않는 것으로 레이스 자체를 없앤다.
+  static Future<void>? _bgRemoverInitFuture;
+
   @override
   void initState() {
     super.initState();
@@ -134,7 +145,8 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
   @override
   void dispose() {
-    BackgroundRemover.instance.dispose();
+    // BackgroundRemover.instance는 앱 전역 싱글톤이므로 여기서 dispose하지
+    // 않는다 — 위 _bgRemoverInitFuture 주석 참고.
     super.dispose();
   }
 
@@ -146,11 +158,38 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   }
 
   Future<void> _initBackgroundRemover() async {
+    // release 빌드에서만 재현되는 네이티브 크래시로 배경 제거를 완전히
+    // 건너뛴다. 2026-07-19 실기기(Galaxy S23 Ultra, SM_S918N) release APK로
+    // 재현해서 logcat을 직접 확인한 결과:
+    //   JNI DETECTED ERROR IN APPLICATION: java_class == null
+    //       in call to GetMethodID
+    //       from boolean[] ai.onnxruntime.OrtSession.run(...)
+    // 네이티브 스택은 Java_ai_onnxruntime_OrtSession_run →
+    // convertOrtValueToONNXValue → convertToTensorInfo → GetMethodID(널
+    // 클래스) → SIGABRT 순서였고, 그 앞에 OrtException이나 OOM, 다른 잡을 수
+    // 있는 Java 예외 로그가 전혀 없었다 — 즉 session.run() 내부의 ORT 자체
+    // JNI 변환 코드(convertToTensorInfo)가 이전 JNI 호출 실패(pending
+    // exception)를 확인하지 않고 그대로 다음 JNI API를 호출하다 죽는
+    // 구조로, microsoft/onnxruntime#12679에 보고된 패턴과 일치한다.
+    // R8/ProGuard(minifyEnabled 꺼짐), NNAPI(항상 CPU EP만 사용), 입력 텐서
+    // shape(항상 고정 320x320), 동시 호출 경합(크래시 시점에 다른
+    // flutter-worker 스레드는 전부 대기 중, session.run()은 단일 스레드에서만
+    // 실행 중이었음)은 전부 원인에서 배제됐다. onnxruntime-android(1.23.0)
+    // 네이티브 JNI 유틸 내부 버그로 확정 — 우리 쪽 코드/설정으로는 고칠 수
+    // 없으므로 release에서는 아예 초기화하지 않고 원본 이미지로 등록한다.
+    if (kReleaseMode) return;
+
     try {
-      await BackgroundRemover.instance.initializeOrt();
+      // 이미 다른 마운트에서 초기화를 시작/완료했으면 그 Future를 그대로
+      // 재사용한다 — initializeOrt()를 중복 호출해 세션을 다시 만들지
+      // 않는다(위 _bgRemoverInitFuture 주석 참고).
+      _bgRemoverInitFuture ??= BackgroundRemover.instance.initializeOrt();
+      await _bgRemoverInitFuture;
       if (mounted) setState(() => _isBgRemoverReady = true);
     } catch (e) {
-      // 초기화 실패 — 이번 세션은 배경 제거 없이 원본만 사용.
+      // 초기화 실패 — 이번 세션은 배경 제거 없이 원본만 사용. 다음 마운트에서
+      // 재시도할 수 있도록 캐시된 실패 Future는 지운다.
+      _bgRemoverInitFuture = null;
       debugPrint('[배경제거초기화] 실패: $e');
     }
   }
