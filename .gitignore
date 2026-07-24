@@ -46,3 +46,14 @@ app.*.map.json
 
 # API Keys
 lib/config/env.dart
+
+# Kaggle 데이터 내보내기 도구 — 출력물/자격증명 키 파일 방지
+tools/export_for_kaggle/output/
+tools/export_for_kaggle/wardrobe_export.zip
+# 실제 옷장 사진에서 뽑은 임베딩 벡터(개인 데이터 파생물) — 코드가 아니라
+# 데이터라 git 히스토리에 넣지 않는다.
+tools/export_for_kaggle/embeddings.json
+**/*serviceAccount*.json
+**/*service-account*.json
+**/*firebase-adminsdk*.json
+__pycache__/
