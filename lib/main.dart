@@ -20,9 +20,20 @@ import 'services/agent_sweeper.dart';
 import 'services/fitting_job_controller.dart';
 import 'services/fitting_progress.dart';
 import 'firebase_options.dart';
+import 'spike/embedding_spike_app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // [스파이크 전용] --dart-define=RUN_EMBEDDING_SPIKE=true 로 빌드했을 때만
+  // 온디바이스 임베딩 검증 앱을 실행하고 즉시 반환한다. 기본값 false라
+  // 일반 빌드/배포에는 전혀 영향 없음. 스파이크 종료 후 이 블록과
+  // lib/spike/ 디렉토리, tflite_flutter 의존성을 함께 제거할 것.
+  const runEmbeddingSpike = bool.fromEnvironment('RUN_EMBEDDING_SPIKE');
+  if (runEmbeddingSpike) {
+    runApp(const EmbeddingSpikeApp());
+    return;
+  }
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,

@@ -27,6 +27,7 @@ dependencies:
   table_calendar: ^3.1.2
   intl: ^0.20.2
   image: ^4.1.2
+  tflite_flutter: ^0.12.1
 
 dev_dependencies:
   flutter_test:
@@ -35,3 +36,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # [스파이크 전용] 온디바이스 임베딩 검증용 모델. 스파이크 종료 시
+  # assets/spike_models/ 디렉토리와 이 등록 전부 제거할 것.
+  assets:
+    - assets/spike_models/efficientnet_lite0_feature_vector.tflite
