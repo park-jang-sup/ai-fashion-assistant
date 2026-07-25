@@ -2,22 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CLIENT_ID</key>
-	<string>199702850880-2aruo4uekmnuf23kk1f0k5f43859rpif.apps.googleusercontent.com</string>
-	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.199702850880-2aruo4uekmnuf23kk1f0k5f43859rpif</string>
 	<key>API_KEY</key>
-	<string>AIzaSyDV9kj3hdmORq8oaKs617sUYzlp_eatEe4</string>
+	<string>AIzaSyB7zMFfoCqFiXuCxDfQBrQbRovGJEuE-OU</string>
 	<key>GCM_SENDER_ID</key>
-	<string>199702850880</string>
+	<string>838064162852</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.fashionai.aiFashionAssistant</string>
+	<string>com.yujaehyuk.fashionai.test3462</string>
 	<key>PROJECT_ID</key>
-	<string>ai-fashion-assistant-eb206</string>
+	<string>ai-fashion-assistant-personal</string>
 	<key>STORAGE_BUCKET</key>
-	<string>ai-fashion-assistant-eb206.firebasestorage.app</string>
+	<string>ai-fashion-assistant-personal.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -29,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:199702850880:ios:8de410a2d15c118c875ea5</string>
+	<string>1:838064162852:ios:08688958e7944f8f1670b1</string>
 </dict>
 </plist>

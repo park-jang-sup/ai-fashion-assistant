@@ -56,6 +56,7 @@ class DefaultFirebaseOptions {
     projectId: 'ai-fashion-assistant-personal',
     storageBucket: 'ai-fashion-assistant-personal.firebasestorage.app',
   );
+
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyB7zMFfoCqFiXuCxDfQBrQbRovGJEuE-OU',
     appId: '1:838064162852:ios:08688958e7944f8f1670b1',
