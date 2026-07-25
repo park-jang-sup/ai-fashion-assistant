@@ -38,8 +38,8 @@ String _withWaGwa(String word) => _hasBatchim(word) ? '과' : '와';
 // 반환값은 항상 "…와/과 " 뒤에 자연스럽게 이어지는 서술절이다.
 String? _colorRelationTag(String anchorColor, String candidateColor) {
   if (anchorColor.isEmpty || candidateColor.isEmpty) return null;
-  final anchorNeutral = OutfitMatcher.neutralColors.contains(anchorColor);
-  final candidateNeutral = OutfitMatcher.neutralColors.contains(candidateColor);
+  final anchorNeutral = OutfitMatcher.isNeutralColor(anchorColor);
+  final candidateNeutral = OutfitMatcher.isNeutralColor(candidateColor);
 
   if (anchorColor == candidateColor) {
     return '$candidateColor 톤으로 통일감 있게 맞춘 조합이에요';

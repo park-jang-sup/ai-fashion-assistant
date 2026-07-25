@@ -33,14 +33,10 @@ class OutfitMatcher {
 
   static const _formalityRank = {'캐주얼': 0, '세미포멀': 1, '포멀': 2};
 
-  // 어떤 색과도 무난히 어울리는 무채색/뉴트럴 톤.
-  static const _neutralColors = {
-    '화이트', '블랙', '네이비', '그레이', '베이지', '아이보리', '카키', '그레이지',
-  };
-
-  // 추천 이유 템플릿(outfit_reason.dart)이 "뉴트럴끼리인지/포인트 컬러인지"
-  // 판단할 때 재사용하는 공개 창구.
-  static const Set<String> neutralColors = _neutralColors;
+  // 무채색 판정 — color_taxonomy.dart의 정규화 테이블 기준(회색/차콜 포함).
+  // findForTpo의 무채색 보너스와 추천 이유 템플릿(outfit_reason.dart)이
+  // "뉴트럴끼리인지/포인트 컬러인지" 판단할 때 공유하는 공개 창구.
+  static bool isNeutralColor(String color) => ColorTaxonomy.resolve(color).isNeutral;
 
   // 기존 단일 조합 API — 후보 목록의 1순위(카테고리별 최고점 조합)를 그대로
   // 돌려준다. 자기 평가 루프를 쓰지 않는 호출부를 위해 유지한다.
@@ -209,9 +205,9 @@ class OutfitMatcher {
   }
 
   // 색상 궁합 — 정규화 테이블(color_taxonomy.dart) 기반. 무채색 와일드카드는
-  // 기존과 동일하되 회색/차콜 인식 버그를 여기서 함께 고친다(_neutralColors는
-  // findForTpo/outfit_reason.dart가 여전히 참조하므로 건드리지 않는다 — 이번
-  // 궁합 규칙 보강은 findCandidateMatches 경로에만 적용).
+  // isNeutralColor()와 동일한 판정을 pairwise로 확장한 것. family/매트릭스/
+  // 톤온톤 같은 나머지 로직은 findCandidateMatches 전용(findForTpo와는
+  // 스케일이 달라 섞지 않음).
   static double _colorScore(ClothingAttributes a, ClothingAttributes b) {
     final colorA = ColorTaxonomy.resolve(a.color);
     final colorB = ColorTaxonomy.resolve(b.color);
@@ -275,7 +271,7 @@ class OutfitMatcher {
       if (attrs == null || !_outfitCategories.contains(item.category)) continue;
       final rank = _formalityRank[attrs.formality];
       double score = rank == null ? 0.5 : _formalityFitScore(targetRank, rank);
-      if (_neutralColors.contains(attrs.color)) score += 1;
+      if (isNeutralColor(attrs.color)) score += 1;
       allPerCategory.putIfAbsent(item.category, () => []).add((item: item, score: score));
     }
     Map<String, List<({WardrobeItem item, double score})>> topTwo(

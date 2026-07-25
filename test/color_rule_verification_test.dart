@@ -5,7 +5,6 @@
 //   - 항목 2: 1번 후보 변화를 (a)버그수정만 / (b)새 규칙 으로 구분
 //   - 항목 3: 색상 축 감점(-1) 비율, 팔레트(유채색3+) 감점 비율
 // ignore_for_file: avoid_print — 진단 리포트가 목적이라 print가 곧 출력.
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -35,36 +34,55 @@ void main() {
       .where((i) => i.attributes != null && legacyOutfitCategories.contains(i.category))
       .toList();
 
-  test('항목4 — findForTpo 회귀 안전성(전/후 완전 동일)', () {
-    final baselineFile = File('test/fixtures/tpo_baseline.json');
-    if (!baselineFile.existsSync()) {
-      markTestSkipped('베이스라인 fixture 없음(로컬 전용, 궁합 규칙 보강 작업 시 1회 캡처됨)');
-      return;
-    }
-    final baseline = jsonDecode(baselineFile.readAsStringSync()) as Map;
-    var identical = true;
+  test('항목4 — findForTpo: isNeutralColor 소스 교체(회색/차콜) 전/후 diff', () {
+    // "전" = legacyFindForTpo(옛 8색 무채색 세트), "후" = 실제 findForTpo
+    // (color_taxonomy.isNeutral 기준, 회색/차콜 포함). _formalityFitScore나
+    // 스켈레톤/조합 조립 로직은 이번에 전혀 안 건드렸으므로, legacy 재구현과
+    // 실제 코드가 neutralColors 세트 하나 차이로만 갈려야 한다 — 그 외
+    // 로직까지 갈리면(예: 조합 개수·스켈레톤 우선순위 변화) 의도치 않은
+    // 회귀다.
+    var anyDiff = false;
     for (final tag in ['캐주얼', '세미포멀', '포멀']) {
-      final r = OutfitMatcher.findForTpo(wardrobe: wardrobe, formalityHint: tag);
-      final actual = {
-        'isFallback': r.isFallback,
-        'shortfall': r.shortfall,
-        'candidates': r.candidates
-            .map((c) => {
-                  'ids': (c.items.map((i) => i.id).toList()..sort()),
-                  'localScore': c.localScore,
-                })
-            .toList(),
-      };
-      final expected = baseline[tag];
-      final same = const DeepCollectionEquality().equals(actual, expected);
-      print('[항목4] TPO($tag) 전/후 동일: $same');
-      if (!same) {
-        identical = false;
-        print('  BEFORE: ${jsonEncode(expected)}');
-        print('  AFTER : ${jsonEncode(actual)}');
+      final before = legacyFindForTpo(
+        wardrobe: wardrobe,
+        formalityHint: tag,
+        neutralColors: legacyNeutralColorsOld,
+      );
+      final after = OutfitMatcher.findForTpo(wardrobe: wardrobe, formalityHint: tag);
+
+      final beforeSigs = before.candidates.map((c) => _sig(c.items)).toList();
+      final afterSigs = after.candidates.map((c) => _sig(c.items)).toList();
+      final sameCandidates = const DeepCollectionEquality().equals(beforeSigs, afterSigs);
+      final sameFallback = before.isFallback == after.isFallback;
+
+      print('[항목4] TPO($tag) — 전 isFallback=${before.isFallback} 후보 ${before.candidates.length}개, '
+          '후 isFallback=${after.isFallback} 후보 ${after.candidates.length}개, '
+          '후보구성동일=$sameCandidates, isFallback동일=$sameFallback');
+
+      if (!sameCandidates || !sameFallback) {
+        anyDiff = true;
+        final beforeLabels = before.candidates.isEmpty
+            ? '-'
+            : before.candidates.first.items.map(_label).join('+');
+        final afterLabels =
+            after.candidates.isEmpty ? '-' : after.candidates.first.items.map(_label).join('+');
+        print('  1번 후보 전: $beforeLabels');
+        print('  1번 후보 후: $afterLabels');
+
+        // 이 diff가 정말 회색/차콜 무채색 재인식 때문인지 확인 — 두 결과의
+        // 아이템 합집합 중 회색/차콜이 하나라도 있어야 정상적인 diff.
+        final involvedIds = {...beforeSigs.expand((s) => s.split(',')), ...afterSigs.expand((s) => s.split(','))};
+        final involvedColors = involvedIds
+            .map((id) => wardrobe.firstWhere((w) => w.id == id).attributes?.color)
+            .whereType<String>()
+            .toSet();
+        final hasCharcoalOrGray = involvedColors.contains('차콜') || involvedColors.contains('회색');
+        print('  diff에 관련된 색상: $involvedColors (회색/차콜 포함=$hasCharcoalOrGray)');
+        expect(hasCharcoalOrGray, true,
+            reason: '이번 수정은 회색/차콜 인식 변경만이어야 하는데, 그와 무관한 diff가 발생함');
       }
     }
-    expect(identical, true, reason: 'findForTpo 결과가 바뀌면 안 됨(이번엔 손대지 않은 경로)');
+    print('[항목4] 요약: 3개 격식 중 diff 발생 ${anyDiff ? '있음' : '없음'}');
   });
 
   test('항목2 — 1번 후보 변화: 버그수정 효과 vs 새 규칙 효과 분리', () {
