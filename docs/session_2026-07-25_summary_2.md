@@ -326,8 +326,11 @@ isNeutral=false, 원본 문자열 완전 일치만 보는 구버전 방식)으�
   더 갖고 있었음) — `git log A..B` 방향을 헷갈리면 정반대로 착각하기
   쉬우니 `--is-ancestor`로 실제 조상관계를 직접 확인하는 게 안전함.
 - 앞으로는 **`main` 브랜치 하나로만 작업** — `feature/clip-embedding-spike`
-  는 이제 `main`과 동일 지점이라 사실상 역할 종료(삭제해도 되지만 이번
-  세션엔 남겨둠).
+  는 `main`과 동일 지점이 된 뒤 실제로 삭제까지 완료(로컬
+  `git branch -d`, `personal` 원격 `git push personal --delete`). 삭제 전
+  `git merge-base --is-ancestor feature/clip-embedding-spike main`으로
+  브랜치가 `main`에 완전히 포함됨(유실 커밋 0개)을 재확인한 뒤 진행. 이제
+  로컬/원격 모두 `main` 브랜치 하나만 남음.
 
 ## 지켜야 할 작업 원칙 (재확인 + 이번 세션에서 새로 확인된 것)
 
