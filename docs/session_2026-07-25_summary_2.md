@@ -2,9 +2,12 @@
 
 `docs/session_2026-07-25_summary.md`(세션 1, CLIP 임베딩 채택+백필)를 이어받아
 브랜치 `feature/clip-embedding-spike` 위에서 계속 작업. 이번 세션은 전부
-커밋/push 완료된 상태(`personal` 리모트) — 미완료 워킹트리 변경 없음.
-세션 막바지에 팀 Firebase에서 개인 Firebase로 실제 이관을 끝내고, 그 위에서
-궁합 색상 규칙까지 실기기로 실검증(유채색 옷 여러 벌 등록)해 결론을 냈다.
+커밋/push 완료된 상태 — 미완료 워킹트리 변경 없음. 세션 막바지에 팀
+Firebase에서 개인 Firebase로 실제 이관을 끝내고, 그 위에서 궁합 색상
+규칙까지 실기기로 실검증(유채색 옷 여러 벌 등록)해 결론을 냈다. **세션
+맨 끝에 `feature/clip-embedding-spike`를 `main`으로 통합하고 원본
+저장소(`origin`) 리모트를 아예 제거**했다(§8) — 다음 세션부턴 `main`
+브랜치, `personal` 리모트 하나로만 작업하면 된다.
 
 ## 1. CLIP 임베딩 통합 A단계 — 같은 카테고리 내 유사 옷 검색
 
@@ -301,6 +304,30 @@ isNeutral=false, 원본 문자열 완전 일치만 보는 구버전 방식)으�
   Windows라 Xcode 자체가 없음(`flutter doctor`에 iOS 툴체인 항목이 아예
   안 뜸, iOS 빌드는 macOS 전용). 설정만 미리 맞춰뒀으니 Mac 환경이
   생기면 바로 빌드/실행 가능한 상태.
+
+## 8. 저장소 구조 정리 — `main` 통합, `origin` 리모트 제거
+
+세션 마지막에 저장소 리모트 구조 자체를 정리했다. `origin`은
+`Yujaehyuk3462/ai-fashion-assistant`(원래 팀/원본 저장소, 다른 사람 소유)
+였고, `personal`은 본인 소유 `park-jang-sup/ai-fashion-assistant`. 이제
+그쪽과 같이 작업하는 게 아니라 완전히 개인 작업으로 전환했다는 판단 하에:
+
+- `feature/clip-embedding-spike`(이번 세션 전체 작업이 쌓인 브랜치)를
+  **`personal`의 `main`으로 fast-forward 통합**(커밋 `64cb43e`, 병합
+  충돌 0건 — `personal/main`이 feature 브랜치의 직계 조상이라 순수
+  fast-forward였음).
+- 로컬 `main`도 같은 지점으로 fast-forward하고, 추적(upstream) 대상을
+  `origin` → `personal/main`으로 변경. 이후 `git remote remove origin`으로
+  **`origin` 리모트 자체를 로컬에서 제거** — 이제 이 저장소엔 `personal`
+  하나뿐이라 실수로 원본 저장소에 push할 경로가 물리적으로 없음(GitHub의
+  Yujaehyuk3462 저장소 자체엔 전혀 영향 없음, 로컬 git 설정만 지운 것).
+- 주의했던 점: 처음엔 로컬 `main`이 `origin/main`보다 뒤처진 줄 알았으나
+  실제로는 **반대**(로컬 `main`이 origin에 아직 안 올라간 커밋 3개를
+  더 갖고 있었음) — `git log A..B` 방향을 헷갈리면 정반대로 착각하기
+  쉬우니 `--is-ancestor`로 실제 조상관계를 직접 확인하는 게 안전함.
+- 앞으로는 **`main` 브랜치 하나로만 작업** — `feature/clip-embedding-spike`
+  는 이제 `main`과 동일 지점이라 사실상 역할 종료(삭제해도 되지만 이번
+  세션엔 남겨둠).
 
 ## 지켜야 할 작업 원칙 (재확인 + 이번 세션에서 새로 확인된 것)
 
