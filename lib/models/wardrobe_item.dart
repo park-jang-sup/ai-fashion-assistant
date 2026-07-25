@@ -13,6 +13,9 @@ class WardrobeItem {
   final DateTime createdAt;
   final ClothingAttributes? attributes; // null = 아직 속성 추출 전(레거시 포함)
   final ClothingSize? size; // null = 치수 미입력
+  // FashionCLIP 512차원 L2정규화 벡터(tools/backfill_embeddings로 백필됨).
+  // null = 백필 이전 데이터이거나 백필 대상 제외('전신' 카테고리 등).
+  final List<double>? embedding;
 
   const WardrobeItem({
     required this.id,
@@ -23,12 +26,14 @@ class WardrobeItem {
     required this.createdAt,
     this.attributes,
     this.size,
+    this.embedding,
   });
 
   factory WardrobeItem.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     final attributesMap = data['attributes'] as Map<String, dynamic>?;
     final sizeMap = data['size'] as Map<String, dynamic>?;
+    final embeddingMap = data['embedding'] as Map<String, dynamic>?;
     return WardrobeItem(
       id: doc.id,
       imageUrl: data['imageUrl'] as String? ?? '',
@@ -39,6 +44,9 @@ class WardrobeItem {
       attributes:
           attributesMap != null ? ClothingAttributes.fromJson(attributesMap) : null,
       size: sizeMap != null ? ClothingSize.fromJson(sizeMap) : null,
+      embedding: (embeddingMap?['vector'] as List?)
+          ?.map((e) => (e as num).toDouble())
+          .toList(),
     );
   }
 
