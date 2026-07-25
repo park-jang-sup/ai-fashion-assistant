@@ -30,6 +30,10 @@ void main() {
       '카멜': (family: 'brown', brightness: ColorBrightness.medium, isNeutral: false),
       '오렌지': (family: 'orange', brightness: ColorBrightness.medium, isNeutral: false),
       '그린': (family: 'green', brightness: ColorBrightness.medium, isNeutral: false),
+      '퍼플': (family: 'purple', brightness: ColorBrightness.medium, isNeutral: false),
+      '보라': (family: 'purple', brightness: ColorBrightness.medium, isNeutral: false),
+      '바이올렛': (family: 'purple', brightness: ColorBrightness.medium, isNeutral: false),
+      '라벤더': (family: 'purple', brightness: ColorBrightness.light, isNeutral: false),
     };
 
     for (final entry in expected.entries) {
@@ -47,6 +51,14 @@ void main() {
       final r = ColorTaxonomy.resolve('올리브');
       expect(r.family, 'green');
       expect(r.isNeutral, false);
+    });
+
+    // 퍼플은 레드기/블루기에 따라 웜쿨이 갈리는 대표색이라 temperature를
+    // neutral로 못박았다 — 이 결정이 유지되는지 별도 확인.
+    test('퍼플/보라/바이올렛/라벤더 → temperature는 neutral(웜쿨 안 정함)', () {
+      for (final label in ['퍼플', '보라', '바이올렛', '라벤더']) {
+        expect(ColorTaxonomy.resolve(label).temperature, ColorTemperature.neutral, reason: label);
+      }
     });
   });
 
@@ -67,6 +79,9 @@ void main() {
       final r = ColorTaxonomy.resolve('라이트스카이블루');
       expect(r.family, 'blue');
       expect(r.brightness, ColorBrightness.light);
+    });
+    test('다크바이올렛 → purple family', () {
+      expect(ColorTaxonomy.resolve('다크바이올렛').family, 'purple');
     });
   });
 
@@ -101,8 +116,18 @@ void main() {
       }
       expect(ColorTaxonomy.matrixScore('brown', 'pink'), 0);
     });
+    test('purple — blue/pink/brown은 +1(인접색·브라운 우대), 그 외는 0(근거 약함)', () {
+      for (final f in ['blue', 'pink', 'brown']) {
+        expect(ColorTaxonomy.matrixScore('purple', f), 1, reason: 'purple-$f');
+      }
+      for (final f in ['wine', 'red', 'orange', 'yellow', 'green']) {
+        expect(ColorTaxonomy.matrixScore('purple', f), 0, reason: 'purple-$f');
+      }
+    });
     test('매트릭스는 대칭이다', () {
-      const families = ['wine', 'red', 'orange', 'yellow', 'green', 'blue', 'pink', 'brown'];
+      const families = [
+        'wine', 'red', 'orange', 'yellow', 'green', 'blue', 'pink', 'brown', 'purple',
+      ];
       for (final a in families) {
         for (final b in families) {
           if (a == b) continue;

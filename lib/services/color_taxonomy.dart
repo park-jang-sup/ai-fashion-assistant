@@ -35,7 +35,8 @@ class ResolvedColor {
 class ColorTaxonomy {
   // family: null이면 무채색(neutral) — family 기반 규칙(톤온톤/톤인톤/매트릭스)은
   // 무채색끼리는 애초에 안 쓰이므로(무채색 와일드카드가 우선 적용) family를
-  // 따로 안 둔다. 8개 유채색 family: wine/red/orange/yellow/green/blue/pink/brown.
+  // 따로 안 둔다. 9개 유채색 family: wine/red/orange/yellow/green/blue/pink/
+  // brown/purple.
   static const Map<String, ResolvedColor> _table = {
     '블랙': ResolvedColor(family: null, brightness: ColorBrightness.dark, temperature: ColorTemperature.neutral, isNeutral: true),
     '화이트': ResolvedColor(family: null, brightness: ColorBrightness.light, temperature: ColorTemperature.neutral, isNeutral: true),
@@ -62,6 +63,12 @@ class ColorTaxonomy {
     '오렌지': ResolvedColor(family: 'orange', brightness: ColorBrightness.medium, temperature: ColorTemperature.warm, isNeutral: false),
     '그린': ResolvedColor(family: 'green', brightness: ColorBrightness.medium, temperature: ColorTemperature.cool, isNeutral: false),
     '올리브': ResolvedColor(family: 'green', brightness: ColorBrightness.dark, temperature: ColorTemperature.warm, isNeutral: false),
+    // 퍼플은 레드기/블루기에 따라 웜쿨이 갈리는 대표색이라 temperature를
+    // neutral로 둔다(하나로 못박으면 톤인톤에서 억지 매칭이 생김).
+    '퍼플': ResolvedColor(family: 'purple', brightness: ColorBrightness.medium, temperature: ColorTemperature.neutral, isNeutral: false),
+    '보라': ResolvedColor(family: 'purple', brightness: ColorBrightness.medium, temperature: ColorTemperature.neutral, isNeutral: false),
+    '바이올렛': ResolvedColor(family: 'purple', brightness: ColorBrightness.medium, temperature: ColorTemperature.neutral, isNeutral: false),
+    '라벤더': ResolvedColor(family: 'purple', brightness: ColorBrightness.light, temperature: ColorTemperature.neutral, isNeutral: false),
   };
 
   // 라벨이 긴 것부터(부분 문자열 매칭 시 "스카이블루"가 "블루"보다 먼저
@@ -88,14 +95,17 @@ class ColorTaxonomy {
   // -1 안어울림 / 0 무난 / +1 잘어울림. brown은 남성복에서 서브-뉴트럴처럼
   // 쓰이는 관행을 반영해 대부분 +1.
   static const Map<String, Map<String, int>> _matrix = {
-    'wine': {'red': 0, 'orange': 0, 'yellow': -1, 'green': -1, 'blue': 0, 'pink': 0, 'brown': 1},
-    'red': {'wine': 0, 'orange': 0, 'yellow': -1, 'green': -1, 'blue': 0, 'pink': 0, 'brown': 1},
-    'orange': {'wine': 0, 'red': 0, 'yellow': 0, 'green': -1, 'blue': -1, 'pink': 0, 'brown': 1},
-    'yellow': {'wine': -1, 'red': -1, 'orange': 0, 'green': 0, 'blue': 0, 'pink': -1, 'brown': 1},
-    'green': {'wine': -1, 'red': -1, 'orange': -1, 'yellow': 0, 'blue': 0, 'pink': 0, 'brown': 1},
-    'blue': {'wine': 0, 'red': 0, 'orange': -1, 'yellow': 0, 'green': 0, 'pink': 0, 'brown': 1},
-    'pink': {'wine': 0, 'red': 0, 'orange': 0, 'yellow': -1, 'green': 0, 'blue': 0, 'brown': 0},
-    'brown': {'wine': 1, 'red': 1, 'orange': 1, 'yellow': 1, 'green': 1, 'blue': 1, 'pink': 0},
+    'wine': {'red': 0, 'orange': 0, 'yellow': -1, 'green': -1, 'blue': 0, 'pink': 0, 'brown': 1, 'purple': 0},
+    'red': {'wine': 0, 'orange': 0, 'yellow': -1, 'green': -1, 'blue': 0, 'pink': 0, 'brown': 1, 'purple': 0},
+    'orange': {'wine': 0, 'red': 0, 'yellow': 0, 'green': -1, 'blue': -1, 'pink': 0, 'brown': 1, 'purple': 0},
+    'yellow': {'wine': -1, 'red': -1, 'orange': 0, 'green': 0, 'blue': 0, 'pink': -1, 'brown': 1, 'purple': 0},
+    'green': {'wine': -1, 'red': -1, 'orange': -1, 'yellow': 0, 'blue': 0, 'pink': 0, 'brown': 1, 'purple': 0},
+    'blue': {'wine': 0, 'red': 0, 'orange': -1, 'yellow': 0, 'green': 0, 'pink': 0, 'brown': 1, 'purple': 1},
+    'pink': {'wine': 0, 'red': 0, 'orange': 0, 'yellow': -1, 'green': 0, 'blue': 0, 'brown': 0, 'purple': 1},
+    'brown': {'wine': 1, 'red': 1, 'orange': 1, 'yellow': 1, 'green': 1, 'blue': 1, 'pink': 0, 'purple': 1},
+    // 인접 쿨톤(blue/pink)·브라운은 잘 어울림(+1), 보색 대비인 옐로우는
+    // 톤다운 조합 여지를 남겨 무난(0), 나머지는 근거 약해 안전하게 0.
+    'purple': {'wine': 0, 'red': 0, 'orange': 0, 'yellow': 0, 'green': 0, 'blue': 1, 'pink': 1, 'brown': 1},
   };
 
   static int matrixScore(String familyA, String familyB) {
