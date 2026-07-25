@@ -57,3 +57,7 @@ tools/export_for_kaggle/embeddings.json
 **/*service-account*.json
 **/*firebase-adminsdk*.json
 __pycache__/
+
+# 궁합 규칙 검증(test/color_rule_verification_test.dart)이 로컬에서 생성하는
+# 베이스라인 — 실제 wardrobe item id가 들어있어 로컬 전용으로만 둔다.
+test/fixtures/

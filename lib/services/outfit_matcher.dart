@@ -114,13 +114,16 @@ class OutfitMatcher {
     final skeleton = baseCategories.take(3).toList();
 
     // replaceCategory 카테고리만 차선 아이템으로 바꾼 조합을 만든다(null이면 전부 최고점).
+    // localScore에 팔레트 조정(유채색 3개 초과 감점)을 더한다 — findForTpo
+    // 경로(_buildCombosFromRanked)는 스케일이 달라 이번엔 적용하지 않는다.
     OutfitMatch buildCombo(String? replaceCategory) {
       final picked = skeleton
           .map((c) => c.category == replaceCategory ? c.ranked[1] : c.ranked.first)
           .toList();
+      final items = [newItem, ...picked.map((p) => p.item)];
       return OutfitMatch(
-        [newItem, ...picked.map((p) => p.item)],
-        localScore: picked.fold(0.0, (sum, p) => sum + p.score),
+        items,
+        localScore: picked.fold(0.0, (sum, p) => sum + p.score) + _paletteAdjustment(items),
       );
     }
 
@@ -165,6 +168,10 @@ class OutfitMatcher {
   static double compatibilityScore(ClothingAttributes a, ClothingAttributes b) =>
       _compatibilityScore(a, b);
 
+  // 검증/진단 전용 — 색상 축만 분리해서 보고 싶을 때(예: 감점 비율 통계).
+  static double colorScoreOnly(ClothingAttributes a, ClothingAttributes b) =>
+      _colorScore(a, b);
+
   static int formalityRankOf(String formality) => _formalityRank[formality] ?? 0;
 
   // 진단-수리 루프 전용 — 특정 카테고리의 아이템을 다른 후보로 교체할 때 쓴다.
@@ -201,17 +208,46 @@ class OutfitMatcher {
     return score;
   }
 
-  // 색상 궁합 — 무채색 와일드카드 판정을 정규화 테이블(color_taxonomy.dart)
-  // 기반으로 바꿔 회색/차콜 인식 누락 버그를 고친다. 그 외 로직(동색 보너스)은
-  // 기존 그대로 — family/매트릭스 기반 규칙은 다음 커밋에서 추가한다.
-  // (_neutralColors는 findForTpo/outfit_reason.dart가 여전히 참조하므로
-  // 건드리지 않는다 — 이번 버그수정은 findCandidateMatches 경로에만 적용).
+  // 색상 궁합 — 정규화 테이블(color_taxonomy.dart) 기반. 무채색 와일드카드는
+  // 기존과 동일하되 회색/차콜 인식 버그를 여기서 함께 고친다(_neutralColors는
+  // findForTpo/outfit_reason.dart가 여전히 참조하므로 건드리지 않는다 — 이번
+  // 궁합 규칙 보강은 findCandidateMatches 경로에만 적용).
   static double _colorScore(ClothingAttributes a, ClothingAttributes b) {
     final colorA = ColorTaxonomy.resolve(a.color);
     final colorB = ColorTaxonomy.resolve(b.color);
 
     if (colorA.isNeutral || colorB.isNeutral) return 2;
-    return (a.color == b.color && a.color.isNotEmpty) ? 1 : 0;
+
+    if (colorA.family == null || colorB.family == null) {
+      // 라벨 매핑 실패 — family 기반 규칙을 적용할 수 없어 기존 방식대로
+      // 원본 문자열이 완전히 같을 때만 동색 보너스.
+      return (a.color == b.color && a.color.isNotEmpty) ? 1 : 0;
+    }
+
+    if (colorA.family == colorB.family) {
+      if (colorA.brightness != colorB.brightness) return 1; // 톤온톤
+      // 같은 계열 + 같은 밝기 — 애매한 깔맞춤. 패턴이 서로 다르면(예: 무지 vs
+      // 스트라이프) 의도된 매치로 보고 감점을 면제한다(둘 다 패턴 확인된
+      // 경우에만 — 미확인이면 보수적으로 감점 유지).
+      final patternDiffers =
+          a.pattern.isNotEmpty && b.pattern.isNotEmpty && a.pattern != b.pattern;
+      return patternDiffers ? 0 : -1;
+    }
+
+    // 다른 계열
+    if (colorA.brightness == colorB.brightness) return 1; // 톤인톤
+    return ColorTaxonomy.matrixScore(colorA.family!, colorB.family!).toDouble();
+  }
+
+  // 유채색(무채색 아님) 아이템이 3벌을 초과하는 조합에 감점. findCandidateMatches
+  // 전용(§검증계획) — combo 전체를 봐야 하는 유일한 규칙이라 buildCombo 직후
+  // 후처리로 적용한다.
+  static double _paletteAdjustment(List<WardrobeItem> items) {
+    final chromaticCount = items.where((i) {
+      final attrs = i.attributes;
+      return attrs != null && !ColorTaxonomy.resolve(attrs.color).isNeutral;
+    }).length;
+    return chromaticCount > 3 ? -1 : 0;
   }
 
   // ── TPO(일정) 기반 조합 후보 생성 ────────────────────────

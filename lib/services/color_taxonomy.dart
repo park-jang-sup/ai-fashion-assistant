@@ -33,9 +33,9 @@ class ResolvedColor {
 }
 
 class ColorTaxonomy {
-  // family: null이면 무채색(neutral). family 자체는 이번 커밋에서 아직
-  // 안 쓰이고(궁합 규칙 보강 다음 커밋에서 매트릭스/톤온톤에 쓸 예정),
-  // 이번 커밋의 목적은 isNeutral 하나 — 회색/차콜 무채색 인식 버그 수정.
+  // family: null이면 무채색(neutral) — family 기반 규칙(톤온톤/톤인톤/매트릭스)은
+  // 무채색끼리는 애초에 안 쓰이므로(무채색 와일드카드가 우선 적용) family를
+  // 따로 안 둔다. 8개 유채색 family: wine/red/orange/yellow/green/blue/pink/brown.
   static const Map<String, ResolvedColor> _table = {
     '블랙': ResolvedColor(family: null, brightness: ColorBrightness.dark, temperature: ColorTemperature.neutral, isNeutral: true),
     '화이트': ResolvedColor(family: null, brightness: ColorBrightness.light, temperature: ColorTemperature.neutral, isNeutral: true),
@@ -82,5 +82,24 @@ class ColorTaxonomy {
     }
 
     return ResolvedColor.fallback;
+  }
+
+  // 다른 family + 밝기가 다를 때만 조회하는 색상군 궁합 매트릭스.
+  // -1 안어울림 / 0 무난 / +1 잘어울림. brown은 남성복에서 서브-뉴트럴처럼
+  // 쓰이는 관행을 반영해 대부분 +1.
+  static const Map<String, Map<String, int>> _matrix = {
+    'wine': {'red': 0, 'orange': 0, 'yellow': -1, 'green': -1, 'blue': 0, 'pink': 0, 'brown': 1},
+    'red': {'wine': 0, 'orange': 0, 'yellow': -1, 'green': -1, 'blue': 0, 'pink': 0, 'brown': 1},
+    'orange': {'wine': 0, 'red': 0, 'yellow': 0, 'green': -1, 'blue': -1, 'pink': 0, 'brown': 1},
+    'yellow': {'wine': -1, 'red': -1, 'orange': 0, 'green': 0, 'blue': 0, 'pink': -1, 'brown': 1},
+    'green': {'wine': -1, 'red': -1, 'orange': -1, 'yellow': 0, 'blue': 0, 'pink': 0, 'brown': 1},
+    'blue': {'wine': 0, 'red': 0, 'orange': -1, 'yellow': 0, 'green': 0, 'pink': 0, 'brown': 1},
+    'pink': {'wine': 0, 'red': 0, 'orange': 0, 'yellow': -1, 'green': 0, 'blue': 0, 'brown': 0},
+    'brown': {'wine': 1, 'red': 1, 'orange': 1, 'yellow': 1, 'green': 1, 'blue': 1, 'pink': 0},
+  };
+
+  static int matrixScore(String familyA, String familyB) {
+    if (familyA == familyB) return 0; // 호출부에서 같은 family는 걸러지지만 방어적으로.
+    return _matrix[familyA]?[familyB] ?? 0;
   }
 }

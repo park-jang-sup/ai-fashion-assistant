@@ -84,4 +84,32 @@ void main() {
       expect(r.isNeutral, false);
     });
   });
+
+  group('매트릭스', () {
+    test('red-wine은 0(톤온톤 오판 방지, 감점도 아님)', () {
+      expect(ColorTaxonomy.matrixScore('red', 'wine'), 0);
+    });
+    test('red-green은 -1(보색)', () {
+      expect(ColorTaxonomy.matrixScore('red', 'green'), -1);
+    });
+    test('green-pink는 0(톤다운 조합 흔함)', () {
+      expect(ColorTaxonomy.matrixScore('green', 'pink'), 0);
+    });
+    test('brown은 pink 제외 전부 +1(서브뉴트럴 취급)', () {
+      for (final f in ['wine', 'red', 'orange', 'yellow', 'green', 'blue']) {
+        expect(ColorTaxonomy.matrixScore('brown', f), 1, reason: 'brown-$f');
+      }
+      expect(ColorTaxonomy.matrixScore('brown', 'pink'), 0);
+    });
+    test('매트릭스는 대칭이다', () {
+      const families = ['wine', 'red', 'orange', 'yellow', 'green', 'blue', 'pink', 'brown'];
+      for (final a in families) {
+        for (final b in families) {
+          if (a == b) continue;
+          expect(ColorTaxonomy.matrixScore(a, b), ColorTaxonomy.matrixScore(b, a),
+              reason: '$a-$b 비대칭');
+        }
+      }
+    });
+  });
 }
