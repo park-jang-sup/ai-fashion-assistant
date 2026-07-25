@@ -50,20 +50,18 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCf6h0cQDXLBnSMNEF0fI_GUQBFYbSfoac',
-    appId: '1:199702850880:android:c0b22ad75f8819f5875ea5',
-    messagingSenderId: '199702850880',
-    projectId: 'ai-fashion-assistant-eb206',
-    storageBucket: 'ai-fashion-assistant-eb206.firebasestorage.app',
+    apiKey: 'AIzaSyAnbQKKgj2vxyUI7nbqRj7TJ8HpT4Q8OnI',
+    appId: '1:838064162852:android:0c33107cc18fb2191670b1',
+    messagingSenderId: '838064162852',
+    projectId: 'ai-fashion-assistant-personal',
+    storageBucket: 'ai-fashion-assistant-personal.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDV9kj3hdmORq8oaKs617sUYzlp_eatEe4',
-    appId: '1:199702850880:ios:8de410a2d15c118c875ea5',
-    messagingSenderId: '199702850880',
-    projectId: 'ai-fashion-assistant-eb206',
-    storageBucket: 'ai-fashion-assistant-eb206.firebasestorage.app',
-    iosBundleId: 'com.fashionai.aiFashionAssistant',
+    apiKey: 'AIzaSyB7zMFfoCqFiXuCxDfQBrQbRovGJEuE-OU',
+    appId: '1:838064162852:ios:08688958e7944f8f1670b1',
+    messagingSenderId: '838064162852',
+    projectId: 'ai-fashion-assistant-personal',
+    storageBucket: 'ai-fashion-assistant-personal.firebasestorage.app',
+    iosBundleId: 'com.yujaehyuk.fashionai.test3462',
   );
-
 }

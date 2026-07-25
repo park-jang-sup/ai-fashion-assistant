@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "199702850880",
-    "project_id": "ai-fashion-assistant-eb206",
-    "storage_bucket": "ai-fashion-assistant-eb206.firebasestorage.app"
+    "project_number": "838064162852",
+    "project_id": "ai-fashion-assistant-personal",
+    "storage_bucket": "ai-fashion-assistant-personal.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:199702850880:android:c0b22ad75f8819f5875ea5",
+        "mobilesdk_app_id": "1:838064162852:android:0c33107cc18fb2191670b1",
         "android_client_info": {
           "package_name": "com.fashionai.ai_fashion_assistant"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCf6h0cQDXLBnSMNEF0fI_GUQBFYbSfoac"
+          "current_key": "AIzaSyAnbQKKgj2vxyUI7nbqRj7TJ8HpT4Q8OnI"
         }
       ],
       "services": {
