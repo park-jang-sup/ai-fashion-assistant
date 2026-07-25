@@ -1,10 +1,10 @@
-# 작업 정리 (2026-07-25 세션 2 — CLIP 임베딩 A단계 + 궁합 규칙 보강(전체) + 스파이크 정리 + Firebase 개인 프로젝트 이관)
+# 작업 정리 (2026-07-25 세션 2 — CLIP 임베딩 A단계 + 궁합 규칙 보강(전체) + 스파이크 정리 + Firebase 개인 프로젝트 이관 + 궁합 규칙 실기기 검증)
 
 `docs/session_2026-07-25_summary.md`(세션 1, CLIP 임베딩 채택+백필)를 이어받아
 브랜치 `feature/clip-embedding-spike` 위에서 계속 작업. 이번 세션은 전부
 커밋/push 완료된 상태(`personal` 리모트) — 미완료 워킹트리 변경 없음.
-세션 막바지에 팀 Firebase에서 개인 Firebase로 실제 이관까지 끝내고 실기기
-검증까지 완료했다.
+세션 막바지에 팀 Firebase에서 개인 Firebase로 실제 이관을 끝내고, 그 위에서
+궁합 색상 규칙까지 실기기로 실검증(유채색 옷 여러 벌 등록)해 결론을 냈다.
 
 ## 1. CLIP 임베딩 통합 A단계 — 같은 카테고리 내 유사 옷 검색
 
@@ -210,6 +210,65 @@
 - `tools/migrate_to_personal/`에 하드코딩된 실경로/실키 없음(README/
   docstring의 예시 placeholder만).
 
+## 6. 궁합 색상 규칙 실기기 검증 + purple family 보강 (커밋 `69287c4`)
+
+Firebase 이관 후, §2~§3에서 구현한 색상 궁합 규칙이 실옷장·실기기에서
+진짜로 작동하는지 유채색 옷을 직접 여러 벌 등록해가며 확인했다. 사전에
+`findCandidateMatches`에 관찰 전용 디버그 로그(`[색상]`/`[궁합]`/
+`[순위변경]`, `kDebugMode` 가드, 실제 스코어링 로직은 안 건드림)를 임시로
+심고 `adb logcat`으로 직접 캡처하는 방식으로 진행했다.
+
+### 검증 결과
+- **정규화 테이블**: 실기기에서 관측된 21개 고유 라벨 전부 의도대로 매핑
+  성공(실패 0) — 딱 하나 예외가 "퍼플"이었고, 이게 아래 purple family
+  추가로 이어짐.
+- **색상 규칙이 실제 추천 경로를 타는 것 확인**: 브라운/옐로우 아우터
+  등록 시 매트릭스(`brown-yellow=+1`, `brown-blue=+1`, `yellow-brown=+1`
+  등)와 톤온톤/톤인톤/같은계열 깔맞춤 감점이 로그로 정확히 관측됨 —
+  테스트에서만 확인했던 규칙이 실데이터에서도 그대로 재현됨.
+- **`[순위변경]`은 이 옷장에서 구조적으로 발생 안 함**: 브라운/옐로우/
+  퍼플/카키/아이보리 등 총 8회 등록 중 단 한 번도 카테고리 1위가 안
+  바뀜. 원인은 버그가 아니라 스케일 설계 — 유채색 보너스 최댓값(+1,
+  톤온톤/톤인톤/매트릭스)이 무채색 와일드카드(+2)보다 항상 작아서, 경쟁
+  카테고리에 무채색이 하나라도 있으면 항상 무채색이 이긴다. 이 옷장은
+  상의/하의/신발 전 카테고리에 무채색이 풍부해서 뒤집힐 여지가 없었음.
+  `test/color_rule_synthetic_test.dart`의 통합 시나리오(§2)에서 이미
+  "유채색 옷장이면 실제로 순위가 바뀐다"를 별도로 증명해뒀으므로, 이번
+  "0건"은 데이터 특성 확인으로 결론지음(규칙 자체를 더 손볼 필요 없음).
+- **카키/아이보리 등록은 애초에 검증에 부적합했음** — 이 두 색은
+  `isNeutral=true`라 자기 자신이 무채색 와일드카드를 트리거해서 family
+  규칙이 개입할 여지가 구조적으로 없음(등록 후에 알게 됨, 재시도 없이도
+  이유는 로그로 바로 설명 가능했음).
+- **네트워크 플레이키니스**: 검증 도중 기기 wifi가 간헐적으로
+  끊겨(`UnknownHostException: firestore.googleapis.com`) Firestore/Gemini
+  호출이 실패하고 파이프라인이 안 도는 것처럼 보인 적 있었음. `findCandidateMatches`
+  자체(로컬 계산, `[색상]`/`[궁합]` 로그)는 네트워크 없이도 동작하므로
+  이 부분 검증엔 영향 없었지만, "왜 로그가 안 찍히지" 진단할 때 `adb shell ping`
+  으로 네트워크 상태부터 확인하는 게 빨랐음.
+
+### purple family 추가
+"퍼플" 아우터가 정규화 테이블에 없어 tier3 폴백(family=null,
+isNeutral=false, 원본 문자열 완전 일치만 보는 구버전 방식)으로 조용히
+저하되는 걸 실사용 중 발견 — 크래시는 없었지만(안전한 설계) 커버리지
+갭이었음.
+
+- 라벨 4개 추가: 퍼플/보라/바이올렛(중간 밝기)/라벤더(밝음).
+  temperature는 warm/cool로 못박지 않고 neutral — 퍼플은 레드기/블루기에
+  따라 웜쿨이 갈리는 대표색이라 하나로 정하면 톤인톤 규칙에서 억지
+  매칭이 생기기 때문.
+- 매트릭스에 purple 9번째 family로 추가: blue/pink(인접색)·brown(기존
+  서브뉴트럴 우대 정책과 일관)은 +1, yellow(보색이지만 톤다운 여지)는 0,
+  근거 약한 나머지(wine/red/orange/green)도 0 — "확실한 것만 값, 애매하면
+  0" 원칙.
+- `test/color_taxonomy_test.dart`에 라벨 exact-match/temperature/substring/
+  매트릭스/대칭성 테스트 전부 반영, 67개 테스트 통과.
+
+### 디버그 로그 처리
+검증용 `[색상]`/`[궁합]`/`[순위변경]` 로그는 **한 번도 커밋되지 않고**
+워킹트리에서만 존재하다 검증 종료 후 제거됨 — 제거 후 `outfit_matcher.dart`
+가 직전 커밋(`5e125ce`)과 완전히 동일해져서 "로그 제거" 커밋 자체가
+불필요했음(add+remove가 저장소 히스토리에 흔적을 안 남김).
+
 ## 지켜야 할 작업 원칙 (재확인 + 이번 세션에서 새로 확인된 것)
 
 - (신규) 실데이터(gitignore 대상 export 등)에 의존하는 검증 테스트는
@@ -229,6 +288,12 @@
 - (신규) Firestore 프로젝트를 이관할 땐 규칙(`firestore.rules`/
   `storage.rules`)뿐 아니라 **복합 인덱스도 코드(`firestore.indexes.json`)
   로 관리**해야 한다 — 콘솔에서 수동으로 만든 인덱스는 이관 시 안 따라옴.
+- (신규) 실기기 로그로 규칙/로직을 검증할 땐, 관찰용 디버그 로그를
+  `kDebugMode` 가드로 심고 **검증 끝나면 커밋 없이 그대로 제거**하는
+  패턴이 깔끔하다 — 히스토리에 임시 코드 흔적이 안 남는다.
+- (신규) 새로 등록한 아이템이 백그라운드 파이프라인 로그에 안 찍히면,
+  코드 버그보다 **네트워크 끊김**(기기 wifi 플레이키니스)부터 의심하고
+  `adb shell ping <host>`로 확인하는 게 빠르다 — 실제로 이번에 그랬음.
 - (기존) Firebase 규칙 배포 등 공유 인프라 변경은 사용자 승인 필요, 코드
   변경 후 항상 `flutter analyze`, 서비스 계정 키는 환경변수/인자로만
   참조하고 저장소 내부 경로는 거부 — 전부 이번 세션에도 계속 지켜짐.
@@ -251,16 +316,18 @@
 5. (선택, 급하지 않음) personal 프로젝트에서 Firebase App Check API가
    비활성 상태(콘솔에서 활성화 필요) — 지금은 placeholder 토큰 폴백으로
    앱 동작엔 영향 없음.
-6. (우선순위 낮음) 실사용 중 유채색 비중이 늘면 색상 매트릭스 값(-1/0/+1)이
-   실제 데이터로 재검증할 가치가 생김 — 이번엔 합성 데이터로만 규칙 자체의
-   정확성을 확인, 실사용 재검증은 데이터가 쌓인 뒤로 미룸.
+6. ~~실사용 중 유채색 비중이 늘면 색상 매트릭스 값 재검증~~ — §6에서
+   실기기 검증 완료(regex/매트릭스 정상 작동 확인, purple 갭도 메움).
+   완료된 항목이라 제거. 다만 이 옷장은 여전히 무채색 편중이라
+   `[순위변경]`류 "1번 후보가 실제로 바뀌는" 케이스는 아직 실사용으로는
+   못 봤음 — 유채색 비중이 자연히 늘어나면 그때 다시 볼 만함(급하지 않음).
 
 ## 참고 파일 위치
 
 - 유사 옷 검색: `lib/services/embedding_service.dart`,
   `lib/debug/similarity_check.dart`
-- 색상 궁합 규칙: `lib/services/color_taxonomy.dart`,
-  `lib/services/outfit_matcher.dart`, `lib/constants/outfit_reason.dart`
+- 색상 궁합 규칙: `lib/services/color_taxonomy.dart`(9개 family, purple
+  포함), `lib/services/outfit_matcher.dart`, `lib/constants/outfit_reason.dart`
 - 관련 테스트: `test/color_taxonomy_test.dart`,
   `test/color_rule_verification_test.dart`,
   `test/color_rule_synthetic_test.dart`, `test/outfit_reason_test.dart`,
