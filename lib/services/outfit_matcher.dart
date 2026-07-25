@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/clothing_attributes.dart';
 import '../models/wardrobe_item.dart';
+import 'color_taxonomy.dart';
 
 // 새로 등록된 옷과 기존 옷장만으로 어울리는 조합 후보들을 고른다.
 // FitPredictor와 동일하게 Gemini 호출 없이 순수 로컬 계산만 수행한다.
@@ -195,13 +196,22 @@ class OutfitMatcher {
       score += diff == 0 ? 2 : (diff == 1 ? 1 : -1);
     }
 
-    if (_neutralColors.contains(a.color) || _neutralColors.contains(b.color)) {
-      score += 2;
-    } else if (a.color == b.color && a.color.isNotEmpty) {
-      score += 1;
-    }
+    score += _colorScore(a, b);
 
     return score;
+  }
+
+  // 색상 궁합 — 무채색 와일드카드 판정을 정규화 테이블(color_taxonomy.dart)
+  // 기반으로 바꿔 회색/차콜 인식 누락 버그를 고친다. 그 외 로직(동색 보너스)은
+  // 기존 그대로 — family/매트릭스 기반 규칙은 다음 커밋에서 추가한다.
+  // (_neutralColors는 findForTpo/outfit_reason.dart가 여전히 참조하므로
+  // 건드리지 않는다 — 이번 버그수정은 findCandidateMatches 경로에만 적용).
+  static double _colorScore(ClothingAttributes a, ClothingAttributes b) {
+    final colorA = ColorTaxonomy.resolve(a.color);
+    final colorB = ColorTaxonomy.resolve(b.color);
+
+    if (colorA.isNeutral || colorB.isNeutral) return 2;
+    return (a.color == b.color && a.color.isNotEmpty) ? 1 : 0;
   }
 
   // ── TPO(일정) 기반 조합 후보 생성 ────────────────────────
