@@ -1,4 +1,4 @@
-# 작업 정리 (2026-07-25 세션 2 — CLIP 임베딩 A단계 + 궁합 규칙 보강(전체) + 스파이크 정리 + Firebase 개인 프로젝트 이관 + 궁합 규칙 실기기 검증)
+# 작업 정리 (2026-07-25 세션 2 — CLIP 임베딩 A단계 + 궁합 규칙 보강(전체) + 스파이크 정리 + Firebase 개인 프로젝트 이관(iOS 포함) + 궁합 규칙 실기기 검증)
 
 `docs/session_2026-07-25_summary.md`(세션 1, CLIP 임베딩 채택+백필)를 이어받아
 브랜치 `feature/clip-embedding-spike` 위에서 계속 작업. 이번 세션은 전부
@@ -269,6 +269,39 @@ isNeutral=false, 원본 문자열 완전 일치만 보는 구버전 방식)으�
 가 직전 커밋(`5e125ce`)과 완전히 동일해져서 "로그 제거" 커밋 자체가
 불필요했음(add+remove가 저장소 히스토리에 흔적을 안 남김).
 
+## 7. iOS Firebase 설정 마무리 (커밋 `8a2d19b`)
+
+§5에서 발견해 "다음 작업"으로 미뤄뒀던 iOS 잔여 설정을 마저 정리했다.
+
+- `flutterfire configure -p ai-fashion-assistant-personal --platforms=ios
+  -i com.yujaehyuk.fashionai.test3462 -f -y`(논인터랙티브 플래그로 실행,
+  `flutterfire` 실행파일은 PATH에 없어서
+  `~/AppData/Local/Pub/Cache/bin/flutterfire.bat` 전체 경로로 호출)를
+  돌렸더니 personal 프로젝트의 iOS 앱(이미 등록돼 있었음)은 찾아내고
+  `lib/firebase_options.dart`는 정상 갱신했지만, **`GoogleService-Info.plist`
+  쓰기와 `firebase.json`의 ios 블록 갱신은 에러 없이 조용히 건너뜀** —
+  macOS 전용 Xcode 프로젝트 조작 도구가 Windows 환경엔 없어서로 추정
+  (`--ios-out` 명시해도 동일).
+- 우회: `flutterfire`가 아니라 **`firebase apps:sdkconfig ios <appId>
+  --project ai-fashion-assistant-personal`**(firebase-tools 자체 명령)로
+  실제 plist 내용을 XML 그대로 받아와 `ios/Runner/GoogleService-Info.plist`
+  에 직접 썼다. `firebase.json`의 ios 블록/`dart.configurations`도 같은
+  값으로 수동 반영(후자는 `--platforms=ios` 스코프 때문에 android 항목이
+  한 번 지워졌다가 복원됨 — 다행히 `firebase_options.dart`의 실제 android
+  `FirebaseOptions` 코드 블록 자체는 안 지워짐, `firebase.json`은 flutterfire
+  CLI의 북마크 메타데이터일 뿐이라 앱 런타임엔 영향 없음).
+- 최종 확인 4개 소스 전부 일치: `firebase.json`(ios) / `firebase_options.dart`
+  (ios) / `GoogleService-Info.plist` / Xcode 실제 빌드 설정
+  (`PRODUCT_BUNDLE_IDENTIFIER`) — 전부 `project=personal`,
+  `bundle=com.yujaehyuk.fashionai.test3462`.
+- 새 plist엔 예전 것에 있던 `CLIENT_ID`/`REVERSED_CLIENT_ID`가 없음 — 이 앱은
+  Google 로그인 없이 익명 로그인만 쓰므로(`login_screen.dart`가
+  `signInAnonymously()`만 호출) 정상, 문제 아님.
+- **iOS 실기기 테스트는 이 작업과 별개로 여전히 불가능** — 개발 환경이
+  Windows라 Xcode 자체가 없음(`flutter doctor`에 iOS 툴체인 항목이 아예
+  안 뜸, iOS 빌드는 macOS 전용). 설정만 미리 맞춰뒀으니 Mac 환경이
+  생기면 바로 빌드/실행 가능한 상태.
+
 ## 지켜야 할 작업 원칙 (재확인 + 이번 세션에서 새로 확인된 것)
 
 - (신규) 실데이터(gitignore 대상 export 등)에 의존하는 검증 테스트는
@@ -294,17 +327,20 @@ isNeutral=false, 원본 문자열 완전 일치만 보는 구버전 방식)으�
 - (신규) 새로 등록한 아이템이 백그라운드 파이프라인 로그에 안 찍히면,
   코드 버그보다 **네트워크 끊김**(기기 wifi 플레이키니스)부터 의심하고
   `adb shell ping <host>`로 확인하는 게 빠르다 — 실제로 이번에 그랬음.
+- (신규) **`flutterfire configure`는 Windows에서 iOS 파일 쓰기를 조용히
+  건너뛸 수 있다**(에러 없음, 로그에도 티가 안 남) — iOS 설정을 진짜로
+  갱신했는지는 `ios/Runner/GoogleService-Info.plist`가 실제로 바뀌었는지
+  git diff로 꼭 확인할 것. 안 됐으면 `firebase apps:sdkconfig ios <appId>`
+  로 직접 받아와 수동 반영하는 우회로가 있다.
 - (기존) Firebase 규칙 배포 등 공유 인프라 변경은 사용자 승인 필요, 코드
   변경 후 항상 `flutter analyze`, 서비스 계정 키는 환경변수/인자로만
   참조하고 저장소 내부 경로는 거부 — 전부 이번 세션에도 계속 지켜짐.
 
 ## 다음 세션 시작 시 할 일
 
-1. **iOS Firebase 설정 마무리** — `firebase.json`의 ios 블록,
-   `ios/Runner/GoogleService-Info.plist`가 아직 eb206. iOS를 실제로 쓰게
-   되면 `flutterfire configure`를 iOS 플랫폼 포함해서 다시 돌릴 것(Xcode
-   번들 id `com.yujaehyuk.fashionai.test3462`가 personal 콘솔에 iOS 앱으로
-   등록돼 있는지부터 확인).
+1. ~~iOS Firebase 설정 마무리~~ — §7에서 완료(4개 소스 전부 personal로
+   일치). 남은 건 **Mac 환경 확보**뿐 — 이 저장소를 Mac에서 clone해서
+   `flutter run -d <iOS 기기>` 하면 바로 될 상태.
 2. **CLIP 임베딩 RAG 통합**(B단계) — `getRelevantHistorySilently`의
    태그+아이템겹침 기반 관련도 점수를 임베딩 유사도로 보강/교체할지 설계.
    이번 세션엔 손대지 않음.
