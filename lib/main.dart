@@ -19,6 +19,7 @@ import 'services/agent_planner.dart';
 import 'services/agent_sweeper.dart';
 import 'services/fitting_job_controller.dart';
 import 'services/fitting_progress.dart';
+import 'debug/similarity_check.dart';
 import 'firebase_options.dart';
 import 'spike/embedding_spike_app.dart';
 
@@ -58,6 +59,16 @@ void main() async {
       androidProvider: AndroidProvider.debug,
       appleProvider: AppleProvider.debug,
     );
+  }
+
+  // [검증 전용] --dart-define=RUN_SIMILARITY_CHECK=true 로 빌드했을 때만 실행.
+  // 실제 구현은 lib/debug/similarity_check.dart 참고. 기본값 false라 일반
+  // 빌드/배포에는 전혀 영향 없음.
+  const runSimilarityCheckFlag = bool.fromEnvironment('RUN_SIMILARITY_CHECK');
+  if (runSimilarityCheckFlag) {
+    await runSimilarityCheck();
+    runApp(const SimilarityCheckApp());
+    return;
   }
 
   // 착장 캘린더(table_calendar)의 한국어 월/요일 표기를 위해 로케일 데이터 초기화.
