@@ -18,11 +18,16 @@ class TpoMatchResult {
   final List<OutfitMatch> candidates;
   final bool isFallback;
   final String? shortfall; // candidates가 비었을 때만 채워짐
+  // isFallback=true일 때만 채워짐 — 격식에 맞는 아이템이 없어(scored 제외)
+  // 차선(relaxed)으로 채운 카테고리 목록. 홈 화면 배지가 "어떤 카테고리가
+  // 부족했는지" 구체적으로 안내할 때 쓴다.
+  final List<String> mismatchedCategories;
 
   const TpoMatchResult({
     required this.candidates,
     this.isFallback = false,
     this.shortfall,
+    this.mismatchedCategories = const [],
   });
 }
 
@@ -298,8 +303,17 @@ class OutfitMatcher {
     final relaxed = topTwo((_) => true);
     if (relaxed.containsKey('상의') && relaxed.containsKey('하의')) {
       final combos = _buildCombosFromRanked(relaxed, maxCandidates);
-      debugPrint('[PLAN] TPO($formalityHint) 차선 조합 ${combos.length}개 (격식 부적합, fallback)');
-      return TpoMatchResult(candidates: combos, isFallback: true);
+      // _outfitCategories는 Set이라 표시 순서를 보장하지 않아 리스트로 고정
+      // 순서를 따로 둔다. _outfitCategories에 카테고리가 추가/변경되면 이
+      // 리스트도 함께 갱신해야 한다(자동 동기화 없음).
+      const categoryOrder = ['상의', '하의', '아우터', '신발'];
+      final mismatched = categoryOrder
+          .where((c) => relaxed.containsKey(c) && !scored.containsKey(c))
+          .toList();
+      debugPrint('[PLAN] TPO($formalityHint) 차선 조합 ${combos.length}개 '
+          '(격식 부적합, fallback, 부족 카테고리=$mismatched)');
+      return TpoMatchResult(
+          candidates: combos, isFallback: true, mismatchedCategories: mismatched);
     }
 
     // 조합 불가 — 부족한 핵심 카테고리를 안내한다.

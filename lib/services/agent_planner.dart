@@ -85,6 +85,30 @@ class AgentPlanner {
   // 보고 차선(fallback) 문구를 쓴다(레벨 4의 "전부 낮은 점수" 케이스).
   static const _lowScoreFloor = 60;
 
+  // isFallback 원인(카테고리 부족 vs 궁합 점수 낮음)에 따라 다른 문구를
+  // 고른다. 순수 함수라 Firestore/Gemini 없이 단위 테스트 가능하다.
+  // mismatchedCategories가 비어 있으면(드문 경우 — findForTpo의 hasCore
+  // 제약상 이론상 거의 없음) 억지 문구 대신 null을 반환해 배지 자체를
+  // 띄우지 않는다.
+  static String? buildFallbackNote({
+    required bool matchIsFallback,
+    required List<String> mismatchedCategories,
+    required int? bestScore,
+    required String dateLabel,
+    required String tpoTag,
+  }) {
+    if (matchIsFallback) {
+      if (mismatchedCategories.isEmpty) return null;
+      final categories = mismatchedCategories.join('·');
+      final scoreText = bestScore != null ? '$bestScore점' : '차선';
+      return '$dateLabel [$tpoTag]에 맞는 $categories가 부족해 $scoreText 조합으로 준비했어요';
+    }
+    if (bestScore != null && bestScore < _lowScoreFloor) {
+      return '$dateLabel [$tpoTag] 조합 궁합 점수가 낮아($bestScore점) 차선으로 준비했어요';
+    }
+    return null;
+  }
+
   static Future<void> _prepareRecommendationFor(
     String uid,
     OutfitCalendarEntry plan,
@@ -215,6 +239,13 @@ class AgentPlanner {
     // 매처가 차선을 줬거나(격식 부적합) Gemini 점수도 낮으면 fallback으로 표기.
     final isFallback =
         match.isFallback || (outcome.bestScore != null && outcome.bestScore! < _lowScoreFloor);
+    final fallbackNote = buildFallbackNote(
+      matchIsFallback: match.isFallback,
+      mismatchedCategories: match.mismatchedCategories,
+      bestScore: outcome.bestScore,
+      dateLabel: _relativeLabel(plan.date),
+      tpoTag: plan.tpoTag,
+    );
 
     // ── 채택률 지표: 자기 성능 인지 문구 ── 이 태그에서 과거 채택률이
     // 뚜렷하게 낮거나(아직 배우는 중) 높으면(자신 있음) 카드에 솔직하게
@@ -247,6 +278,7 @@ class AgentPlanner {
       targetTpoTag: plan.tpoTag,
       reflectedFeedback: history.tagMatchCount > 0,
       isFallback: isFallback,
+      fallbackNote: fallbackNote,
       confidenceNote: confidenceNote,
       weatherNote: weatherNote,
     );

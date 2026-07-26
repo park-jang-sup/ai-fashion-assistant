@@ -134,4 +134,38 @@ void main() {
       );
     });
   });
+
+  group('findForTpo — mismatchedCategories', () {
+    test('상의·아우터가 격식에 안 맞으면 차선(fallback)이고 둘 다 부족 카테고리로 잡힌다', () {
+      // 상의/아우터: 캐주얼+유채색 → 포멀 타깃 기준 diff=2, 무채색 보너스도
+      // 없어 score=0(scored 제외, relaxed엔 남음).
+      final top = _item('top-1', '상의', '레드', '캐주얼');
+      final outer = _item('outer-1', '아우터', '레드', '캐주얼');
+      // 하의: 포멀+무채색이라 score>0으로 scored에 남는다(hasCore를 상의만
+      // 걸리게 하기 위해 하의는 정상으로 둠).
+      final bottom = _item('bottom-1', '하의', '네이비', '포멀');
+
+      final result = OutfitMatcher.findForTpo(
+        wardrobe: [top, outer, bottom],
+        formalityHint: '포멀',
+      );
+
+      expect(result.isFallback, isTrue);
+      expect(result.mismatchedCategories, ['상의', '아우터']);
+      expect(result.candidates, isNotEmpty);
+    });
+
+    test('전 카테고리가 격식에 맞으면 fallback이 아니고 mismatchedCategories가 비어 있다', () {
+      final top = _item('top-2', '상의', '화이트', '포멀');
+      final bottom = _item('bottom-2', '하의', '블랙', '포멀');
+
+      final result = OutfitMatcher.findForTpo(
+        wardrobe: [top, bottom],
+        formalityHint: '포멀',
+      );
+
+      expect(result.isFallback, isFalse);
+      expect(result.mismatchedCategories, isEmpty);
+    });
+  });
 }

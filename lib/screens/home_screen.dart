@@ -352,6 +352,28 @@ class _RecommendationCardBodyState extends State<_RecommendationCardBody> {
                       ),
               ),
             ),
+            if (entry.fallbackNote != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                color: AppColors.amberPale,
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: AppColors.amber, size: 15),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        entry.fallbackNote!,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),

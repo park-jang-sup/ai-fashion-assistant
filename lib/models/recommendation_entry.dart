@@ -44,6 +44,9 @@ class RecommendationEntry {
   // 다듬었다"는 문구를 보여준다.
   final bool repairAttempted;
   final String? repairNote; // 예: "아우터 교체(격식 개선)"
+  // isFallback=true일 때 그 원인(카테고리 부족 vs 궁합 점수 낮음)을 설명하는
+  // 문구. null이면 배지를 표시하지 않는다(AgentPlanner.buildFallbackNote 참고).
+  final String? fallbackNote;
   // ── 채택률 지표 ── 선제 추천 생성 시점에 해당 targetTpoTag의 최근 채택률을
   // 확인해 남기는 자기 성능 인지 문구. null이면 카드에 표시하지 않는다
   // (표본이 부족하거나 채택률이 중간대라 눈에 띄게 언급할 필요가 없는 경우).
@@ -71,6 +74,7 @@ class RecommendationEntry {
     this.isFallback = false,
     this.repairAttempted = false,
     this.repairNote,
+    this.fallbackNote,
     this.confidenceNote,
     this.weatherNote,
   });
@@ -101,6 +105,7 @@ class RecommendationEntry {
       isFallback: data['isFallback'] as bool? ?? false,
       repairAttempted: data['repairAttempted'] as bool? ?? false,
       repairNote: data['repairNote'] as String?,
+      fallbackNote: data['fallbackNote'] as String?,
       confidenceNote: data['confidenceNote'] as String?,
       weatherNote: data['weatherNote'] as String?,
     );
@@ -127,6 +132,7 @@ class RecommendationEntry {
         if (isFallback) 'isFallback': isFallback,
         if (repairAttempted) 'repairAttempted': repairAttempted,
         if (repairNote != null) 'repairNote': repairNote,
+        if (fallbackNote != null) 'fallbackNote': fallbackNote,
         if (confidenceNote != null) 'confidenceNote': confidenceNote,
         if (weatherNote != null) 'weatherNote': weatherNote,
       };
