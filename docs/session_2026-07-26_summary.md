@@ -1,4 +1,4 @@
-# 작업 정리 (2026-07-26 — 선제 추천 차선책 배지 + 예보 변화 자동 재계획)
+# 작업 정리 (2026-07-26 — 선제 추천 배지/재계획 + 포멀 태그 + 임베딩 유사 옷 UI)
 
 `docs/session_2026-07-25_summary_2.md`(세션2, CLIP 임베딩 A단계 + 궁합 규칙
 보강 + Firebase 개인 이관)를 이어받아 `main` 브랜치 위에서 작업. 이번 세션은
@@ -132,13 +132,97 @@
   기다리거나 조작이 필요해 이번엔 단위 테스트로 대체) — 다음에 필요하면
   검증 방법을 더 찾아볼 것.
 
+## 3. '포멀' 격식 TPO 태그 추가 — 결혼식·면접·경조사 (커밋 `c4dd1c2`)
+
+### 배경
+`_formalityRank`는 캐주얼/세미포멀/포멀 3단계인데 `TpoTags.all`엔 세미포멀
+3개(출근·데이트·모임)·캐주얼 3개(여행·운동·일상)뿐이라 '포멀'이 UI에서
+도달 불가능한 죽은 등급이었다. `_formalityFitScore`가 거리 0→3점/거리
+1→1점/그 외 0점인데 목표 격식이 0 또는 1(캐주얼/세미포멀)이면 웬만한 옷의
+격식이 거리 1 이내라 거의 항상 `scored`에서 안 빠짐 → `hasCore`가 항상
+참 → 세션 초반에 만든 `mismatchedCategories` 배지 분기가 구조적으로
+도달 불가였다(`bestScore < _lowScoreFloor` 경로만 살아있었음).
+
+### 구현
+- `tpo_tags.dart`: `formalityHint: '포멀'`인 태그 3개(결혼식/면접/경조사)를
+  '일상' 바로 앞에 추가 — 기존 아이콘/색상만 재사용(새 정의 없음: teal/
+  navyLight/blueLight). `labels`도 같은 순서로 갱신, `labels.last`가
+  계속 '일상'을 가리키게 유지(`calendar_record_sheet.dart`의 기본값 의존).
+- 확인만 하고 코드는 안 건드린 것: 태그 선택 Wrap 2곳(6→9개 자동
+  줄바꿈), `byLabel`의 '일상' 폴백(기존 데이터 영향 없음), 주간 플랜
+  프롬프트(`gemini_service.dart`가 이미 "포멀/세미포멀"을 언급하고
+  있어서 문자열 종류에 대한 가정이 없었음).
+
+### 테스트
+- `test/outfit_matcher_test.dart`: `TpoTags.byLabel('결혼식').formalityHint`
+  를 실제로 `findForTpo`에 넘겨 `isFallback==true`+`mismatchedCategories`
+  채워짐을 확인(합성 데이터 전용이던 경로가 실사용 태그로도 동일하게
+  도달됨을 못박음).
+- `test/tpo_tags_test.dart`(신규): labels/all 순서·내용 일치, 마지막
+  원소 '일상' 고정, byLabel 폴백, 포멀 등급 실재, 결혼식/면접/경조사
+  3개 전부 포멀인지 — 5케이스.
+- `flutter analyze` 클린, 전체 테스트(85개) 통과.
+
+### 실기기 검증
+새 포멀 태그로 실제 일정을 등록해봤는데, 이 옷장(112~113벌)이 포멀급도
+충분히 커버해서 `TPO(포멀) 매칭 성공(격식 적합)`으로 매칭됨 — 배지가
+필요한 상황 자체가 아직 실데이터로는 재현 안 됨(세미포멀 테스트 때와
+같은 패턴). 배지 로직 자체는 §1의 단위 테스트로 이미 검증됨.
+
+## 4. 옷장 카드 시트에 임베딩 기반 "비슷한 옷" 표시 (커밋 `c92a573`)
+
+### 배경
+FashionCLIP 512차원 벡터가 옷장 99벌에 백필돼 있고 `EmbeddingService.
+findSimilarItems`도 구현·검증까지 끝났는데, 호출하는 곳이
+`lib/debug/similarity_check.dart`(dart-define 필요한 콘솔 도구) 하나뿐이라
+일반 사용자에겐 진입점이 없었다. 이번 작업은 "내 옷장에 이미 비슷한 옷이
+있다"를 사용자가 인지하게 만들어 중복 구매를 줄이는 방향.
+
+### 구현
+- `wardrobe_screen.dart`의 `_showCardOptions`(카드 탭 액션 시트)에
+  wardrobe 전체 리스트를 추가 파라미터로 받아 기존 두 버튼(피팅룸
+  전송/치수 입력) 아래에 "옷장에 비슷한 옷이 있어요" 섹션 삽입.
+  `findSimilarItems(topN: 3)` 결과를 컷아웃 이미지+짧은 라벨(색상·
+  카테고리) 썸네일로 가로 나열, 탭하면 그 아이템의 액션 시트로 전환.
+  새 화면 없음, Firestore 재조회 없음(스트림에서 이미 로드된 리스트
+  재사용), 로딩 인디케이터 없음(112벌×512차원 코사인은 클라이언트에서
+  즉시 끝남).
+- **절대 임계값 안 씀** — 이 옷장이 무채색 편중이라 고정 코사인 임계값이
+  무의미하다는 걸 이전 세션에서 이미 확인했었어서, `findSimilarItems`가
+  주는 상대 순위(topN)만 쓴다. 코사인 수치 자체도 사용자에게 노출 안 함
+  (해석 불가/오해 소지).
+- 빈 상태(embedding 없음/같은 카테고리 비교 대상 0건)는 섹션 자체를
+  렌더링하지 않음 — 에러 문구·빈 박스 없이 조용히 생략.
+
+### 테스트
+- `test/embedding_service_test.dart`(신규): 같은 category만 반환, 자기
+  자신 제외, 기준 아이템 embedding null→빈 리스트, 후보 중 null
+  embedding 스킵, 유사도 내림차순 정렬, topN 제한 — 6케이스 +
+  cosineSimilarity 자체 널가드 2케이스, 합성 벡터로 검증.
+- `flutter analyze` 클린, 전체 테스트(93개) 통과.
+- 실기기 확인: 카드 탭 시 기존 두 버튼 아래에 섹션이 자연스럽게
+  추가되고, embedding 없는 최근 등록 옷은 조용히 생략되는 것 확인(사용자
+  직접 확인).
+
+## (부록) 세션 중 발견한 테스트 잔여물 정리
+
+§1 실기기 검증 때 만든 7/27 "출근" 캘린더 예정은 그때 삭제했지만, 연결된
+`recommendations` 문서(`targetDate=2026-07-27`)는 안 지워진 채 남아있었다.
+§2(예보 재계획)를 다시 테스트하다 이게 "예보 안 바뀜 → 스킵" 판정을 계속
+받아 혼란을 줌 — `dismissRecommendation`이 아니라 실제 `delete()`가
+필요해서, `lib/debug/cleanup_recommendation.dart` + `main.dart`의
+`--dart-define=RUN_CLEANUP_RECOMMENDATION` 분기를 임시로 추가해 dry-run
+(조회만) → 대상 1건 확인 → `CLEANUP_APPLY=true`로 실제 삭제 → 재조회로
+0건 확인까지 마친 뒤 코드는 커밋 없이 완전히 제거(`main.dart`는 diff가
+안 남음). wardrobe 컬렉션은 전혀 안 건드림.
+
 ## 다음 세션 시작 시 할 일 (이전 세션에서 이월, 이번 세션엔 미착수)
 
 1. **CLIP 임베딩 RAG 통합(B단계)** — `getRelevantHistorySilently`의
    태그+아이템겹침 관련도 점수를 임베딩 유사도로 보강/교체할지 설계.
 2. **신규 옷 등록 시 서버사이드 임베딩 생성 경로** — Vertex AI multimodal
    embeddings vs Replicate 택일 미정. 백필된 옷만 embedding 있고 신규
-   등록분은 계속 null.
+   등록분은 계속 null(§4 "비슷한 옷" UI도 이 옷들엔 안 뜸).
 3. 배경제거 TFLite 교체 스파이크 —
    `docs/tflite_background_removal_spike_notes.md` 참고해 세그멘테이션
    모델 조사부터 새로 시작.
@@ -155,9 +239,12 @@
   runProactiveCheck), `lib/services/firestore_service.dart`
   (recommendationForDateSilently), `lib/models/recommendation_entry.dart`
   (forecastPrecipProbability/forecastMaxTempC/replanCount)
+- 포멀 태그: `lib/constants/tpo_tags.dart`
+- 임베딩 유사 옷 UI: `lib/screens/wardrobe_screen.dart`(_showCardOptions,
+  _SimilarItemThumbnail), `lib/services/embedding_service.dart`
 - 관련 테스트: `test/outfit_matcher_test.dart`,
   `test/agent_planner_fallback_note_test.dart`,
-  `test/agent_planner_weather_replan_test.dart`
-- 유사 옷 검색/궁합 규칙(이전 세션): `lib/services/embedding_service.dart`,
-  `lib/services/color_taxonomy.dart`
+  `test/agent_planner_weather_replan_test.dart`, `test/tpo_tags_test.dart`,
+  `test/embedding_service_test.dart`
+- 궁합 규칙(이전 세션): `lib/services/color_taxonomy.dart`
 - Firebase 이관 도구: `tools/migrate_to_personal/`
