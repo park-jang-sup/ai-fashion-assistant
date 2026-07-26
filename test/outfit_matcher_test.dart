@@ -2,6 +2,7 @@
 // Firebase/네트워크 없이 결정적으로 검증되는 부분(자기 평가 루프의 재료인
 // 후보 조합 생성)만 다룬다.
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ai_fashion_assistant/constants/tpo_tags.dart';
 import 'package:ai_fashion_assistant/models/clothing_attributes.dart';
 import 'package:ai_fashion_assistant/models/wardrobe_item.dart';
 import 'package:ai_fashion_assistant/services/outfit_matcher.dart';
@@ -166,6 +167,29 @@ void main() {
 
       expect(result.isFallback, isFalse);
       expect(result.mismatchedCategories, isEmpty);
+    });
+
+    test('실사용 TPO 태그("결혼식")로도 포멀 등급에 실제 도달해 mismatchedCategories가 채워진다', () {
+      // TpoTags에 포멀 태그가 추가되기 전에는 formalityHint: '포멀' 호출이
+      // 이 테스트 파일 안에서만 가능한 합성 시나리오였다 — 실제 TPO 선택
+      // UI에서는 절대 나올 수 없는 문자열이라 이 fallback 분기가 죽은
+      // 코드나 마찬가지였다. 이제 TpoTags.byLabel('결혼식')에서 나온 값을
+      // 그대로 findForTpo에 넘겨, 실사용 경로에서도 진짜로 도달 가능함을
+      // 못박는다.
+      final formalityHint = TpoTags.byLabel('결혼식').formalityHint;
+      expect(formalityHint, '포멀');
+
+      final top = _item('top-3', '상의', '레드', '캐주얼');
+      final outer = _item('outer-3', '아우터', '레드', '캐주얼');
+      final bottom = _item('bottom-3', '하의', '네이비', '포멀');
+
+      final result = OutfitMatcher.findForTpo(
+        wardrobe: [top, outer, bottom],
+        formalityHint: formalityHint,
+      );
+
+      expect(result.isFallback, isTrue);
+      expect(result.mismatchedCategories, ['상의', '아우터']);
     });
   });
 }
