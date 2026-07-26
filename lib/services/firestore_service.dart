@@ -258,10 +258,14 @@ class FirestoreService {
         .update({'dismissed': true});
   }
 
-  // 특정 날짜 일정을 위한 선제 추천이 이미 있는지 확인(중복 생성 방지).
-  // targetDate 단일 필드 equality라 복합 인덱스가 필요 없다. 실패 시 조용히
-  // false 쪽(추천 없음)으로 처리하지 않고 null로 구분 — 호출부가 판단한다.
-  static Future<bool> hasRecommendationForDateSilently(String uid, DateTime date) async {
+  // 특정 날짜 일정의 살아있는(dismissed=false) 선제 추천을 조회 — 중복 생성
+  // 방지 게이트 겸, 예보 재계획 판단(AgentPlanner.shouldReplanForWeather)에
+  // 필요한 스냅샷/replanCount를 함께 돌려준다. targetDate/dismissed 둘 다
+  // equality 필터라(orderBy 없음) 복합 인덱스가 필요 없다.
+  static Future<RecommendationEntry?> recommendationForDateSilently(
+    String uid,
+    DateTime date,
+  ) async {
     try {
       final normalized = DateTime(date.year, date.month, date.day);
       final snapshot = await _db
@@ -269,12 +273,15 @@ class FirestoreService {
           .doc(uid)
           .collection(_recommendationsCol)
           .where('targetDate', isEqualTo: Timestamp.fromDate(normalized))
+          .where('dismissed', isEqualTo: false)
           .limit(1)
           .get();
-      return snapshot.docs.isNotEmpty;
+      return snapshot.docs.isEmpty
+          ? null
+          : RecommendationEntry.fromFirestore(snapshot.docs.first);
     } catch (e) {
       debugPrint('[PLAN] 추천 중복 조회 실패: $e');
-      return false;
+      return null;
     }
   }
 

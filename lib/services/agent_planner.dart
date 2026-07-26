@@ -56,6 +56,8 @@ class AgentPlanner {
       final today = _todayMidnight();
       final horizon = today.add(const Duration(days: _proactiveHorizonDays));
       final entries = await FirestoreService.calendarEntriesForRange(uid, today, horizon);
+      // isPlanned==false(이미 착장을 기록/확정한 날)는 여기서 이미 제외되므로
+      // "기록된 날은 재계획하지 않는다"는 별도 체크가 필요 없다.
       final planned = entries.where((e) => e.isPlanned).toList();
       if (planned.isEmpty) return;
       debugPrint('[PLAN] 선제 추천 체크: 다가오는 예정 ${planned.length}건');
@@ -64,14 +66,62 @@ class AgentPlanner {
       final usable = wardrobe.where((i) => i.attributes != null).toList();
       if (usable.length < 2) return;
 
+      final weather = await WeatherService.fetch();
+
       for (var i = 0; i < planned.length; i++) {
         final plan = planned[i];
-        // 이미 이 날짜용 추천이 있으면 스킵(중복 방지).
-        if (await FirestoreService.hasRecommendationForDateSilently(uid, plan.date)) {
-          debugPrint('[PLAN] ${_dateLabel(plan.date)} 추천 이미 존재 — 스킵');
-          continue;
+        var replanCount = 0;
+        var previousItemIds = const <String>[];
+
+        // 이미 이 날짜용 추천이 있으면, 예보가 유의미하게 바뀌었을 때만
+        // 무효화(dismiss)해서 재계획 게이트를 통과시킨다 — 그 외엔 기존과
+        // 동일하게 스킵(중복 방지). 새 파이프라인이 아니라 이 게이트 하나만
+        // 갈아끼워 아래 _prepareRecommendationFor(자기 평가 루프·3회 캡·
+        // fallbackNote 배지)를 그대로 재사용한다.
+        final existing = await FirestoreService.recommendationForDateSilently(uid, plan.date);
+        if (existing != null) {
+          // userChoice가 이미 붙은 추천은 재계획 대상에서 제외한다. 이
+          // 날짜 자체가 기록된 경우는 isPlanned가 꺼져 위에서 이미
+          // 걸러지지만, detectFeedbackForCalendarEntry는 ±3일 범위에서
+          // "가장 가까운" 추천에 userChoice를 붙이므로 아직 planned인
+          // 다른 날짜의 추천에도 반응이 먼저 기록될 수 있다 — 이미
+          // 사용자가 반응한 신호를 예보 변화로 지워버리면 안 된다.
+          if (existing.userChoice != null) {
+            debugPrint('[PLAN] ${_dateLabel(plan.date)} 추천에 이미 사용자 반응'
+                '(${existing.userChoice})이 있어 재계획 대상에서 제외 — 스킵');
+            continue;
+          }
+          final decision = shouldReplanForWeather(
+            snapshotPrecipProbability: existing.forecastPrecipProbability,
+            snapshotMaxTempC: existing.forecastMaxTempC,
+            currentForecast: weather?.forDate(plan.date),
+          );
+          if (!decision.replan) {
+            debugPrint('[PLAN] ${_dateLabel(plan.date)} 추천 이미 존재 — 스킵');
+            continue;
+          }
+          if (existing.replanCount >= _maxReplanPerDate) {
+            debugPrint('[PLAN] ${_dateLabel(plan.date)} 예보 변화 감지(${decision.reason})했지만 '
+                '재계획 상한($_maxReplanPerDate회) 도달 — 스킵');
+            continue;
+          }
+          await FirestoreService.dismissRecommendation(uid, existing.id);
+          replanCount = existing.replanCount + 1;
+          previousItemIds = existing.itemIds;
+          unawaited(FirestoreService.addAgentLogSilently(
+            uid,
+            AgentLogEntry(
+              id: '',
+              eventType: AgentLogEntry.typeWeatherChecked,
+              message: '${_relativeLabel(plan.date)} [${plan.tpoTag}] ${decision.reason} — '
+                  '코디를 다시 준비합니다',
+              relatedDocId: plan.id,
+            ),
+          ));
         }
-        await _prepareRecommendationFor(uid, plan, usable);
+
+        await _prepareRecommendationFor(uid, plan, usable,
+            replanCount: replanCount, previousItemIds: previousItemIds);
         if (i < planned.length - 1) {
           await Future.delayed(_planStepDelay);
         }
@@ -109,11 +159,55 @@ class AgentPlanner {
     return null;
   }
 
+  // 같은 날짜가 예보 변화로 재계획되는 최대 횟수. 초과하면 예보가 계속
+  // 바뀌어도 더 이상 재계획하지 않고 마지막 추천을 유지한다(무한 재계획/
+  // 무한 Gemini 호출 방지).
+  static const _maxReplanPerDate = 2;
+
+  // 저장된 예보 스냅샷과 현재 예보를 비교해 재계획이 필요한지 판단하는
+  // 순수 함수(Firestore/Gemini 호출 없음, 단위 테스트 대상).
+  //  · 강수확률이 50%(WeatherService.rainProbabilityThreshold) 경계를
+  //    넘나들 때(비 예보가 새로 생기거나 사라짐)
+  //  · 최고기온이 5도 이상 달라졌을 때
+  // 그 미만의 변화는 예보의 정상적인 미세 흔들림으로 보고 무시한다 — 매
+  // 앱 실행마다 재계획(=Gemini 재호출)이 일어나면 안 되기 때문이다.
+  // 스냅샷이 없거나(과거 데이터) 현재 예보 조회에 실패했으면 비교 불가로
+  // 안전하게 false.
+  static const _tempDiffThreshold = 5.0;
+
+  static ({bool replan, String? reason}) shouldReplanForWeather({
+    required int? snapshotPrecipProbability,
+    required double? snapshotMaxTempC,
+    required DailyWeather? currentForecast,
+  }) {
+    if (snapshotPrecipProbability == null ||
+        snapshotMaxTempC == null ||
+        currentForecast == null) {
+      return (replan: false, reason: null);
+    }
+    final wasRainy = snapshotPrecipProbability >= WeatherService.rainProbabilityThreshold;
+    final isRainyNow =
+        currentForecast.precipitationProbability >= WeatherService.rainProbabilityThreshold;
+    if (wasRainy != isRainyNow) {
+      return (replan: true, reason: isRainyNow ? '비 예보가 새로 생겼어요' : '비 예보가 사라졌어요');
+    }
+    final tempDiff = currentForecast.maxTempC - snapshotMaxTempC;
+    if (tempDiff.abs() >= _tempDiffThreshold) {
+      return (
+        replan: true,
+        reason: tempDiff > 0 ? '예상보다 기온이 많이 올랐어요' : '예상보다 기온이 많이 내려갔어요',
+      );
+    }
+    return (replan: false, reason: null);
+  }
+
   static Future<void> _prepareRecommendationFor(
     String uid,
     OutfitCalendarEntry plan,
-    List<WardrobeItem> wardrobe,
-  ) async {
+    List<WardrobeItem> wardrobe, {
+    int replanCount = 0,
+    List<String> previousItemIds = const [],
+  }) async {
     final tag = TpoTags.byLabel(plan.tpoTag);
     final wardrobeById = {for (final i in wardrobe) i.id: i};
     unawaited(FirestoreService.addAgentLogSilently(
@@ -279,6 +373,9 @@ class AgentPlanner {
       reflectedFeedback: history.tagMatchCount > 0,
       isFallback: isFallback,
       fallbackNote: fallbackNote,
+      forecastPrecipProbability: dayWeather?.precipitationProbability,
+      forecastMaxTempC: dayWeather?.maxTempC,
+      replanCount: replanCount,
       confidenceNote: confidenceNote,
       weatherNote: weatherNote,
     );
@@ -297,6 +394,28 @@ class AgentPlanner {
         relatedDocId: plan.id,
       ),
     ));
+
+    // 예보 재계획으로 새로 만든 추천이면, 이전 조합에서 빠진 아이템을
+    // 한 줄로 남긴다(있을 때만 — 계산 실패/변경 없음이면 조용히 생략).
+    if (previousItemIds.isNotEmpty) {
+      final removed = previousItemIds.toSet().difference(entry.itemIds.toSet());
+      final removedLabel = removed
+          .map((id) => wardrobeById[id])
+          .whereType<WardrobeItem>()
+          .map(_agentItemLabel)
+          .join('·');
+      if (removedLabel.isNotEmpty) {
+        unawaited(FirestoreService.addAgentLogSilently(
+          uid,
+          AgentLogEntry(
+            id: '',
+            eventType: AgentLogEntry.typeRecommendationRegistered,
+            message: '이전 조합에서 $removedLabel 아이템을 뺐어요',
+            relatedDocId: plan.id,
+          ),
+        ));
+      }
+    }
   }
 
   // 캘린더 기록과 대조할 추천을 찾을 때 허용하는 날짜 오차. 정확히 같은

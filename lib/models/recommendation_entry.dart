@@ -47,6 +47,15 @@ class RecommendationEntry {
   // isFallback=true일 때 그 원인(카테고리 부족 vs 궁합 점수 낮음)을 설명하는
   // 문구. null이면 배지를 표시하지 않는다(AgentPlanner.buildFallbackNote 참고).
   final String? fallbackNote;
+  // ── 예보 재계획 ── 이 추천을 생성한 시점의 해당 날짜 예보 스냅샷. 이후
+  // 앱 실행 시 예보가 유의미하게 달라졌는지 비교하는 기준값이라, 일정
+  // 기반 선제 추천(targetDate 있음)에서만 채워진다(AgentPlanner.
+  // shouldReplanForWeather 참고).
+  final int? forecastPrecipProbability;
+  final double? forecastMaxTempC;
+  // 예보 변화로 이 날짜의 추천이 재계획된 횟수(원본은 0). 무한 재계획을
+  // 막는 상한 체크에 쓴다.
+  final int replanCount;
   // ── 채택률 지표 ── 선제 추천 생성 시점에 해당 targetTpoTag의 최근 채택률을
   // 확인해 남기는 자기 성능 인지 문구. null이면 카드에 표시하지 않는다
   // (표본이 부족하거나 채택률이 중간대라 눈에 띄게 언급할 필요가 없는 경우).
@@ -75,6 +84,9 @@ class RecommendationEntry {
     this.repairAttempted = false,
     this.repairNote,
     this.fallbackNote,
+    this.forecastPrecipProbability,
+    this.forecastMaxTempC,
+    this.replanCount = 0,
     this.confidenceNote,
     this.weatherNote,
   });
@@ -106,6 +118,9 @@ class RecommendationEntry {
       repairAttempted: data['repairAttempted'] as bool? ?? false,
       repairNote: data['repairNote'] as String?,
       fallbackNote: data['fallbackNote'] as String?,
+      forecastPrecipProbability: data['forecastPrecipProbability'] as int?,
+      forecastMaxTempC: (data['forecastMaxTempC'] as num?)?.toDouble(),
+      replanCount: data['replanCount'] as int? ?? 0,
       confidenceNote: data['confidenceNote'] as String?,
       weatherNote: data['weatherNote'] as String?,
     );
@@ -133,6 +148,10 @@ class RecommendationEntry {
         if (repairAttempted) 'repairAttempted': repairAttempted,
         if (repairNote != null) 'repairNote': repairNote,
         if (fallbackNote != null) 'fallbackNote': fallbackNote,
+        if (forecastPrecipProbability != null)
+          'forecastPrecipProbability': forecastPrecipProbability,
+        if (forecastMaxTempC != null) 'forecastMaxTempC': forecastMaxTempC,
+        if (replanCount > 0) 'replanCount': replanCount,
         if (confidenceNote != null) 'confidenceNote': confidenceNote,
         if (weatherNote != null) 'weatherNote': weatherNote,
       };
