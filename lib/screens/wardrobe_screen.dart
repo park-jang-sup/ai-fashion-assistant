@@ -15,6 +15,7 @@ import '../models/clothing_size.dart';
 import '../models/user_profile.dart';
 import '../models/wardrobe_item.dart';
 import '../services/agent_planner.dart';
+import '../services/embedding_service.dart';
 import '../services/fit_predictor.dart';
 import '../services/firestore_service.dart';
 import '../services/gemini_service.dart';
@@ -199,8 +200,19 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     return all.where((item) => item.category == _activeCategory).toList();
   }
 
-  // ── 카드 탭: 피팅룸 전송 · 치수 입력/수정 액션 시트 ─────
-  void _showCardOptions(BuildContext context, WardrobeItem item) {
+  // ── 카드 탭: 피팅룸 전송 · 치수 입력/수정 · 비슷한 옷 액션 시트 ─────
+  // wardrobe는 옷장 전체 리스트(스트림에서 이미 로드된 것을 그대로 재사용,
+  // 시트를 열 때마다 Firestore를 다시 조회하지 않는다) — "비슷한 옷" 섹션이
+  // 현재 카테고리 필터와 무관하게 항상 전체 옷장에서 같은 카테고리를 찾도록
+  // _filter()가 적용되지 않은 목록을 받는다.
+  void _showCardOptions(BuildContext context, WardrobeItem item, List<WardrobeItem> wardrobe) {
+    // 코사인 계산은 100여 벌×512차원이라 클라이언트에서 즉시 끝나므로 로딩
+    // 인디케이터 없이 시트 빌드 전에 동기로 계산한다. embedding이 없거나
+    // 같은 카테고리 비교 대상이 없으면(둘 다 findSimilarItems가 빈 리스트로
+    // 알려줌) 섹션 자체를 렌더링하지 않는다 — 에러 문구/빈 박스 금지.
+    final similarItems = EmbeddingService.findSimilarItems(item: item, wardrobe: wardrobe, topN: 3);
+    final wardrobeById = {for (final w in wardrobe) w.id: w};
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -313,6 +325,37 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                     ),
                   ),
                 ),
+              if (similarItems.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                const Text(
+                  '옷장에 비슷한 옷이 있어요',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final s in similarItems)
+                        if (wardrobeById[s.itemId] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.pop(context);
+                                _showCardOptions(context, wardrobeById[s.itemId]!, wardrobe);
+                              },
+                              child: _SimilarItemThumbnail(item: wardrobeById[s.itemId]!),
+                            ),
+                          ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -645,7 +688,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                               ),
                               itemCount: items.length,
                               itemBuilder: (ctx, i) => GestureDetector(
-                                onTap: () => _showCardOptions(ctx, items[i]),
+                                onTap: () => _showCardOptions(ctx, items[i], allItems),
                                 child: _WardrobeCard(
                                   item: items[i],
                                   userProfile: _userProfile,
@@ -1712,6 +1755,56 @@ class _SourceButton extends StatelessWidget {
 }
 
 // ── 공통 뷰 ──────────────────────────────────────────
+// ── "비슷한 옷" 썸네일 한 장 — 카드 액션 시트 전용.
+// 코사인 유사도 수치는 사용자에게 그대로 노출하지 않는다(해석 불가/오해
+// 소지) — EmbeddingService가 이미 상대 순위(topN)로만 골라준 결과라
+// 여기서도 순위 정보 없이 이미지+짧은 라벨만 보여준다.
+class _SimilarItemThumbnail extends StatelessWidget {
+  final WardrobeItem item;
+
+  const _SimilarItemThumbnail({required this.item});
+
+  String get _label {
+    final color = item.attributes?.color;
+    return (color != null && color.isNotEmpty) ? '$color ${item.category}' : item.category;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 64,
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: CachedNetworkImage(
+              imageUrl: item.cutoutImageUrl ?? item.imageUrl,
+              width: 64,
+              height: 64,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(width: 64, height: 64, color: AppColors.background),
+              errorWidget: (_, __, ___) => Container(
+                width: 64,
+                height: 64,
+                color: AppColors.background,
+                child: const Icon(Icons.image_not_supported_outlined,
+                    size: 18, color: AppColors.textDisabled),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _label,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _LoadingView extends StatelessWidget {
   const _LoadingView();
 
