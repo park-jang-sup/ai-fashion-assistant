@@ -17,6 +17,71 @@ import 'support/wardrobe_fixture.dart';
 
 String _sig(List<WardrobeItem> items) => (items.map((i) => i.id).toList()..sort()).join(',');
 
+// findForTpo 내부의 scored 계산(score 공식 + topTwo 캡)을 그대로 재현한다.
+// genuine=true는 rank!=null && 격식 거리 0~1(=_formalityFitScore>0)인
+// "진짜" 적합 아이템 — 무채색 보너스나 rank=null 통과와 무관하게 격식만으로
+// 필터를 통과했을 아이템이다. gateNeutralBonus로 current/proposed 공식을
+// 그대로 스위치해서 표5(필터 순도)와 카테고리 소멸 여부 확인에 함께 쓴다.
+List<({WardrobeItem item, bool genuine})> _scoredTopTwo({
+  required Iterable<WardrobeItem> categoryItems,
+  required int targetRank,
+  required bool gateNeutralBonus,
+}) {
+  final scored = <({WardrobeItem item, double score, bool genuine})>[];
+  for (final item in categoryItems) {
+    final attrs = item.attributes!;
+    final rank = legacyFormalityRank[attrs.formality];
+    var score = rank == null ? 0.5 : legacyFormalityFitScore(targetRank, rank);
+    final genuine = rank != null && score > 0;
+    if (OutfitMatcher.isNeutralColor(attrs.color) && (!gateNeutralBonus || score > 0)) {
+      score += 1;
+    }
+    if (score > 0) scored.add((item: item, score: score, genuine: genuine));
+  }
+  scored.sort((a, b) => b.score.compareTo(a.score));
+  final top = scored.length > 2 ? scored.sublist(0, 2) : scored;
+  return top.map((e) => (item: e.item, genuine: e.genuine)).toList();
+}
+
+// 카테고리별 최고 점수(current=ungated 공식, score>0만) — _buildCombosFromRanked의
+// skeleton 우선순위+점수 정렬을 표6에서 그대로 재현하기 위한 재료.
+// 반환 맵의 키 순서(=카테고리 최초 등장 순서)가 중요하다 — 실제 코드의
+// allPerCategory/scored도 wardrobe 순회 중 카테고리가 처음 등장한 순서로
+// 채워지는 LinkedHashMap이고, _buildCombosFromRanked의 정렬은 리스트 크기가
+// 작아(≤4) 삽입정렬(안정 정렬)이 적용돼 동점일 때 그 최초 등장 순서가
+// 그대로 타이브레이커가 된다. 고정된 카테고리 리스트 순서로 맵을 채우면
+// 이 타이브레이크가 실제 코드와 어긋난다(동점 시 신발/아우터 우열이 뒤집힘).
+Map<String, double> _topScorePerCategory({
+  required List<WardrobeItem> wardrobe,
+  required Set<String> categories,
+  required int targetRank,
+}) {
+  final maxScore = <String, double>{};
+  final firstSeenOrder = <String>[];
+  for (final item in wardrobe) {
+    final attrs = item.attributes;
+    if (attrs == null || !categories.contains(item.category)) continue;
+    if (!firstSeenOrder.contains(item.category)) firstSeenOrder.add(item.category);
+    final rank = legacyFormalityRank[attrs.formality];
+    var score = rank == null ? 0.5 : legacyFormalityFitScore(targetRank, rank);
+    if (OutfitMatcher.isNeutralColor(attrs.color)) score += 1;
+    if (score <= 0) continue;
+    final prev = maxScore[item.category];
+    if (prev == null || score > prev) maxScore[item.category] = score;
+  }
+  final result = <String, double>{};
+  for (final c in firstSeenOrder) {
+    if (maxScore.containsKey(c)) result[c] = maxScore[c]!;
+  }
+  return result;
+}
+
+String _categoriesOf(List<WardrobeItem> items) {
+  const order = ['상의', '하의', '아우터', '신발'];
+  final present = items.map((i) => i.category).toSet();
+  return order.where(present.contains).join('+');
+}
+
 void main() {
   // items.json은 tools/export_for_kaggle/output/ 산출물(.gitignore 대상, 실제
   // 사용자 옷장 데이터라 저장소에 커밋 안 됨) — 로컬에 없으면 이 파일 전체를
@@ -34,6 +99,7 @@ void main() {
   test('TPO 9종 × {current, proposed} 정책 비교 리포트', () {
     final currentResults = <String, TpoMatchResult>{};
     final proposedResults = <String, TpoMatchResult>{};
+    final skeleton4Results = <String, TpoMatchResult>{};
     for (final tag in TpoTags.all) {
       currentResults[tag.label] = OutfitMatcher.findForTpo(
         wardrobe: wardrobe,
@@ -44,6 +110,11 @@ void main() {
         wardrobe: wardrobe,
         formalityHint: tag.formalityHint,
         policy: TpoMatchPolicy.proposed,
+      );
+      skeleton4Results[tag.label] = OutfitMatcher.findForTpo(
+        wardrobe: wardrobe,
+        formalityHint: tag.formalityHint,
+        policy: TpoMatchPolicy.skeleton4,
       );
     }
 
@@ -77,16 +148,18 @@ void main() {
     // 무채색 구제 수: 그중 무채색이라 +1 보너스로 score>0을 통과한 아이템(구제 경로1).
     // rank=null 통과 수: 격식 속성이 없어 0.5점으로 통과한 아이템(구제 경로2).
     print('\n[표3] 무채색 보너스 구제 현황 (핵심 지표)');
-    print('| 태그 | 카테고리 | 0점 아이템 수 | 무채색 구제 수 | rank=null 통과 수 |');
-    print('|---|---|---|---|---|');
+    print('| 태그 | 카테고리 | 총 아이템 수 | 0점 아이템 수 | 무채색 구제 수 | rank=null 통과 수 |');
+    print('|---|---|---|---|---|---|');
     for (final tag in TpoTags.all) {
       final targetRank = legacyFormalityRank[tag.formalityHint] ?? 0;
       for (final category in categories) {
         final items = wardrobe.where((i) => i.category == category && i.attributes != null);
+        var totalCount = 0;
         var zeroScoreCount = 0;
         var rescuedByNeutral = 0;
         var nullRankPassed = 0;
         for (final item in items) {
+          totalCount++;
           final attrs = item.attributes!;
           final rank = legacyFormalityRank[attrs.formality];
           if (rank == null) {
@@ -99,8 +172,45 @@ void main() {
             if (OutfitMatcher.isNeutralColor(attrs.color)) rescuedByNeutral++;
           }
         }
-        print('| ${tag.label}(${tag.formalityHint}) | $category | $zeroScoreCount | '
+        print('| ${tag.label}(${tag.formalityHint}) | $category | $totalCount | $zeroScoreCount | '
             '$rescuedByNeutral | $nullRankPassed |');
+      }
+    }
+
+    // ── 표 5 — 필터 순도(무채색 보너스의 오염도, isFallback과 무관) ──
+    // scored(topTwo 캡 적용, current=ungated 공식)에 남은 최대 2개 중
+    // 실제로 격식 거리 0~1인 "진짜" 적합 아이템의 비율. 1.0이면 무채색
+    // 보너스가 최종 후보 선정에 전혀 관여하지 않은 것이고, 낮을수록
+    // scored가 무채색으로만 구제된 아이템에 잠식된 것이다.
+    print('\n[표5] 필터 순도 — scored 중 격식 거리 0~1 비율 (isFallback과 무관)');
+    print('| 태그 | 카테고리 | scored 크기 | 진짜 적합 수 | 순도 |');
+    print('|---|---|---|---|---|');
+    for (final tag in TpoTags.all) {
+      final targetRank = legacyFormalityRank[tag.formalityHint] ?? 0;
+      for (final category in categories) {
+        final items = wardrobe.where((i) => i.category == category && i.attributes != null);
+        final top = _scoredTopTwo(categoryItems: items, targetRank: targetRank, gateNeutralBonus: false);
+        final genuineCount = top.where((e) => e.genuine).length;
+        final purity = top.isEmpty ? '-' : (genuineCount / top.length).toStringAsFixed(2);
+        print('| ${tag.label}(${tag.formalityHint}) | $category | ${top.length} | $genuineCount | $purity |');
+      }
+    }
+
+    // ── 참고 — 게이팅(gated) 적용 시 scored에서 완전히 사라지는 카테고리 ──
+    // 상의·하의(필수)가 아니어도 조용히 조합에서 빠질 수 있어(§4
+    // optionalMissing의 동기) 포멀 목표 기준으로 확인해 둔다.
+    print('\n[참고] 게이팅 적용 시 scored 소멸 카테고리 (포멀 목표)');
+    if (TpoTags.all.any((t) => t.formalityHint == '포멀')) {
+      final targetRank = legacyFormalityRank['포멀']!;
+      for (final category in categories) {
+        final items = wardrobe.where((i) => i.category == category && i.attributes != null);
+        final ungated =
+            _scoredTopTwo(categoryItems: items, targetRank: targetRank, gateNeutralBonus: false);
+        final gated =
+            _scoredTopTwo(categoryItems: items, targetRank: targetRank, gateNeutralBonus: true);
+        final vanished = ungated.isNotEmpty && gated.isEmpty;
+        print('  $category: ungated=${ungated.length} gated=${gated.length}'
+            '${vanished ? ' ← 게이팅 시 소멸' : ''}');
       }
     }
 
@@ -117,6 +227,60 @@ void main() {
       }
     }
     if (regressedTags.isEmpty) print('  없음');
+
+    // ── 표 6 — skeleton 경쟁: maxSkeletonCategories 3(current) vs 4(skeleton4) ──
+    // 탈락 카테고리/점수차는 current(3칸) 기준 — 4개 카테고리 중 우선순위
+    // (상의>하의>그외) + 점수 정렬로 상위 3개만 스켈레톤에 들어가고, 나머지
+    // 1개는 조합에서 조용히 빠진다(§표3/표5/[참고]가 보여준 신발 소멸의
+    // 메커니즘 그 자체). skeleton4는 4칸이라 4개 카테고리가 다 있으면
+    // 전부 스켈레톤에 들어간다.
+    print('\n[표6] skeleton 경쟁 — current(3칸) vs skeleton4(4칸)');
+    print('| 태그 | 요구격식 | 1번후보 카테고리(current) | 1번후보 카테고리(skeleton4) | '
+        '후보개수(current→skeleton4) | 탈락 카테고리(current) | 점수차 |');
+    print('|---|---|---|---|---|---|---|');
+    for (final tag in TpoTags.all) {
+      final targetRank = legacyFormalityRank[tag.formalityHint] ?? 0;
+      final cur = currentResults[tag.label]!;
+      final sk4 = skeleton4Results[tag.label]!;
+
+      final topScores = _topScorePerCategory(
+          wardrobe: wardrobe, categories: categories.toSet(), targetRank: targetRank);
+      int pri(String c) => c == '상의' ? 0 : (c == '하의' ? 1 : 2);
+      final ordered = topScores.entries.toList()
+        ..sort((a, b) {
+          final byPriority = pri(a.key).compareTo(pri(b.key));
+          if (byPriority != 0) return byPriority;
+          return b.value.compareTo(a.value);
+        });
+      final skeleton3 = ordered.take(3).toList();
+      final excluded = ordered.length > 3 ? ordered.sublist(3) : const <MapEntry<String, double>>[];
+      final droppedLabel = excluded.isEmpty
+          ? '-'
+          : excluded.map((e) => e.key).join(',');
+      final scoreGap = excluded.isEmpty
+          ? '-'
+          : (skeleton3.last.value - excluded.first.value).toStringAsFixed(2);
+
+      final curCats = cur.candidates.isEmpty ? '-' : _categoriesOf(cur.candidates.first.items);
+      final sk4Cats = sk4.candidates.isEmpty ? '-' : _categoriesOf(sk4.candidates.first.items);
+
+      print('| ${tag.label} | ${tag.formalityHint} | $curCats | $sk4Cats | '
+          '${cur.candidates.length}→${sk4.candidates.length} | $droppedLabel | $scoreGap |');
+    }
+
+    // ── 표 7 — current 정책에서 1번 후보에 아우터/신발이 포함된 횟수 ──
+    print('\n[표7] current 1번 후보에 아우터/신발이 포함된 횟수 (9개 태그 중)');
+    var outerCount = 0;
+    var shoesCount = 0;
+    for (final tag in TpoTags.all) {
+      final cur = currentResults[tag.label]!;
+      if (cur.candidates.isEmpty) continue;
+      final cats = cur.candidates.first.items.map((i) => i.category).toSet();
+      if (cats.contains('아우터')) outerCount++;
+      if (cats.contains('신발')) shoesCount++;
+    }
+    print('  아우터 포함: $outerCount / ${TpoTags.all.length}');
+    print('  신발 포함: $shoesCount / ${TpoTags.all.length}');
 
     // ── 요약 한 줄 ───────────────────────────────────────────
     final currentFallbackCount = currentResults.values.where((r) => r.isFallback).length;

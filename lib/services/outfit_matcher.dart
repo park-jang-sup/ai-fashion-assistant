@@ -42,15 +42,21 @@ class TpoMatchPolicy {
   final Set<String> requiredCategories;
   // 없어도 조합은 성립하지만 부재를 안내해야 하는 카테고리.
   final Set<String> optionalCategories;
+  // 조합의 뼈대(skeleton)에 들어갈 수 있는 카테고리 최대 개수. 4개 카테고리
+  // (상의·하의·아우터·신발) 중 우선순위+점수 기준 상위 N개만 스켈레톤에
+  // 들어가고 나머지는 조합에서 조용히 빠진다 — 기본 3은 현행 동작과 동일.
+  final int maxSkeletonCategories;
 
   const TpoMatchPolicy({
     this.gateNeutralBonus = false,
     this.requiredCategories = const {'상의', '하의'},
     this.optionalCategories = const {'아우터', '신발'},
+    this.maxSkeletonCategories = 3,
   });
 
   static const current = TpoMatchPolicy();
   static const proposed = TpoMatchPolicy(gateNeutralBonus: true);
+  static const skeleton4 = TpoMatchPolicy(maxSkeletonCategories: 4);
 }
 
 class OutfitMatcher {
@@ -319,7 +325,7 @@ class OutfitMatcher {
     final scored = topTwo((s) => s > 0);
     final hasCore = policy.requiredCategories.every(scored.containsKey);
     if (hasCore) {
-      final combos = _buildCombosFromRanked(scored, maxCandidates);
+      final combos = _buildCombosFromRanked(scored, maxCandidates, policy.maxSkeletonCategories);
       debugPrint('[PLAN] TPO($formalityHint) 매칭 성공: 후보 ${combos.length}개 (격식 적합)');
       return TpoMatchResult(candidates: combos, isFallback: false);
     }
@@ -327,7 +333,7 @@ class OutfitMatcher {
     // 차선: 격식 무시하고 필수 카테고리가 존재하면 가장 가까운 조합.
     final relaxed = topTwo((_) => true);
     if (policy.requiredCategories.every(relaxed.containsKey)) {
-      final combos = _buildCombosFromRanked(relaxed, maxCandidates);
+      final combos = _buildCombosFromRanked(relaxed, maxCandidates, policy.maxSkeletonCategories);
       // 표시 순서는 _outfitCategories(Set 리터럴 → LinkedHashSet)의 삽입
       // 순서를 그대로 쓴다 — 별도 순서 리스트를 두지 않아 카테고리 변경 시
       // 자동으로 동기화된다. 대상은 정책이 다루는 범위(필수+선택)로 한정.
@@ -370,6 +376,7 @@ class OutfitMatcher {
   static List<OutfitMatch> _buildCombosFromRanked(
     Map<String, List<({WardrobeItem item, double score})>> rankedPerCategory,
     int maxCandidates,
+    int maxSkeletonCategories,
   ) {
     final ordered = rankedPerCategory.entries
         .map((e) => (category: e.key, ranked: e.value))
@@ -380,7 +387,7 @@ class OutfitMatcher {
         if (byPriority != 0) return byPriority;
         return b.ranked.first.score.compareTo(a.ranked.first.score);
       });
-    final skeleton = ordered.take(3).toList();
+    final skeleton = ordered.take(maxSkeletonCategories).toList();
 
     OutfitMatch buildCombo(String? replaceCategory) {
       final picked = skeleton
