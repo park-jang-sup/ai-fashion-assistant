@@ -31,10 +31,13 @@ class TpoMatchResult {
   });
 }
 
-// findForTpo의 격식 판정 파라미터. 기본값(current)은 현행 동작과 완전히
-// 동일하다 — 정책을 주입하지 않은 모든 호출부는 한 비트도 달라지지 않는다.
-// proposed는 논문 5.8.3/5.8.4의 수정안이며, 실측 옷장 리포트로 영향을
-// 확인하기 전까지 프로덕션 기본값이 되어서는 안 된다.
+// findForTpo의 격식 판정 파라미터. gateNeutralBonus/requiredCategories/
+// optionalCategories의 기본값은 원래 동작과 동일하다(proposed는 논문
+// 5.8.3/5.8.4의 수정안이며, 실측 옷장 리포트로 영향을 확인하기 전까지
+// 프로덕션 기본값이 되어서는 안 된다). maxSkeletonCategories만 실측
+// A/B 리포트(tpo_policy_report_test.dart 표6·표7 — 아우터 6/9, 신발 3/9로
+// 매번 정확히 하나가 조용히 탈락)를 근거로 2026-07에 3→4로 올렸다.
+// skeleton3은 이전 기본값과의 비교용으로 남겨둔다.
 class TpoMatchPolicy {
   // true면 무채색 보너스를 "이미 격식을 충족한 후보"에게만 적용한다(동점 처리용).
   final bool gateNeutralBonus;
@@ -44,19 +47,21 @@ class TpoMatchPolicy {
   final Set<String> optionalCategories;
   // 조합의 뼈대(skeleton)에 들어갈 수 있는 카테고리 최대 개수. 4개 카테고리
   // (상의·하의·아우터·신발) 중 우선순위+점수 기준 상위 N개만 스켈레톤에
-  // 들어가고 나머지는 조합에서 조용히 빠진다 — 기본 3은 현행 동작과 동일.
+  // 들어가고 나머지는 조합에서 조용히 빠진다. 기본 4 — 표6/표7 실측으로
+  // 3에서 올려, 아우터·신발 중 하나가 매번 조용히 탈락하던 문제를 없앴다.
   final int maxSkeletonCategories;
 
   const TpoMatchPolicy({
     this.gateNeutralBonus = false,
     this.requiredCategories = const {'상의', '하의'},
     this.optionalCategories = const {'아우터', '신발'},
-    this.maxSkeletonCategories = 3,
+    this.maxSkeletonCategories = 4,
   });
 
   static const current = TpoMatchPolicy();
   static const proposed = TpoMatchPolicy(gateNeutralBonus: true);
   static const skeleton4 = TpoMatchPolicy(maxSkeletonCategories: 4);
+  static const skeleton3 = TpoMatchPolicy(maxSkeletonCategories: 3);
 }
 
 class OutfitMatcher {
