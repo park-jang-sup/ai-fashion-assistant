@@ -374,6 +374,51 @@ class _RecommendationCardBodyState extends State<_RecommendationCardBody> {
                   ],
                 ),
               ),
+            // 자기 성능 인지(confidenceNote)/날씨 근거(weatherNote)/진단-수리
+            // 표시(repairNote) — 전엔 모델에만 있고 어디서도 렌더링하지 않던
+            // 죽은 출력. fallbackNote(경고, amber 풀폭 배너)와 겹치지 않도록
+            // 배너를 새로 쌓지 않고, 회색 배경 한 칸에 아이콘+텍스트 색상만
+            // 다르게 줄줄이 묶어 카드가 과하게 길어지지 않게 한다.
+            if (entry.weatherNote != null ||
+                entry.confidenceNote != null ||
+                entry.repairNote != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: AppColors.background,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (entry.weatherNote != null)
+                      _AgentNoteLine(
+                        icon: Icons.cloud_outlined,
+                        color: AppColors.teal,
+                        text: entry.weatherNote!,
+                      ),
+                    if (entry.confidenceNote != null)
+                      Padding(
+                        padding: EdgeInsets.only(top: entry.weatherNote != null ? 6 : 0),
+                        child: _AgentNoteLine(
+                          icon: Icons.psychology_outlined,
+                          color: AppColors.blue,
+                          text: entry.confidenceNote!,
+                        ),
+                      ),
+                    if (entry.repairNote != null)
+                      Padding(
+                        padding: EdgeInsets.only(
+                            top: (entry.weatherNote != null || entry.confidenceNote != null)
+                                ? 6
+                                : 0),
+                        child: _AgentNoteLine(
+                          icon: Icons.auto_fix_high,
+                          color: AppColors.purple,
+                          text: '한 번 다듬었어요 · ${entry.repairNote!}',
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
@@ -439,6 +484,35 @@ class _RecommendationCardBodyState extends State<_RecommendationCardBody> {
 }
 
 // 추천 조합 슬라이드 한 장 — 배경 제거본이 있으면 우선 사용.
+// confidenceNote/weatherNote/repairNote 공용 한 줄 — 아이콘/텍스트를 같은
+// 색으로 칠해 종류를 구분하되, fallbackNote처럼 풀폭 배경은 따로 두지
+// 않아(공유 컨테이너의 회색 배경 안에 묶여) 여러 개가 겹쳐도 배너가
+// 쌓이는 느낌 없이 카드 세로 길이가 완만하게 늘어난다.
+class _AgentNoteLine extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String text;
+
+  const _AgentNoteLine({required this.icon, required this.color, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color, size: 14),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _RecommendationItemImage extends StatelessWidget {
   final WardrobeItem item;
 
