@@ -31,6 +31,28 @@ class TpoMatchResult {
   });
 }
 
+// findForTpo의 격식 판정 파라미터. 기본값(current)은 현행 동작과 완전히
+// 동일하다 — 정책을 주입하지 않은 모든 호출부는 한 비트도 달라지지 않는다.
+// proposed는 논문 5.8.3/5.8.4의 수정안이며, 실측 옷장 리포트로 영향을
+// 확인하기 전까지 프로덕션 기본값이 되어서는 안 된다.
+class TpoMatchPolicy {
+  // true면 무채색 보너스를 "이미 격식을 충족한 후보"에게만 적용한다(동점 처리용).
+  final bool gateNeutralBonus;
+  // 이 카테고리가 전부 scored에 있어야 격식 적합으로 본다.
+  final Set<String> requiredCategories;
+  // 없어도 조합은 성립하지만 부재를 안내해야 하는 카테고리.
+  final Set<String> optionalCategories;
+
+  const TpoMatchPolicy({
+    this.gateNeutralBonus = false,
+    this.requiredCategories = const {'상의', '하의'},
+    this.optionalCategories = const {'아우터', '신발'},
+  });
+
+  static const current = TpoMatchPolicy();
+  static const proposed = TpoMatchPolicy(gateNeutralBonus: true);
+}
+
 class OutfitMatcher {
   // 코디 조합의 뼈대가 되는 카테고리만 매칭 대상으로 삼는다.
   // 액세서리/전신은 의류 조합 판단과 무관해 제외.
@@ -265,6 +287,7 @@ class OutfitMatcher {
     required List<WardrobeItem> wardrobe,
     required String formalityHint,
     int maxCandidates = 3,
+    TpoMatchPolicy policy = TpoMatchPolicy.current,
   }) {
     final targetRank = _formalityRank[formalityHint] ?? 0;
 
@@ -276,7 +299,9 @@ class OutfitMatcher {
       if (attrs == null || !_outfitCategories.contains(item.category)) continue;
       final rank = _formalityRank[attrs.formality];
       double score = rank == null ? 0.5 : _formalityFitScore(targetRank, rank);
-      if (isNeutralColor(attrs.color)) score += 1;
+      if (isNeutralColor(attrs.color) && (!policy.gateNeutralBonus || score > 0)) {
+        score += 1;
+      }
       allPerCategory.putIfAbsent(item.category, () => []).add((item: item, score: score));
     }
     Map<String, List<({WardrobeItem item, double score})>> topTwo(
@@ -292,23 +317,26 @@ class OutfitMatcher {
     }
 
     final scored = topTwo((s) => s > 0);
-    final hasCore = scored.containsKey('상의') && scored.containsKey('하의');
+    final hasCore = policy.requiredCategories.every(scored.containsKey);
     if (hasCore) {
       final combos = _buildCombosFromRanked(scored, maxCandidates);
       debugPrint('[PLAN] TPO($formalityHint) 매칭 성공: 후보 ${combos.length}개 (격식 적합)');
       return TpoMatchResult(candidates: combos, isFallback: false);
     }
 
-    // 차선: 격식 무시하고 상의·하의가 존재하면 가장 가까운 조합.
+    // 차선: 격식 무시하고 필수 카테고리가 존재하면 가장 가까운 조합.
     final relaxed = topTwo((_) => true);
-    if (relaxed.containsKey('상의') && relaxed.containsKey('하의')) {
+    if (policy.requiredCategories.every(relaxed.containsKey)) {
       final combos = _buildCombosFromRanked(relaxed, maxCandidates);
-      // _outfitCategories는 Set이라 표시 순서를 보장하지 않아 리스트로 고정
-      // 순서를 따로 둔다. _outfitCategories에 카테고리가 추가/변경되면 이
-      // 리스트도 함께 갱신해야 한다(자동 동기화 없음).
-      const categoryOrder = ['상의', '하의', '아우터', '신발'];
-      final mismatched = categoryOrder
-          .where((c) => relaxed.containsKey(c) && !scored.containsKey(c))
+      // 표시 순서는 _outfitCategories(Set 리터럴 → LinkedHashSet)의 삽입
+      // 순서를 그대로 쓴다 — 별도 순서 리스트를 두지 않아 카테고리 변경 시
+      // 자동으로 동기화된다. 대상은 정책이 다루는 범위(필수+선택)로 한정.
+      final consideredCategories = {...policy.requiredCategories, ...policy.optionalCategories};
+      final mismatched = _outfitCategories
+          .where((c) =>
+              consideredCategories.contains(c) &&
+              relaxed.containsKey(c) &&
+              !scored.containsKey(c))
           .toList();
       debugPrint('[PLAN] TPO($formalityHint) 차선 조합 ${combos.length}개 '
           '(격식 부적합, fallback, 부족 카테고리=$mismatched)');
