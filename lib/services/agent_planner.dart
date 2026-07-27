@@ -133,28 +133,38 @@ class AgentPlanner {
 
   // Gemini 색상 점수가 이 값 미만이면 "격식은 됐어도 조합 자체가 약한" 것으로
   // 보고 차선(fallback) 문구를 쓴다(레벨 4의 "전부 낮은 점수" 케이스).
-  static const _lowScoreFloor = 60;
+  // OutfitSelfEvaluator.threshold(자기 평가 채택 기준)를 그대로 참조한다 —
+  // 실측(Firestore candidateScores)상 관측 최저값이 65였는데 예전 값(60)은
+  // 도달 불가능한 기준이라 isFallback이 이 경로로는 한 번도 켜지지 않았다.
+  // 별도 숫자로 하드코딩하면 threshold가 바뀔 때 이 기준만 조용히 벌어질
+  // 수 있어, 값 자체를 공유한다.
+  static const _lowScoreFloor = OutfitSelfEvaluator.threshold;
 
   // isFallback 원인(카테고리 부족 vs 궁합 점수 낮음)에 따라 다른 문구를
   // 고른다. 순수 함수라 Firestore/Gemini 없이 단위 테스트 가능하다.
   // mismatchedCategories가 비어 있으면(드문 경우 — findForTpo의 hasCore
   // 제약상 이론상 거의 없음) 억지 문구 대신 null을 반환해 배지 자체를
   // 띄우지 않는다.
+  // tpoTag가 null이면(새 옷 등록 경로 — findCandidateMatches는 TPO 개념이
+  // 없어 항상 null로 넘어온다) "[태그]" 구간을 붙이지 않는다. 이 경로에서는
+  // dateLabel도 상대 날짜가 아니라 트리거 아이템 설명("블랙 상의")으로
+  // 채워져 문구가 자연스럽게 이어진다.
   static String? buildFallbackNote({
     required bool matchIsFallback,
     required List<String> mismatchedCategories,
     required int? bestScore,
     required String dateLabel,
-    required String tpoTag,
+    required String? tpoTag,
   }) {
+    final tagSuffix = tpoTag != null ? ' [$tpoTag]' : '';
     if (matchIsFallback) {
       if (mismatchedCategories.isEmpty) return null;
       final categories = mismatchedCategories.join('·');
       final scoreText = bestScore != null ? '$bestScore점' : '차선';
-      return '$dateLabel [$tpoTag]에 맞는 $categories가 부족해 $scoreText 조합으로 준비했어요';
+      return '$dateLabel$tagSuffix에 맞는 $categories가 부족해 $scoreText 조합으로 준비했어요';
     }
     if (bestScore != null && bestScore < _lowScoreFloor) {
-      return '$dateLabel [$tpoTag] 조합 궁합 점수가 낮아($bestScore점) 차선으로 준비했어요';
+      return '$dateLabel$tagSuffix 조합 궁합 점수가 낮아($bestScore점) 차선으로 준비했어요';
     }
     return null;
   }
@@ -749,6 +759,18 @@ class AgentPlanner {
       );
       if (outcome == null) return false; // Gemini 평가가 폴백까지 전부 실패
 
+      // 이 경로(findCandidateMatches)는 TPO/격식 개념이 없어 match.isFallback에
+      // 대응하는 값이 없다 — 점수가 낮은 경우만 차선으로 본다. 이걸 안 채우면
+      // 새 옷 추천은 점수가 낮아도 사용자에게 아무 신호가 안 갔다(버그).
+      final isFallback = outcome.bestScore != null && outcome.bestScore! < _lowScoreFloor;
+      final fallbackNote = buildFallbackNote(
+        matchIsFallback: false,
+        mismatchedCategories: const [],
+        bestScore: outcome.bestScore,
+        dateLabel: itemLabel,
+        tpoTag: null, // 일정 기반 경로와 달리 TPO 태그가 없다
+      );
+
       final entry = RecommendationEntry(
         id: '',
         itemIds: outcome.bestMatch.items.map((i) => i.id).toList(),
@@ -763,6 +785,8 @@ class AgentPlanner {
         candidateScores: outcome.candidateScores,
         repairAttempted: outcome.repairAttempted,
         repairNote: outcome.repairNote,
+        isFallback: isFallback,
+        fallbackNote: fallbackNote,
         // 일정 기반 선제 추천이 아니라도 등록일 기준 targetDate를 채워
         // 채택률 집계(AgentStats) 대상에 포함시킨다. targetTpoTag는 비워두면
         // '일반' 태그로 잡힌다(agent_stats.dart forTag 참고).

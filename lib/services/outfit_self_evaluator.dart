@@ -75,6 +75,9 @@ class _AxisScores {
 // 이 옵션을 켜지 않아 기존과 동일하게 1회 평가로 동작한다.
 class OutfitSelfEvaluator {
   // 채택 기준점. 이 점수 이상이면 남은 후보를 평가하지 않고 바로 채택한다.
+  // AgentPlanner._lowScoreFloor가 이 상수를 그대로 참조한다 — "궁합이 약해
+  // 차선으로 내려간다"는 판단이 이 채택 기준과 다른 값으로 따로 놀면 안
+  // 되기 때문에 별도로 하드코딩하지 않는다.
   static const threshold = 70;
 
   // Gemini 평가 호출 총 횟수 상한(수리 재평가 포함) — 실패한 호출도 소비한다.
