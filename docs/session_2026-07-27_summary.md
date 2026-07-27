@@ -186,13 +186,59 @@ repairNote=purple) 줄줄이 묶는 `_AgentNoteLine` 위젯으로 구현 — 여
 - 프로젝트 구조 섹션 신설(`lib/` 하위 폴더 역할, `tools/`는 앱 코드와
   무관한 오프라인 스크립트라는 점).
 
-## (부록) 진행하다 만 것 — 실기기 확인
+## (부록) 실기기 검증 완료 — optionalMissing/홈 카드 UI
 
-세션 중 Android 실기기(SM S918N)에 앱을 빌드·설치까지는 했으나(§2/§6
-변경 전 시점), 화면 스크린샷 캡처 단계에서 사용자가 다른 작업(자기평가
-점수 분포 진단)으로 방향을 바꿔 실제 UI 확인은 하지 못했다. 이후 §2의
-skeleton 4·§6의 optionalMissing 배지 모두 **단위 테스트로만 검증됨,
-실기기 미확인** 상태로 세션 종료.
+세션 종료 시점엔 앱 빌드·설치까지만 되고 실제 UI 확인은 못 한 채였는데,
+바로 이어서 실기기(SM S918N) 검증까지 마쳤다.
+
+### 막혔던 것 — 오래된 추천 문서가 재계산을 가로막음
+캘린더에 "모레=결혼식" 일정을 새로 등록해도 `runProactiveCheck`가 매번
+"추천 이미 존재 — 스킵"만 찍었다. 원인 추적:
+- `recommendationForDateSilently`는 **날짜로만** 중복을 체크하고
+  `targetTpoTag`는 안 본다 — 그래서 같은 날짜에 예전 태그("출근")로 이미
+  만들어진, 아직 `dismissed=false`인 추천이 남아 있으면 새 태그("결혼식")
+  일정이 등록돼도 무조건 스킵된다.
+- 사용자가 처음엔 "캘린더 전체 삭제"를 제안했지만, 그건 (a) 막고 있는
+  컬렉션 자체가 아니고(`recommendations`가 문제, `outfit_calendar_entry`가
+  아님) (b) `AgentStats` 채택률 학습 이력까지 되돌릴 수 없이 날리는
+  과잉 조치라 판단해 실행하지 않고 대안을 제시 → 정밀하게 문제의 문서
+  하나만 `dismissed=true`로 바꾸는 쪽으로 합의.
+- 서비스 계정 키 확인 과정에서 실수로 옛 팀 프로젝트(`eb206`) 키를 먼저
+  받았음을 확인하고 걸러냄 — 반드시 앱이 실제로 쓰는
+  `ai-fashion-assistant-personal` 키인지 `firebase_options.dart`의
+  `projectId`와 대조 확인.
+- 읽기 전용 dry-run 스크립트로 `dismissed=false`인 전체 문서를 나열해
+  실제 원인 문서(`targetDate`=7/29, `targetTpoTag`=출근, 오늘 이른 시간
+  생성된 이전 테스트 잔재)를 특정 → 사용자 확인 후 그 문서 하나만
+  `dismissed=true`로 갱신. 나머지 16건(과거 피드백 이력 등)은 손대지
+  않음. 스크립트는 일회성으로 만들어 작업 후 즉시 삭제(커밋 없음).
+- 부수 발견: 이 환경의 `google-cloud-firestore` 클라이언트 버전은
+  `CollectionReference.doc()` 별칭이 없고 정식 메서드 `.document()`만
+  지원 — Firestore 관련 일회성 스크립트를 다시 짤 땐 `.document()`를 쓸 것.
+
+### 확인 결과 — 전부 예상대로 동작
+- `optionalNote`: "결혼식에 어울리는 신발이 옷장에 없어 가장 가까운
+  것으로 맞췄어요" — 표5가 예측한 그대로(포멀×신발) 실측 데이터에서
+  재현됨. 로그에도 `[PLAN] TPO(포멀) 매칭 성공: 후보 3개 (격식 적합),
+  선택 카테고리 순도 0=[신발]`로 그대로 찍힘.
+- `weatherNote`: "더운 날씨 예보라 가볍게 준비했어요" — 오늘(26°C)이
+  아니라 **대상 날짜(7/29)의 예보** 기준이라 다르게 나온 것, 정상 동작.
+- 홈 카드에 `optionalNote`+`weatherNote`가 동시에 떠도 레이아웃이
+  깨지지 않음(그룹 컨테이너 설계 의도대로).
+- `confidenceNote`: 이번엔 안 떴는데, 결혼식 태그 과거 이력이 1건뿐이라
+  `tagStat.total >= 2` 조건 미달 — 표본 부족 가드가 정상 작동한 것.
+- 새 옷 등록(`generateRecommendationForNewItem`) 경로로 두 번 테스트:
+  1번째 72점 통과, 2번째는 `candidateScores=[65,65,72]`(수리 시도 후에도
+  후보1 미달, 후보2가 72점으로 최종 채택) — `repairAttempted=true`,
+  `repairNote="하의 교체(색상 개선)"`가 뜨고 `fallbackNote`는 안 떴다.
+  **여기서 세션 중 설명을 정정함** — `fallbackNote`와 `repairNote`는
+  서로 다른 조건이다: `fallbackNote`는 **최종 채택 점수**가
+  `_lowScoreFloor` 미만일 때만, `repairNote`는 **과정 중 수리를
+  시도했는지**(최종 점수 무관)로 결정된다. 항상 같이 뜨는 게 아니다.
+  홈 카드에서도 보라색 repairNote 줄만 뜨고 amber fallbackNote 배너는
+  안 뜨는 것으로 실측 확인됨.
+- `fallbackNote`(amber 배너) 자체는 이번 세션엔 육안 확인 못 함(최종
+  채택 점수가 70 밑으로 나오는 케이스를 못 만남) — 다음에 필요하면 계속.
 
 ## 다음 세션 시작 시 할 일
 
@@ -204,13 +250,14 @@ skeleton 4·§6의 optionalMissing 배지 모두 **단위 테스트로만 검증
 4. (선택) personal Firebase 프로젝트 App Check API 활성화.
 5. (선택) iOS 실기기 테스트.
 
-이번 세션에서 새로 발견/이월:
-6. **Android 실기기로 skeleton4/optionalMissing 배지 실제 확인** — 위
-   부록 참고, 빌드까지는 됐으니 다음엔 실제 코디 일정을 등록해 홈 카드에
-   `optionalNote`(신발 관련)가 실제로 뜨는지 확인할 것.
+~~6. Android 실기기로 skeleton4/optionalMissing 배지 실제 확인~~ —
+**완료**(위 부록 참고).
+
 7. (선택, 급하지 않음) 무채색 보너스 게이팅(`TpoMatchPolicy.proposed`)은
    이번 실측상 이 옷장에선 효과가 0이라 우선순위 낮음 — 손대지 않고
    보류 상태 유지.
+8. (선택) `fallbackNote`(amber 배너) 자체의 실기기 육안 확인 — 최종
+   채택 점수가 70 밑으로 나오는 케이스 필요.
 
 ## 참고 파일 위치
 
