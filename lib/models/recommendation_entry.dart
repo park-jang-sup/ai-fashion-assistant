@@ -47,6 +47,11 @@ class RecommendationEntry {
   // isFallback=true일 때 그 원인(카테고리 부족 vs 궁합 점수 낮음)을 설명하는
   // 문구. null이면 배지를 표시하지 않는다(AgentPlanner.buildFallbackNote 참고).
   final String? fallbackNote;
+  // 조합 전체가 아니라 아우터/신발 같은 선택 카테고리 하나만 격식 미달로
+  // 채워졌을 때의 안내 — isFallback과 무관하게(조합 자체는 성립해도) 채워질
+  // 수 있다. null이면 배지를 표시하지 않는다(AgentPlanner.buildOptionalNote,
+  // OutfitMatcher.optionalMissing 참고).
+  final String? optionalNote;
   // ── 예보 재계획 ── 이 추천을 생성한 시점의 해당 날짜 예보 스냅샷. 이후
   // 앱 실행 시 예보가 유의미하게 달라졌는지 비교하는 기준값이라, 일정
   // 기반 선제 추천(targetDate 있음)에서만 채워진다(AgentPlanner.
@@ -84,6 +89,7 @@ class RecommendationEntry {
     this.repairAttempted = false,
     this.repairNote,
     this.fallbackNote,
+    this.optionalNote,
     this.forecastPrecipProbability,
     this.forecastMaxTempC,
     this.replanCount = 0,
@@ -118,6 +124,7 @@ class RecommendationEntry {
       repairAttempted: data['repairAttempted'] as bool? ?? false,
       repairNote: data['repairNote'] as String?,
       fallbackNote: data['fallbackNote'] as String?,
+      optionalNote: data['optionalNote'] as String?,
       forecastPrecipProbability: data['forecastPrecipProbability'] as int?,
       forecastMaxTempC: (data['forecastMaxTempC'] as num?)?.toDouble(),
       replanCount: data['replanCount'] as int? ?? 0,
@@ -148,6 +155,7 @@ class RecommendationEntry {
         if (repairAttempted) 'repairAttempted': repairAttempted,
         if (repairNote != null) 'repairNote': repairNote,
         if (fallbackNote != null) 'fallbackNote': fallbackNote,
+        if (optionalNote != null) 'optionalNote': optionalNote,
         if (forecastPrecipProbability != null)
           'forecastPrecipProbability': forecastPrecipProbability,
         if (forecastMaxTempC != null) 'forecastMaxTempC': forecastMaxTempC,

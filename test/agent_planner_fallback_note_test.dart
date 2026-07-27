@@ -98,4 +98,48 @@ void main() {
       expect(note, isNot(contains('[')));
     });
   });
+
+  // fallbackNote와 별개 함수 — "조합 전체가 차선"이 아니라 "특정 선택
+  // 카테고리 하나만 격식 미달"임을 안내한다(OutfitMatcher.optionalMissing).
+  group('buildOptionalNote', () {
+    test('신발 하나만 있으면 받침 있는 명사에 맞는 주격 조사(이)를 붙인다', () {
+      final note = AgentPlanner.buildOptionalNote(
+        optionalMissing: const ['신발'],
+        tpoTag: '결혼식',
+      );
+      expect(note, isNotNull);
+      expect(note, contains('결혼식에 어울리는 신발이'));
+      expect(note, contains('옷장에 없어'));
+      expect(note, contains('가장 가까운 것으로 맞췄어요'));
+    });
+
+    test('복수 카테고리는 ·로 이어붙이고 마지막 단어 기준으로 조사를 고른다', () {
+      final note = AgentPlanner.buildOptionalNote(
+        optionalMissing: const ['아우터', '신발'],
+        tpoTag: '면접',
+      );
+      expect(note, isNotNull);
+      expect(note, contains('아우터·신발이'));
+      expect(note, contains('면접'));
+    });
+
+    test('optionalMissing이 비어 있으면 null(배지 안 띄움)', () {
+      final note = AgentPlanner.buildOptionalNote(
+        optionalMissing: const [],
+        tpoTag: '결혼식',
+      );
+      expect(note, isNull);
+    });
+
+    test('tpoTag=null이면 태그 언급/대괄호 없이 문구를 낸다', () {
+      final note = AgentPlanner.buildOptionalNote(
+        optionalMissing: const ['신발'],
+        tpoTag: null,
+      );
+      expect(note, isNotNull);
+      expect(note, contains('어울리는 신발이'));
+      expect(note, isNot(contains('[')));
+      expect(note, isNot(contains('null')));
+    });
+  });
 }

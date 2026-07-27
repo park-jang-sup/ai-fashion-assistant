@@ -159,14 +159,50 @@ class AgentPlanner {
     final tagSuffix = tpoTag != null ? ' [$tpoTag]' : '';
     if (matchIsFallback) {
       if (mismatchedCategories.isEmpty) return null;
-      final categories = mismatchedCategories.join('·');
+      final categories = _withSubjectParticle(mismatchedCategories.join('·'));
       final scoreText = bestScore != null ? '$bestScore점' : '차선';
-      return '$dateLabel$tagSuffix에 맞는 $categories가 부족해 $scoreText 조합으로 준비했어요';
+      return '$dateLabel$tagSuffix에 맞는 $categories 부족해 $scoreText 조합으로 준비했어요';
     }
     if (bestScore != null && bestScore < _lowScoreFloor) {
       return '$dateLabel$tagSuffix 조합 궁합 점수가 낮아($bestScore점) 차선으로 준비했어요';
     }
     return null;
+  }
+
+  // 한글 명사 뒤 주격 조사(이/가) 선택 — 마지막 음절에 받침이 있으면 "이".
+  // outfit_self_evaluator.dart의 _withObjectParticle(을/를)과 같은 방식이며,
+  // "신발"처럼 받침 있는 카테고리명 뒤에 "가"를 잘못 붙이지 않기 위해 둔다.
+  // buildFallbackNote/buildOptionalNote 둘 다 카테고리 목록을 문구에 넣을 때
+  // 이 헬퍼를 거친다 — 전엔 buildFallbackNote가 "가"를 고정 하드코딩해서
+  // "신발가"처럼 틀린 문구가 나올 수 있었다(예: mismatchedCategories가
+  // ['신발']뿐인 경우).
+  static String _withSubjectParticle(String word) {
+    if (word.isEmpty) return word;
+    final code = word.codeUnitAt(word.length - 1);
+    const hangulBase = 0xAC00; // '가'
+    const hangulLast = 0xD7A3; // '힣'
+    if (code < hangulBase || code > hangulLast) return '$word가'; // 한글 완성형이 아니면 안전하게 "가"
+    final hasBatchim = (code - hangulBase) % 28 != 0;
+    return hasBatchim ? '$word이' : '$word가';
+  }
+
+  // buildFallbackNote와 별개 함수 — 성격이 다르다. fallbackNote는 "조합
+  // 전체가 격식에 안 맞거나 점수가 낮아 차선으로 내려갔다"는 판단이고,
+  // 이건 "조합 자체는 성립했지만 그중 특정(선택) 카테고리 하나만 격식에
+  // 맞는 게 없어 차선 아이템으로 채웠다"는 판단이다(OutfitMatcher.
+  // optionalMissing — isFallback과 무관하게 채워질 수 있음). 순수 함수라
+  // Firestore/Gemini 없이 단위 테스트 가능하다.
+  // tpoTag가 null이면(새 옷 등록 경로는 이 함수를 호출하지 않지만, 함수
+  // 자체는 buildFallbackNote와 동일하게 nullable을 지원해둔다) "~에 어울리는"
+  // 대신 "어울리는"으로 문구를 이어붙인다.
+  static String? buildOptionalNote({
+    required List<String> optionalMissing,
+    required String? tpoTag,
+  }) {
+    if (optionalMissing.isEmpty) return null;
+    final categories = _withSubjectParticle(optionalMissing.join('·'));
+    final tagPrefix = tpoTag != null ? '$tpoTag에 어울리는 ' : '어울리는 ';
+    return '$tagPrefix$categories 옷장에 없어 가장 가까운 것으로 맞췄어요';
   }
 
   // 같은 날짜가 예보 변화로 재계획되는 최대 횟수. 초과하면 예보가 계속
@@ -350,6 +386,12 @@ class AgentPlanner {
       dateLabel: _relativeLabel(plan.date),
       tpoTag: plan.tpoTag,
     );
+    // fallbackNote와 별개 — 조합 자체는 성립해도(isFallback=false) 아우터/
+    // 신발 같은 선택 카테고리 하나만 격식 미달로 채워졌을 수 있다.
+    final optionalNote = buildOptionalNote(
+      optionalMissing: match.optionalMissing,
+      tpoTag: plan.tpoTag,
+    );
 
     // ── 채택률 지표: 자기 성능 인지 문구 ── 이 태그에서 과거 채택률이
     // 뚜렷하게 낮거나(아직 배우는 중) 높으면(자신 있음) 카드에 솔직하게
@@ -383,6 +425,7 @@ class AgentPlanner {
       reflectedFeedback: history.tagMatchCount > 0,
       isFallback: isFallback,
       fallbackNote: fallbackNote,
+      optionalNote: optionalNote,
       forecastPrecipProbability: dayWeather?.precipitationProbability,
       forecastMaxTempC: dayWeather?.maxTempC,
       replanCount: replanCount,

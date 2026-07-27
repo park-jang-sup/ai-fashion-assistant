@@ -181,20 +181,52 @@ void main() {
     // scored(topTwo 캡 적용, current=ungated 공식)에 남은 최대 2개 중
     // 실제로 격식 거리 0~1인 "진짜" 적합 아이템의 비율. 1.0이면 무채색
     // 보너스가 최종 후보 선정에 전혀 관여하지 않은 것이고, 낮을수록
-    // scored가 무채색으로만 구제된 아이템에 잠식된 것이다.
-    print('\n[표5] 필터 순도 — scored 중 격식 거리 0~1 비율 (isFallback과 무관)');
-    print('| 태그 | 카테고리 | scored 크기 | 진짜 적합 수 | 순도 |');
-    print('|---|---|---|---|---|');
+    // scored가 무채색으로만 구제된 아이템에 잠식된 것이다. optionalMissing
+    // (§5) 착수 전 발화 범위를 가늠하려고 9태그×4카테고리 전체를 본다 —
+    // 포멀만 봐서는 캐주얼/세미포멀에서도 순도 0인 카테고리가 있는지 알 수 없다.
+    print('\n[표5] 필터 순도 — scored 중 격식 거리 0~1 비율 (isFallback과 무관, 9태그×4카테고리 전체)');
+    print('| 태그 | 카테고리 | 순도(진짜적합/scored) |');
+    print('|---|---|---|');
+    final zeroPurityPairs = <({String tag, String formalityHint, String category, bool required})>[];
     for (final tag in TpoTags.all) {
       final targetRank = legacyFormalityRank[tag.formalityHint] ?? 0;
       for (final category in categories) {
         final items = wardrobe.where((i) => i.category == category && i.attributes != null);
         final top = _scoredTopTwo(categoryItems: items, targetRank: targetRank, gateNeutralBonus: false);
         final genuineCount = top.where((e) => e.genuine).length;
-        final purity = top.isEmpty ? '-' : (genuineCount / top.length).toStringAsFixed(2);
-        print('| ${tag.label}(${tag.formalityHint}) | $category | ${top.length} | $genuineCount | $purity |');
+        final purityCell = top.isEmpty
+            ? '- (0/0)'
+            : '${(genuineCount / top.length).toStringAsFixed(2)} ($genuineCount/${top.length})';
+        print('| ${tag.label}(${tag.formalityHint}) | $category | $purityCell |');
+        if (top.isNotEmpty && genuineCount == 0) {
+          zeroPurityPairs.add((
+            tag: tag.label,
+            formalityHint: tag.formalityHint,
+            category: category,
+            required: TpoMatchPolicy.current.requiredCategories.contains(category),
+          ));
+        }
       }
     }
+
+    // ── 표 5 요약 — optionalMissing 발화 범위 가늠 ──
+    print('\n[표5 요약] 순도 0.00인 (태그, 카테고리) 쌍');
+    if (zeroPurityPairs.isEmpty) {
+      print('  없음');
+    } else {
+      for (final p in zeroPurityPairs) {
+        print('  ${p.tag}(${p.formalityHint}) × ${p.category} — ${p.required ? '필수(상의·하의)' : '선택(아우터·신발)'}');
+      }
+    }
+    final requiredZeroTags = zeroPurityPairs.where((p) => p.required).map((p) => p.tag).toSet();
+    final optionalZeroTags = zeroPurityPairs.where((p) => !p.required).map((p) => p.tag).toSet();
+    final anyZeroTags = zeroPurityPairs.map((p) => p.tag).toSet();
+    print('  필수 카테고리에서 발생: ${requiredZeroTags.length}/${TpoTags.all.length}개 태그'
+        '${requiredZeroTags.isEmpty ? '' : ' (${requiredZeroTags.join(', ')})'}');
+    print('  선택 카테고리에서 발생: ${optionalZeroTags.length}/${TpoTags.all.length}개 태그'
+        '${optionalZeroTags.isEmpty ? '' : ' (${optionalZeroTags.join(', ')})'}');
+    print('  둘 중 하나라도 발생: ${anyZeroTags.length}/${TpoTags.all.length}개 태그 — '
+        'optionalMissing 구현 시 안내가 발생할 태그 수 추정치');
 
     // ── 참고 — 게이팅(gated) 적용 시 scored에서 완전히 사라지는 카테고리 ──
     // 상의·하의(필수)가 아니어도 조용히 조합에서 빠질 수 있어(§4

@@ -374,12 +374,14 @@ class _RecommendationCardBodyState extends State<_RecommendationCardBody> {
                   ],
                 ),
               ),
-            // 자기 성능 인지(confidenceNote)/날씨 근거(weatherNote)/진단-수리
-            // 표시(repairNote) — 전엔 모델에만 있고 어디서도 렌더링하지 않던
-            // 죽은 출력. fallbackNote(경고, amber 풀폭 배너)와 겹치지 않도록
-            // 배너를 새로 쌓지 않고, 회색 배경 한 칸에 아이콘+텍스트 색상만
-            // 다르게 줄줄이 묶어 카드가 과하게 길어지지 않게 한다.
-            if (entry.weatherNote != null ||
+            // 선택 카테고리 미달(optionalNote)/자기 성능 인지(confidenceNote)/
+            // 날씨 근거(weatherNote)/진단-수리 표시(repairNote) — 전엔 모델에만
+            // 있고 어디서도 렌더링하지 않던 죽은 출력. fallbackNote(경고, amber
+            // 풀폭 배너)와 겹치지 않도록 배너를 새로 쌓지 않고, 회색 배경 한
+            // 칸에 아이콘+텍스트 색상만 다르게 줄줄이 묶어 카드가 과하게
+            // 길어지지 않게 한다.
+            if (entry.optionalNote != null ||
+                entry.weatherNote != null ||
                 entry.confidenceNote != null ||
                 entry.repairNote != null)
               Container(
@@ -389,15 +391,27 @@ class _RecommendationCardBodyState extends State<_RecommendationCardBody> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (entry.weatherNote != null)
+                    if (entry.optionalNote != null)
                       _AgentNoteLine(
-                        icon: Icons.cloud_outlined,
-                        color: AppColors.teal,
-                        text: entry.weatherNote!,
+                        icon: Icons.info_outline,
+                        color: AppColors.amber,
+                        text: entry.optionalNote!,
+                      ),
+                    if (entry.weatherNote != null)
+                      Padding(
+                        padding: EdgeInsets.only(top: entry.optionalNote != null ? 6 : 0),
+                        child: _AgentNoteLine(
+                          icon: Icons.cloud_outlined,
+                          color: AppColors.teal,
+                          text: entry.weatherNote!,
+                        ),
                       ),
                     if (entry.confidenceNote != null)
                       Padding(
-                        padding: EdgeInsets.only(top: entry.weatherNote != null ? 6 : 0),
+                        padding: EdgeInsets.only(
+                            top: (entry.optionalNote != null || entry.weatherNote != null)
+                                ? 6
+                                : 0),
                         child: _AgentNoteLine(
                           icon: Icons.psychology_outlined,
                           color: AppColors.blue,
@@ -407,7 +421,9 @@ class _RecommendationCardBodyState extends State<_RecommendationCardBody> {
                     if (entry.repairNote != null)
                       Padding(
                         padding: EdgeInsets.only(
-                            top: (entry.weatherNote != null || entry.confidenceNote != null)
+                            top: (entry.optionalNote != null ||
+                                    entry.weatherNote != null ||
+                                    entry.confidenceNote != null)
                                 ? 6
                                 : 0),
                         child: _AgentNoteLine(

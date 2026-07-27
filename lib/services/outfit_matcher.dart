@@ -22,12 +22,19 @@ class TpoMatchResult {
   // 차선(relaxed)으로 채운 카테고리 목록. 홈 화면 배지가 "어떤 카테고리가
   // 부족했는지" 구체적으로 안내할 때 쓴다.
   final List<String> mismatchedCategories;
+  // policy.optionalCategories(기본 아우터·신발) 중, 후보 조합에는 포함됐지만
+  // 그 카테고리에 격식이 진짜로 맞는 아이템이 하나도 없어(순도 0 — 표5
+  // 참고) 무채색 보너스로만 살아남은 아이템으로 채운 카테고리. 상의·하의만
+  // 맞으면 isFallback=false여도 채워질 수 있다 — mismatchedCategories(필수
+  // 부족, isFallback=true에서만 채워짐)와 달리 isFallback과 무관하다.
+  final List<String> optionalMissing;
 
   const TpoMatchResult({
     required this.candidates,
     this.isFallback = false,
     this.shortfall,
     this.mismatchedCategories = const [],
+    this.optionalMissing = const [],
   });
 }
 
@@ -327,12 +334,37 @@ class OutfitMatcher {
       return out;
     }
 
+    // 무채색 보너스를 뺀 "진짜" 격식 적합 여부 — rank가 있고 diff가 0~1
+    // (_formalityFitScore>0)인 아이템만 true. 표5(필터 순도)의 "진짜 적합"과
+    // 동일한 정의다.
+    bool isGenuineFit(WardrobeItem item) {
+      final rank = _formalityRank[item.attributes!.formality];
+      return rank != null && _formalityFitScore(targetRank, rank) > 0;
+    }
+
+    // rankedMap(scored 또는 relaxed) 안에서 policy.optionalCategories 중
+    // 순도(진짜 적합 아이템 비율)가 0인 카테고리 — 아이템은 있지만 전부
+    // 무채색 보너스로만 살아남았다는 뜻. 표시 순서는 mismatchedCategories와
+    // 동일하게 _outfitCategories(LinkedHashSet) 삽입 순서를 쓴다.
+    List<String> optionalMissingFrom(
+        Map<String, List<({WardrobeItem item, double score})>> rankedMap) {
+      return _outfitCategories.where((c) {
+        if (!policy.optionalCategories.contains(c)) return false;
+        final items = rankedMap[c];
+        if (items == null || items.isEmpty) return false;
+        return items.every((e) => !isGenuineFit(e.item));
+      }).toList();
+    }
+
     final scored = topTwo((s) => s > 0);
     final hasCore = policy.requiredCategories.every(scored.containsKey);
     if (hasCore) {
       final combos = _buildCombosFromRanked(scored, maxCandidates, policy.maxSkeletonCategories);
-      debugPrint('[PLAN] TPO($formalityHint) 매칭 성공: 후보 ${combos.length}개 (격식 적합)');
-      return TpoMatchResult(candidates: combos, isFallback: false);
+      final optionalMissing = optionalMissingFrom(scored);
+      debugPrint('[PLAN] TPO($formalityHint) 매칭 성공: 후보 ${combos.length}개 (격식 적합)'
+          '${optionalMissing.isEmpty ? '' : ', 선택 카테고리 순도 0=$optionalMissing'}');
+      return TpoMatchResult(
+          candidates: combos, isFallback: false, optionalMissing: optionalMissing);
     }
 
     // 차선: 격식 무시하고 필수 카테고리가 존재하면 가장 가까운 조합.
@@ -349,10 +381,14 @@ class OutfitMatcher {
               relaxed.containsKey(c) &&
               !scored.containsKey(c))
           .toList();
+      final optionalMissing = optionalMissingFrom(relaxed);
       debugPrint('[PLAN] TPO($formalityHint) 차선 조합 ${combos.length}개 '
           '(격식 부적합, fallback, 부족 카테고리=$mismatched)');
       return TpoMatchResult(
-          candidates: combos, isFallback: true, mismatchedCategories: mismatched);
+          candidates: combos,
+          isFallback: true,
+          mismatchedCategories: mismatched,
+          optionalMissing: optionalMissing);
     }
 
     // 조합 불가 — 부족한 핵심 카테고리를 안내한다.
