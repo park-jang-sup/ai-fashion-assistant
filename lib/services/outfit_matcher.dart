@@ -57,18 +57,76 @@ class TpoMatchPolicy {
   // 들어가고 나머지는 조합에서 조용히 빠진다. 기본 4 — 표6/표7 실측으로
   // 3에서 올려, 아우터·신발 중 하나가 매번 조용히 탈락하던 문제를 없앴다.
   final int maxSkeletonCategories;
+  // 카테고리별로 조합 재료로 남길 후보 벌 수(findForTpo의 topTwo 캡).
+  // 기본 2 = 현행. 격식 적합도 점수가 취할 수 있는 값이 {0.5,1,2,3,4} 다섯
+  // 개뿐이라 실측 옷장에서 동점이 대량 발생하는데, 2벌만 남기면 그 동점
+  // 집합에서 어느 2벌이 뽑히는지가 사실상 wardrobe 순회 순서로 결정된다
+  // (동점 타이브레이커 문제 — 표6 초안에서 카테고리 레벨로 한 번 겪었다).
+  // 늘려도 조합 채점은 순수 로컬 산술이라 API 비용은 0이다.
+  // 1~6으로 클램프한다(6^4=1296 조합 상한).
+  final int candidatesPerCategory;
+  // 조합 점수에 아이템 쌍 사이의 색상 궁합(_colorScore: 톤온톤/톤인톤/
+  // 색상군 매트릭스/깔맞춤 감점)과 팔레트 규칙(_paletteAdjustment)을
+  // 반영할지. 기본 false = 현행.
+  //
+  // 현행 findForTpo의 조합 점수는 "아이템별 격식 적합도의 단순 합"이라
+  // 상의와 하의가 서로 어울리는지를 로컬 단계에서 한 번도 계산하지 않는다.
+  // color_taxonomy.dart의 3축 정규화와 색채 이론 규칙 전체가 이 경로에서는
+  // "무채색인가?" 이진값(+1)으로만 소비되고 있다 — 규칙 엔진이 실제로
+  // 도는 곳은 findCandidateMatches(새 옷 등록) 하나뿐이다.
+  final bool usePairwiseColorScore;
+  // 폭·색상이 기본값이어도 전수 조합 생성기를 쓰게 하는 측정 전용 스위치.
+  //
+  // 이게 없으면 A/B에 축이 하나 숨는다 — 폭이나 색상 중 하나만 켜도 생성기가
+  // 통째로 바뀌기 때문이다. 기존 생성기는 "카테고리별 최고점 고정 + 한 칸씩
+  // 차순위 교체"라 후보 3개가 서로 다른 카테고리를 건드리도록 구조적으로
+  // 보장되는 반면, 전수 조합은 점수순 그리디라 상위 3개가 한 벌씩만 다른
+  // 이웃 조합이 되기 쉽다. 같은 풀(2벌)을 줘도 후보 구성이 달라진다.
+  //
+  // 따라서 forceEnumerated만 켠 enumeratedOnly를 기준선으로 두고
+  // current↔enumeratedOnly(생성기) / enumeratedOnly↔wide(폭) /
+  // enumeratedOnly↔color(색상)로 비교해야 귀속이 성립한다.
+  final bool forceEnumerated;
 
   const TpoMatchPolicy({
     this.gateNeutralBonus = false,
     this.requiredCategories = const {'상의', '하의'},
     this.optionalCategories = const {'아우터', '신발'},
     this.maxSkeletonCategories = 4,
+    this.candidatesPerCategory = 2,
+    this.usePairwiseColorScore = false,
+    this.forceEnumerated = false,
   });
+
+  // 후보 폭을 넓히거나 조합 단위 채점을 켜면 기존 "기본+한 칸 교체+미니"
+  // 생성기로는 표현이 안 되므로(ranked[1] 하드코딩) 전수 조합 경로를 쓴다.
+  // 셋 다 기본값이면 이 값이 false라 기존 생성기가 그대로 실행된다 —
+  // current 정책의 산출물이 한 비트도 바뀌지 않는다는 뜻이다.
+  bool get useEnumeratedCombos =>
+      forceEnumerated || usePairwiseColorScore || candidatesPerCategory > 2;
+
+  // 실제로 적용되는 카테고리당 후보 수. num.clamp는 num을 반환해 sublist에
+  // 그대로 못 쓰므로 직접 제한하고, 계산 자체를 게터로 노출해 단위 테스트가
+  // 옷장 데이터 없이 경계값을 직접 단언할 수 있게 한다(6^4=1296 조합 상한).
+  int get effectiveCandidatesPerCategory => candidatesPerCategory < 1
+      ? 1
+      : (candidatesPerCategory > 6 ? 6 : candidatesPerCategory);
 
   static const current = TpoMatchPolicy();
   static const proposed = TpoMatchPolicy(gateNeutralBonus: true);
   static const skeleton4 = TpoMatchPolicy(maxSkeletonCategories: 4);
   static const skeleton3 = TpoMatchPolicy(maxSkeletonCategories: 3);
+
+  // ── 조합 품질 A/B용 프리셋 ──
+  // 두 축을 따로 켤 수 있게 나눠 둔다 — 개선(또는 악화)이 폭 때문인지
+  // 색상 때문인지 리포트에서 분리해서 봐야 하기 때문이다.
+  // 생성기 효과만 분리하는 기준선 — 폭·색상은 current와 동일하게 두고
+  // 전수 조합 경로만 켠다.
+  static const enumeratedOnly = TpoMatchPolicy(forceEnumerated: true);
+  static const wideCandidates = TpoMatchPolicy(candidatesPerCategory: 4);
+  static const pairwiseColor = TpoMatchPolicy(usePairwiseColorScore: true);
+  static const qualityV2 =
+      TpoMatchPolicy(candidatesPerCategory: 4, usePairwiseColorScore: true);
 }
 
 class OutfitMatcher {
@@ -322,16 +380,32 @@ class OutfitMatcher {
       }
       allPerCategory.putIfAbsent(item.category, () => []).add((item: item, score: score));
     }
-    Map<String, List<({WardrobeItem item, double score})>> topTwo(
+    // 카테고리별로 상위 N벌만 남긴다(N = policy.candidatesPerCategory, 기본 2).
+    // 이름은 topTwo 그대로 두지 않고 topPerCategory로 바꿨다 — 2가 더 이상
+    // 고정값이 아니기 때문이다.
+    final perCategory = policy.effectiveCandidatesPerCategory;
+    Map<String, List<({WardrobeItem item, double score})>> topPerCategory(
         bool Function(double) keep) {
       final out = <String, List<({WardrobeItem item, double score})>>{};
       for (final e in allPerCategory.entries) {
         final list = e.value.where((c) => keep(c.score)).toList()
           ..sort((a, b) => b.score.compareTo(a.score));
         if (list.isEmpty) continue;
-        out[e.key] = list.length > 2 ? list.sublist(0, 2) : list;
+        out[e.key] =
+            list.length > perCategory ? list.sublist(0, perCategory) : list;
       }
       return out;
+    }
+
+    // 정책에 따라 조합 생성기를 고른다. 기본값(2벌·색상 미반영)이면 기존
+    // 생성기가 그대로 호출된다.
+    List<OutfitMatch> buildCombos(
+        Map<String, List<({WardrobeItem item, double score})>> ranked) {
+      return policy.useEnumeratedCombos
+          ? _buildCombosByEnumeration(ranked, maxCandidates,
+              policy.maxSkeletonCategories, policy.usePairwiseColorScore)
+          : _buildCombosFromRanked(
+              ranked, maxCandidates, policy.maxSkeletonCategories);
     }
 
     // 무채색 보너스를 뺀 "진짜" 격식 적합 여부 — rank가 있고 diff가 0~1
@@ -356,10 +430,10 @@ class OutfitMatcher {
       }).toList();
     }
 
-    final scored = topTwo((s) => s > 0);
+    final scored = topPerCategory((s) => s > 0);
     final hasCore = policy.requiredCategories.every(scored.containsKey);
     if (hasCore) {
-      final combos = _buildCombosFromRanked(scored, maxCandidates, policy.maxSkeletonCategories);
+      final combos = buildCombos(scored);
       final optionalMissing = optionalMissingFrom(scored);
       debugPrint('[PLAN] TPO($formalityHint) 매칭 성공: 후보 ${combos.length}개 (격식 적합)'
           '${optionalMissing.isEmpty ? '' : ', 선택 카테고리 순도 0=$optionalMissing'}');
@@ -368,9 +442,9 @@ class OutfitMatcher {
     }
 
     // 차선: 격식 무시하고 필수 카테고리가 존재하면 가장 가까운 조합.
-    final relaxed = topTwo((_) => true);
+    final relaxed = topPerCategory((_) => true);
     if (policy.requiredCategories.every(relaxed.containsKey)) {
-      final combos = _buildCombosFromRanked(relaxed, maxCandidates, policy.maxSkeletonCategories);
+      final combos = buildCombos(relaxed);
       // 표시 순서는 _outfitCategories(Set 리터럴 → LinkedHashSet)의 삽입
       // 순서를 그대로 쓴다 — 별도 순서 리스트를 두지 않아 카테고리 변경 시
       // 자동으로 동기화된다. 대상은 정책이 다루는 범위(필수+선택)로 한정.
@@ -460,6 +534,175 @@ class OutfitMatcher {
       final signature = (combo.items.map((i) => i.id).toList()..sort()).join(',');
       if (!seen.add(signature)) continue;
       combos.add(combo);
+      if (combos.length >= maxCandidates) break;
+    }
+    return combos;
+  }
+
+  // 조합 점수에서 색상 축이 갖는 무게. 격식 축은 아이템당 {0.5,1,2,3,4}라
+  // 4벌 조합에서 2~16 범위를 갖는다. 색상 축은 쌍 평균(_colorScore ∈ [-1,2])에
+  // 이 가중치를 곱해 [-3,+6] 범위로 맞춘다 — 아이템 하나의 격식 기여도와
+  // 비슷한 크기다. 합이 아니라 평균을 쓰는 이유는, 합으로 두면 쌍 개수가
+  // 많은(=아이템이 많은) 조합이 색상 축에서 자동으로 유리해져 미니 조합이
+  // 구조적으로 밀려나기 때문이다.
+  // 이 값이 이 변경의 유일한 튜닝 손잡이다 — 리포트(표8~표11)를 보고 조정한다.
+  static const _colorWeight = 3.0;
+
+  // 전수 조합 상한. maxSkeletonCategories(≤4) × candidatesPerCategory(≤6)로
+  // 최대 1296이며 전부 순수 산술이라 ms 단위지만, 정책이 잘못 설정돼도
+  // 폭주하지 않도록 상한을 명시해 둔다.
+  static const _maxEnumeratedCombos = 2000;
+
+  // 곱집합 크기를 상한 안에 넣는 카테고리당 후보 수(width)를 고른다.
+  //
+  // 핵심은 "상한을 넘으면 카테고리를 자른다"가 아니라 "폭을 좁힌다"라는
+  // 점이다. 카테고리를 자르면 신발 같은 항목이 조합에서 조용히 빠지는데,
+  // 그건 이 프로젝트가 이미 한 번 고친 결함이다. 폭을 좁히면 후보 수만
+  // 줄고 조합의 카테고리 구성은 온전하다 — 실패 방향이 보수적이다.
+  // width는 최소 1이라(조합 1개) 루프는 반드시 종료된다.
+  //
+  // 부수효과가 없는 정적 함수라 실제 옷장 없이 경계 조건을 단위 테스트할 수
+  // 있다(실기기·실데이터로 재현하기 어려운 조건은 순수 함수로 뺀다는 원칙).
+  @visibleForTesting
+  static int resolveEnumerationWidth({
+    required List<int> categoryCounts,
+    List<int> miniCounts = const [],
+    int maxCombos = _maxEnumeratedCombos,
+  }) {
+    if (categoryCounts.isEmpty) return 1;
+
+    int sizeAt(int w) {
+      var total = 1;
+      for (final n in categoryCounts) {
+        total *= n < w ? n : w;
+        if (total > maxCombos) return total; // 조기 종료 — 곱이 커지는 걸 막는다
+      }
+      if (miniCounts.isEmpty) return total;
+      // 미니 조합도 같은 후보 풀에서 나오므로 상한 계산에 포함한다.
+      var mini = 1;
+      for (final n in miniCounts) {
+        mini *= n < w ? n : w;
+      }
+      return total + mini;
+    }
+
+    var width = categoryCounts.reduce((a, b) => a > b ? a : b);
+    while (width > 1 && sizeAt(width) > maxCombos) {
+      width--;
+    }
+    return width;
+  }
+
+  // 카테고리별 후보를 전수 조합해 "조합 단위"로 채점하는 생성기.
+  // 기존 _buildCombosFromRanked가 카테고리별 최고점을 고정하고 한 칸씩만
+  // 차순위로 바꾸는(ranked[1] 하드코딩) 방식이라 후보를 3벌 이상으로
+  // 늘려도 쓸 수 없고, 조합 점수가 아이템 점수의 단순 합이라 아이템 간
+  // 궁합이 개입할 자리가 없다. 이 경로는 둘 다 해소한다.
+  //
+  // 호출 조건은 policy.useEnumeratedCombos — 기본 정책에서는 호출되지 않으므로
+  // 기존 산출물에 영향이 없다.
+  static List<OutfitMatch> _buildCombosByEnumeration(
+    Map<String, List<({WardrobeItem item, double score})>> rankedPerCategory,
+    int maxCandidates,
+    int maxSkeletonCategories,
+    bool usePairwiseColorScore,
+  ) {
+    // 스켈레톤 선정은 기존 경로와 동일한 규칙(우선순위 상의>하의>그외,
+    // 동순위는 카테고리 최고점 내림차순)을 그대로 쓴다.
+    final ordered = rankedPerCategory.entries
+        .map((e) => (category: e.key, ranked: e.value))
+        .toList()
+      ..sort((a, b) {
+        int pri(String c) => c == '상의' ? 0 : (c == '하의' ? 1 : 2);
+        final byPriority = pri(a.category).compareTo(pri(b.category));
+        if (byPriority != 0) return byPriority;
+        return b.ranked.first.score.compareTo(a.ranked.first.score);
+      });
+    final skeleton = ordered.take(maxSkeletonCategories).toList();
+    if (skeleton.isEmpty) return const [];
+
+    double comboScore(List<({WardrobeItem item, double score})> picked) {
+      final base = picked.fold(0.0, (sum, p) => sum + p.score);
+      if (!usePairwiseColorScore) return base;
+      final items = picked.map((p) => p.item).toList();
+      var pairSum = 0.0;
+      var pairCount = 0;
+      for (var i = 0; i < items.length; i++) {
+        for (var j = i + 1; j < items.length; j++) {
+          pairSum += _colorScore(items[i].attributes!, items[j].attributes!);
+          pairCount++;
+        }
+      }
+      final colorTerm = pairCount == 0 ? 0.0 : _colorWeight * (pairSum / pairCount);
+      return base + colorTerm + _paletteAdjustment(items);
+    }
+
+    // 미니 조합에 쓸 상의·하의 항목. skeleton은 pri()로 상의<하의<그외 순
+    // 정렬돼 있지만 여기서 그 순서에 기대지 않고 카테고리 이름으로 직접
+    // 집는다 — 우선순위 함수를 손대면 상의-상의 쌍이 만들어질 수 있다.
+    const coreOrder = ['상의', '하의'];
+    final coreEntries = [
+      for (final name in coreOrder) ...skeleton.where((c) => c.category == name),
+    ];
+    final hasMini = coreEntries.length == 2 && skeleton.length > 2;
+
+    // 곱집합이 상한을 넘을 때 카테고리 루프를 끊으면, 아직 처리하지 않은
+    // 카테고리(신발 등)가 조합에서 조용히 빠진 채로 최종 후보가 된다 —
+    // maxSkeletonCategories를 3→4로 올려 없앤 결함과 정확히 같은 실패
+    // 모드다. 그래서 카테고리를 자르지 않고 카테고리당 후보 수(width)를
+    // 낮춘다. 후보가 적어질 뿐 조합의 카테고리 구성은 언제나 온전하다.
+    final width = resolveEnumerationWidth(
+      categoryCounts: [for (final c in skeleton) c.ranked.length],
+      miniCounts: hasMini ? [for (final c in coreEntries) c.ranked.length] : const [],
+    );
+    List<({WardrobeItem item, double score})> trim(
+            List<({WardrobeItem item, double score})> list) =>
+        list.length > width ? list.sublist(0, width) : list;
+
+    // 전수 조합 — 카테고리별 후보 리스트의 곱집합. 모든 skeleton 카테고리를
+    // 빠짐없이 순회한다(중도 이탈 없음).
+    var product = <List<({WardrobeItem item, double score})>>[const []];
+    for (final c in skeleton) {
+      product = [
+        for (final partial in product)
+          for (final cand in trim(c.ranked)) [...partial, cand]
+      ];
+    }
+
+    // 미니 조합(상의·하의만) — 기존 경로의 "크기 변형"과 같은 취지로,
+    // 아우터·신발을 뺀 단출한 조합이 더 나을 수 있는 경우를 살려둔다.
+    // coreEntries의 순서는 coreOrder에서 오므로 [0]=상의, [1]=하의가 보장된다.
+    if (hasMini) {
+      for (final top in trim(coreEntries[0].ranked)) {
+        for (final bottom in trim(coreEntries[1].ranked)) {
+          product.add([top, bottom]);
+        }
+      }
+    }
+
+    String signatureOf(List<({WardrobeItem item, double score})> picked) =>
+        (picked.map((p) => p.item.id).toList()..sort()).join(',');
+
+    // 점수 내림차순. 동점은 시그니처로 갈라 결과가 실행마다 흔들리지 않게 한다
+    // (동점 타이브레이커를 순회 순서에 맡기지 않는다 — 이 변경의 동기 자체가
+    // 그 문제였다).
+    final ranked = product
+        .map((p) => (picked: p, score: comboScore(p), sig: signatureOf(p)))
+        .toList()
+      ..sort((a, b) {
+        final byScore = b.score.compareTo(a.score);
+        return byScore != 0 ? byScore : a.sig.compareTo(b.sig);
+      });
+
+    final seen = <String>{};
+    final combos = <OutfitMatch>[];
+    for (final entry in ranked) {
+      if (entry.picked.isEmpty) continue;
+      if (!seen.add(entry.sig)) continue;
+      combos.add(OutfitMatch(
+        entry.picked.map((p) => p.item).toList(),
+        localScore: entry.score,
+      ));
       if (combos.length >= maxCandidates) break;
     }
     return combos;

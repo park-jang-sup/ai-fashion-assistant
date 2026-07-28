@@ -76,6 +76,42 @@ Map<String, double> _topScorePerCategory({
   return result;
 }
 
+// findForTpo의 카테고리별 후보 선정(topPerCategory)을 정책 그대로 재현해
+// "후보 풀 크기"를 센다. 표9에서 두 가지를 분리하기 위한 재료다 —
+// (a) 폭 확대가 실제로 풀을 넓혔는가, (b) 넓어진 풀이 최종 후보에 반영됐는가.
+// 구분하지 않으면 "폭 확대는 이 옷장에서 효과 없음"과 "그리디 선택이 넓어진
+// 풀을 못 쓴다"가 똑같은 숫자로 보인다(7/26 무채색 게이팅이 "판단 불가"로
+// 끝났던 것과 같은 함정).
+// 전제: maxSkeletonCategories(4) >= 실제 카테고리 수(4)라 스켈레톤 컷은
+// 여기서 고려하지 않는다. 그 전제가 깨지면 이 함수도 같이 고쳐야 한다.
+int _candidatePoolSize({
+  required List<WardrobeItem> wardrobe,
+  required Set<String> categories,
+  required int targetRank,
+  required TpoMatchPolicy policy,
+  required bool relaxed,
+}) {
+  final perCategory = policy.effectiveCandidatesPerCategory;
+  final counts = <String, int>{};
+  for (final item in wardrobe) {
+    final attrs = item.attributes;
+    if (attrs == null || !categories.contains(item.category)) continue;
+    final rank = legacyFormalityRank[attrs.formality];
+    var score = rank == null ? 0.5 : legacyFormalityFitScore(targetRank, rank);
+    if (OutfitMatcher.isNeutralColor(attrs.color) &&
+        (!policy.gateNeutralBonus || score > 0)) {
+      score += 1;
+    }
+    if (!relaxed && score <= 0) continue;
+    counts[item.category] = (counts[item.category] ?? 0) + 1;
+  }
+  var total = 0;
+  for (final n in counts.values) {
+    total += n > perCategory ? perCategory : n;
+  }
+  return total;
+}
+
 String _categoriesOf(List<WardrobeItem> items) {
   const order = ['상의', '하의', '아우터', '신발'];
   final present = items.map((i) => i.category).toSet();
@@ -327,5 +363,236 @@ void main() {
         .map((e) => e.key)
         .toList();
     expect(emptyTags, isEmpty, reason: 'proposed 정책에서 조합 불가 태그: $emptyTags');
+  });
+
+  // ── 조합 품질 A/B (candidatesPerCategory × usePairwiseColorScore) ──────
+  // 위 리포트가 "격식 필터가 무엇을 통과시키는가"를 봤다면, 이쪽은 "통과한
+  // 것들로 무슨 조합을 만드는가"를 본다. 현행 findForTpo의 조합 점수는
+  // 아이템별 격식 적합도의 단순 합이라 아이템 간 궁합이 개입할 자리가 없고,
+  // 격식 점수의 값 종류가 다섯 개뿐이라 카테고리당 2벌 캡에서 동점이 대량
+  // 발생한다. 두 축을 따로/같이 켜서 실측 옷장에서 무엇이 달라지는지 잰다.
+  test('조합 품질 정책 A/B 리포트 (후보 폭 × 조합 단위 색상 채점)', () {
+    // enum(=enumeratedOnly)이 기준선이다. current와의 차이는 순수하게
+    // 생성기 교체 효과이고, wide/color는 enum과 비교해야 각 축의 효과가
+    // 분리된다. current와 직접 비교하면 생성기 효과가 모든 셀에 섞인다.
+    const policies = <String, TpoMatchPolicy>{
+      'current': TpoMatchPolicy.current,
+      'enum': TpoMatchPolicy.enumeratedOnly,
+      'wide': TpoMatchPolicy.wideCandidates,
+      'color': TpoMatchPolicy.pairwiseColor,
+      'v2': TpoMatchPolicy.qualityV2,
+    };
+
+    final results = <String, Map<String, TpoMatchResult>>{};
+    for (final entry in policies.entries) {
+      final byTag = <String, TpoMatchResult>{};
+      for (final tag in TpoTags.all) {
+        byTag[tag.label] = OutfitMatcher.findForTpo(
+          wardrobe: wardrobe,
+          formalityHint: tag.formalityHint,
+          policy: entry.value,
+        );
+      }
+      results[entry.key] = byTag;
+    }
+
+    // 조합 하나의 색상 축 통계 — 쌍 평균 점수와, _colorScore가 음수를 준
+    // 쌍(같은 색상군 + 같은 밝기 + 패턴도 같은 "깔맞춤")의 개수.
+    // 후자가 이 변경이 실제로 무엇을 걸러내는지 보여주는 지표다.
+    ({double avg, int clashes}) colorStats(List<WardrobeItem> items) {
+      var sum = 0.0;
+      var count = 0;
+      var clashes = 0;
+      for (var i = 0; i < items.length; i++) {
+        for (var j = i + 1; j < items.length; j++) {
+          final a = items[i].attributes, b = items[j].attributes;
+          if (a == null || b == null) continue;
+          final s = OutfitMatcher.colorScoreOnly(a, b);
+          sum += s;
+          count++;
+          if (s < 0) clashes++;
+        }
+      }
+      return (avg: count == 0 ? 0.0 : sum / count, clashes: clashes);
+    }
+
+    // ── 표 8 — 1번 후보 변화의 축별 귀속 ────────────────────
+    // 각 열은 딱 한 축만 다른 비교다.
+    //   생성기 = current vs enum   (폭·색상 동일, 생성기만 교체)
+    //   폭     = enum    vs wide   (생성기·색상 동일, 폭만 2→4)
+    //   색상   = enum    vs color  (생성기·폭 동일, 색상만 on)
+    //   합산   = current vs v2     (셋 다)
+    print('\n[표8] 1번 후보 변화의 축별 귀속');
+    print('| 태그 | 요구격식 | current | enum | wide | color | v2 | '
+        '생성기 | 폭 | 색상 | 합산 |');
+    print('|---|---|---|---|---|---|---|---|---|---|---|');
+    var genChanged = 0, widthChanged = 0, colorChanged = 0, totalChanged = 0;
+    for (final tag in TpoTags.all) {
+      String cell(String key) {
+        final r = results[key]![tag.label]!;
+        return r.candidates.isEmpty ? '-' : _categoriesOf(r.candidates.first.items);
+      }
+      String sigOf(String key) {
+        final r = results[key]![tag.label]!;
+        return r.candidates.isEmpty ? '' : _sig(r.candidates.first.items);
+      }
+      String mark(String a, String b) => sigOf(a) != sigOf(b) ? 'O' : '-';
+
+      if (sigOf('current') != sigOf('enum')) genChanged++;
+      if (sigOf('enum') != sigOf('wide')) widthChanged++;
+      if (sigOf('enum') != sigOf('color')) colorChanged++;
+      if (sigOf('current') != sigOf('v2')) totalChanged++;
+
+      print('| ${tag.label} | ${tag.formalityHint} | ${cell('current')} | ${cell('enum')} | '
+          '${cell('wide')} | ${cell('color')} | ${cell('v2')} | '
+          '${mark('current', 'enum')} | ${mark('enum', 'wide')} | '
+          '${mark('enum', 'color')} | ${mark('current', 'v2')} |');
+    }
+    final n = TpoTags.all.length;
+    print('  1번 후보가 바뀐 태그 수 — 생성기 $genChanged/$n · 폭 $widthChanged/$n · '
+        '색상 $colorChanged/$n · 합산 $totalChanged/$n');
+    print('  (생성기 열이 크면 아래 표들의 current 대비 수치는 색상/폭의 효과가 아니다)');
+
+    // ── 표 9 — 옷장 커버리지 ─────────────────────────────────
+    // 9개 태그의 후보 전체(1~3번)에 실제로 등장한 고유 아이템 수. 낮을수록
+    // "같은 옷만 반복 추천"이다 — 이 앱이 해결하겠다고 내건 문제 그 자체라
+    // 정책 판단의 1차 지표로 둔다.
+    final poolSize = wardrobe
+        .where((i) => i.attributes != null && categories.contains(i.category))
+        .length;
+    print('\n[표9] 옷장 커버리지 (모집단 $poolSize벌)');
+    print('| 정책 | 후보 풀 합계 | 후보 등장 합계 | 풀 활용률 | 고유 아이템 | 커버리지 |');
+    print('|---|---|---|---|---|---|');
+    for (final key in policies.keys) {
+      final policy = policies[key]!;
+      final all = <String>{};
+      var poolTotal = 0;
+      var usedTotal = 0;
+      for (final tag in TpoTags.all) {
+        final r = results[key]![tag.label]!;
+        final targetRank = legacyFormalityRank[tag.formalityHint] ?? 0;
+        poolTotal += _candidatePoolSize(
+          wardrobe: wardrobe,
+          categories: categories.toSet(),
+          targetRank: targetRank,
+          policy: policy,
+          relaxed: r.isFallback,
+        );
+        final perTag = <String>{};
+        for (final c in r.candidates) {
+          for (final item in c.items) {
+            perTag.add(item.id);
+            all.add(item.id);
+          }
+        }
+        usedTotal += perTag.length;
+      }
+      final pct = poolSize == 0 ? 0.0 : all.length / poolSize * 100;
+      final util = poolTotal == 0 ? 0.0 : usedTotal / poolTotal * 100;
+      print('| $key | $poolTotal | $usedTotal | ${util.toStringAsFixed(1)}% | '
+          '${all.length} | ${pct.toStringAsFixed(1)}% |');
+    }
+    print('  읽는 법: 풀 합계가 늘었는데 등장 합계가 그대로면 병목은 폭이 아니라');
+    print('  선택 단계(점수순 그리디)다 — "폭 확대는 효과 없음"으로 읽으면 오귀속.');
+
+    // ── 표 10 — 색상 품질 ────────────────────────────────────
+    // 1번 후보의 쌍 평균 색상 점수와 충돌 쌍 수를 정책별로 비교한다.
+    // 충돌 쌍이 current에서 몇 건 나오는지가 "색상 엔진이 안 돌고 있다"는
+    // 진단의 실측 근거이고, v2에서 그게 줄어드는지가 개선의 증거다.
+    print('\n[표10] 1번 후보의 색상 품질 (쌍 평균 / 충돌 쌍 수)');
+    print('| 태그 | current 평균 | current 충돌 | v2 평균 | v2 충돌 |');
+    print('|---|---|---|---|---|');
+    var curClashTotal = 0;
+    var v2ClashTotal = 0;
+    var curAvgSum = 0.0;
+    var v2AvgSum = 0.0;
+    var counted = 0;
+    for (final tag in TpoTags.all) {
+      final cur = results['current']![tag.label]!;
+      final v2 = results['v2']![tag.label]!;
+      if (cur.candidates.isEmpty || v2.candidates.isEmpty) {
+        print('| ${tag.label} | - | - | - | - |');
+        continue;
+      }
+      final cs = colorStats(cur.candidates.first.items);
+      final vs = colorStats(v2.candidates.first.items);
+      curClashTotal += cs.clashes;
+      v2ClashTotal += vs.clashes;
+      curAvgSum += cs.avg;
+      v2AvgSum += vs.avg;
+      counted++;
+      print('| ${tag.label} | ${cs.avg.toStringAsFixed(2)} | ${cs.clashes} | '
+          '${vs.avg.toStringAsFixed(2)} | ${vs.clashes} |');
+    }
+    if (counted > 0) {
+      print('  전체 평균: current ${(curAvgSum / counted).toStringAsFixed(2)} → '
+          'v2 ${(v2AvgSum / counted).toStringAsFixed(2)}');
+      print('  충돌 쌍 합계: current $curClashTotal → v2 $v2ClashTotal');
+    }
+
+    // ── 표 11 — 후보 간 다양성 ───────────────────────────────
+    // 반환된 후보 3개가 서로 몇 벌이나 다른지. 실측 candidateScores에
+    // [65,65,65]처럼 동일 점수가 찍힌 적이 있는데, 후보들이 사실상 같은 옷의
+    // 순열이면 Gemini 평가가 구분할 게 없다. 폭을 넓히면 이게 개선되는지,
+    // 아니면 다양성 항을 따로 넣어야 하는지(=다음 단계 필요 여부)를 본다.
+    print('\n[표11] 후보 간 다양성 — 1번 후보 대비 2·3번 후보의 상이 아이템 수');
+    print('| 태그 | current (2번/3번) | v2 (2번/3번) |');
+    print('|---|---|---|');
+    for (final tag in TpoTags.all) {
+      String diffCell(String key) {
+        final r = results[key]![tag.label]!;
+        if (r.candidates.isEmpty) return '-';
+        final base = r.candidates.first.items.map((i) => i.id).toSet();
+        final parts = <String>[];
+        for (var c = 1; c < 3; c++) {
+          if (c >= r.candidates.length) {
+            parts.add('-');
+            continue;
+          }
+          final other = r.candidates[c].items.map((i) => i.id).toSet();
+          parts.add('${other.difference(base).length}');
+        }
+        return parts.join('/');
+      }
+      print('| ${tag.label} | ${diffCell('current')} | ${diffCell('v2')} |');
+    }
+
+    // ── 표 12 — 미니 조합(상의·하의만)이 후보에 든 횟수 ──────
+    // 조합 점수의 격식 축이 "아이템별 점수의 합"이라 4벌 조합의 base가
+    // 구조적으로 2벌 조합보다 크다(최대 16 vs 8). 색상 항은 쌍 평균 × 3이라
+    // 양쪽 다 [-3,+6] 범위여서 그 격차를 뒤집기 어렵다. 즉 미니 조합은
+    // 생성·채점·정렬은 되지만 후보에 못 들 가능성이 높다.
+    // 기존 _buildCombosFromRanked도 같은 성질이었으므로(localScore 역시 합,
+    // 게다가 base 조합이 무조건 1번 고정) 이 패치가 만든 문제는 아니지만,
+    // 0/9로 확인되면 근거를 갖고 제거하거나 base를 아이템 수로 정규화하는
+    // 걸 검토해야 한다. 후자는 점수 스케일 전체를 건드리는 변경이다.
+    print('\n[표12] 미니 조합(2벌)이 후보에 든 태그 수');
+    for (final key in policies.keys) {
+      var tagsWithMini = 0;
+      var miniAtTop = 0;
+      for (final tag in TpoTags.all) {
+        final r = results[key]![tag.label]!;
+        if (r.candidates.isEmpty) continue;
+        // 이 태그에서 조합 가능한 최대 카테고리 수보다 적은 조합 = 미니.
+        final maxItems =
+            r.candidates.map((c) => c.items.length).reduce((a, b) => a > b ? a : b);
+        if (maxItems <= 2) continue; // 애초에 2벌짜리만 가능한 태그는 제외
+        if (r.candidates.any((c) => c.items.length == 2)) tagsWithMini++;
+        if (r.candidates.first.items.length == 2) miniAtTop++;
+      }
+      print('  $key: 후보에 포함 $tagsWithMini/${TpoTags.all.length} · '
+          '1번 후보로 채택 $miniAtTop/${TpoTags.all.length}');
+    }
+
+    // 폭을 넓히거나 색상을 켜서 어떤 태그의 조합이 아예 사라지면 과도한
+    // 변경이므로 즉시 실패시킨다(표4와 같은 취지의 안전망).
+    for (final key in policies.keys) {
+      final empty = results[key]!
+          .entries
+          .where((e) => e.value.candidates.isEmpty)
+          .map((e) => e.key)
+          .toList();
+      expect(empty, isEmpty, reason: '$key 정책에서 조합 불가 태그: $empty');
+    }
   });
 }
