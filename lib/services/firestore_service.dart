@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/agent_log_entry.dart';
@@ -258,10 +259,28 @@ class FirestoreService {
         .update({'dismissed': true});
   }
 
+  // candidates에서 "이 날짜 일정 중복 게이트의 진짜 대상"과 "정리(dismiss)할
+  // 나머지"를 가르는 순수 함수(Firestore 호출 없음, 단위 테스트 대상).
+  //  · triggerItemId가 비어있지 않은 문서(새 옷 등록이 계기인 일반 추천)는
+  //    애초에 일정 중복 게이트 대상이 아니므로 제외한다 — targetDate가
+  //    우연히 같은 날짜로 채워져도(등록일=일정일) 여기서 걸러낸다.
+  //  · 남은 일정 기반 후보가 여럿이면(비결정적 limit(1) 시절의 잔재 등)
+  //    createdAt 최신 문서를 대상으로 삼고, 그 외는 정리 대상으로 돌려준다
+  //    — 다음 실행에서 다시 후보로 걸리지 않도록 호출부가 dismiss한다.
+  static ({RecommendationEntry? target, List<RecommendationEntry> toDismiss})
+      selectDateRecommendation(List<RecommendationEntry> candidates) {
+    final scheduleBased = candidates.where((r) => r.triggerItemId.isEmpty).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    if (scheduleBased.isEmpty) return (target: null, toDismiss: const []);
+    return (target: scheduleBased.first, toDismiss: scheduleBased.skip(1).toList());
+  }
+
   // 특정 날짜 일정의 살아있는(dismissed=false) 선제 추천을 조회 — 중복 생성
   // 방지 게이트 겸, 예보 재계획 판단(AgentPlanner.shouldReplanForWeather)에
   // 필요한 스냅샷/replanCount를 함께 돌려준다. targetDate/dismissed 둘 다
-  // equality 필터라(orderBy 없음) 복합 인덱스가 필요 없다.
+  // equality 필터라(orderBy 없음) 복합 인덱스가 필요 없다 — triggerItemId
+  // 필터나 createdAt 정렬을 쿼리에 추가하면 복합 인덱스가 필요해지므로,
+  // 후보를 넉넉히(5건) 받아 selectDateRecommendation으로 Dart에서 가른다.
   static Future<RecommendationEntry?> recommendationForDateSilently(
     String uid,
     DateTime date,
@@ -274,11 +293,14 @@ class FirestoreService {
           .collection(_recommendationsCol)
           .where('targetDate', isEqualTo: Timestamp.fromDate(normalized))
           .where('dismissed', isEqualTo: false)
-          .limit(1)
+          .limit(5)
           .get();
-      return snapshot.docs.isEmpty
-          ? null
-          : RecommendationEntry.fromFirestore(snapshot.docs.first);
+      final candidates = snapshot.docs.map((d) => RecommendationEntry.fromFirestore(d)).toList();
+      final selection = selectDateRecommendation(candidates);
+      for (final stale in selection.toDismiss) {
+        unawaited(dismissRecommendation(uid, stale.id));
+      }
+      return selection.target;
     } catch (e) {
       debugPrint('[PLAN] 추천 중복 조회 실패: $e');
       return null;
