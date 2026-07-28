@@ -87,6 +87,20 @@ class TpoMatchPolicy {
   // current↔enumeratedOnly(생성기) / enumeratedOnly↔wide(폭) /
   // enumeratedOnly↔color(색상)로 비교해야 귀속이 성립한다.
   final bool forceEnumerated;
+  // 최근 추천/착용된 아이템에 매길 감점. 기본 0.0 = 현행(감점 없음).
+  //
+  // 이 값이 조합 점수가 아니라 **아이템 점수**에 들어간다는 게 핵심이다.
+  // 표9에서 후보 풀을 72→144로 두 배 늘려도 실제 등장 아이템이 54로
+  // 그대로였던 이유가, 조합 단계에 도달하기 전 topPerCategory의 상위 N
+  // 컷에서 이미 잘려 있었기 때문이다. 조합 점수에 감점을 넣으면 같은 이유로
+  // 아무것도 바뀌지 않는다.
+  //
+  // 격식 적합도 점수가 취하는 값은 {0, 0.5, 1, 1.5, 2, 3, 4}이고 인접 값
+  // 간격의 최솟값은 0.5다. 따라서 감점이 0.5 미만이면 동점 집합 안에서만
+  // 순서를 바꾸고(=순회 순서 타이브레이커를 "최근에 안 입은 순"으로 교체),
+  // 그 이상이면 무채색 보너스(+1)나 격식 등급까지 넘어설 수 있다.
+  // 어디까지 허용할지는 실측으로 정한다(표14).
+  final double recencyPenalty;
 
   const TpoMatchPolicy({
     this.gateNeutralBonus = false,
@@ -96,6 +110,7 @@ class TpoMatchPolicy {
     this.candidatesPerCategory = 2,
     this.usePairwiseColorScore = false,
     this.forceEnumerated = false,
+    this.recencyPenalty = 0.0,
   });
 
   // 후보 폭을 넓히거나 조합 단위 채점을 켜면 기존 "기본+한 칸 교체+미니"
@@ -127,6 +142,18 @@ class TpoMatchPolicy {
   static const pairwiseColor = TpoMatchPolicy(usePairwiseColorScore: true);
   static const qualityV2 =
       TpoMatchPolicy(candidatesPerCategory: 4, usePairwiseColorScore: true);
+
+  // ── 다양성(옷장 회전) A/B용 프리셋 ──
+  // 폭·색상·생성기는 전부 현행 그대로 두고 감점만 켠다 — 표8~표12에서 그
+  // 세 축이 이 옷장에서 무효로 판정됐으므로 섞을 이유가 없다.
+  // tieBreak(0.4): 동점 집합 안에서만 재정렬. 격식 등급을 절대 넘지 않는다.
+  // moderate(1.0): 무채색 보너스(+1)와 같은 크기 — 최근 입은 무채색보다
+  //                안 입은 유채색이 앞선다.
+  // strong(2.0):   격식 인접 등급(3↔1)까지 넘어설 수 있다. 회전은 최대지만
+  //                TPO 정확도를 해칠 수 있어 실측 없이는 쓰지 않는다.
+  static const diversityTieBreak = TpoMatchPolicy(recencyPenalty: 0.4);
+  static const diversityModerate = TpoMatchPolicy(recencyPenalty: 1.0);
+  static const diversityStrong = TpoMatchPolicy(recencyPenalty: 2.0);
 }
 
 class OutfitMatcher {
@@ -364,6 +391,9 @@ class OutfitMatcher {
     required String formalityHint,
     int maxCandidates = 3,
     TpoMatchPolicy policy = TpoMatchPolicy.current,
+    // 최근에 추천/착용된 아이템 id. policy.recencyPenalty와 함께 동작하며,
+    // 둘 중 하나라도 비어 있으면(기본값) 정렬 결과가 현행과 완전히 같다.
+    Set<String> recentItemIds = const {},
   }) {
     final targetRank = _formalityRank[formalityHint] ?? 0;
 
@@ -384,12 +414,24 @@ class OutfitMatcher {
     // 이름은 topTwo 그대로 두지 않고 topPerCategory로 바꿨다 — 2가 더 이상
     // 고정값이 아니기 때문이다.
     final perCategory = policy.effectiveCandidatesPerCategory;
+
+    // 최근 감점은 "정렬"에만 쓰고 "통과 여부(keep)"에는 쓰지 않는다.
+    // keep은 score>0으로 격식 적합 여부를 가르고 그 결과가 hasCore →
+    // isFallback → mismatchedCategories까지 이어지는데, 감점 때문에 0 밑으로
+    // 내려간 아이템이 탈락하면 최근에 뭘 입었느냐가 폴백 판정을 바꿔버린다.
+    // 자격은 격식이, 순서는 최근도가 정한다.
+    final applyRecency = policy.recencyPenalty > 0 && recentItemIds.isNotEmpty;
+    double rankScore(({WardrobeItem item, double score}) c) =>
+        applyRecency && recentItemIds.contains(c.item.id)
+            ? c.score - policy.recencyPenalty
+            : c.score;
+
     Map<String, List<({WardrobeItem item, double score})>> topPerCategory(
         bool Function(double) keep) {
       final out = <String, List<({WardrobeItem item, double score})>>{};
       for (final e in allPerCategory.entries) {
         final list = e.value.where((c) => keep(c.score)).toList()
-          ..sort((a, b) => b.score.compareTo(a.score));
+          ..sort((a, b) => rankScore(b).compareTo(rankScore(a)));
         if (list.isEmpty) continue;
         out[e.key] =
             list.length > perCategory ? list.sublist(0, perCategory) : list;

@@ -140,6 +140,15 @@ class AgentPlanner {
   // 수 있어, 값 자체를 공유한다.
   static const _lowScoreFloor = OutfitSelfEvaluator.threshold;
 
+  // 조합 선정 정책. 기본값은 현행(current)이며, 표8~표14 리포트를 근거로
+  // 프리셋을 바꾸는 것이 곧 배포 결정이다 — 여기 한 줄만 고치면 된다.
+  static const _matchPolicy = TpoMatchPolicy.current;
+
+  // 최근 감점 대상으로 볼 기간. 짧으면 회전이 안 돌고, 길면 옷장 대부분이
+  // 감점 대상이 되어 감점이 다시 상수가 된다(색상 축이 무효였던 것과 같은
+  // 실패 방식). 옷장 규모에 맞춰 조정할 손잡이다.
+  static const _recencyWindow = Duration(days: 14);
+
   // isFallback 원인(카테고리 부족 vs 궁합 점수 낮음)에 따라 다른 문구를
   // 고른다. 순수 함수라 Firestore/Gemini 없이 단위 테스트 가능하다.
   // mismatchedCategories가 비어 있으면(드문 경우 — findForTpo의 hasCore
@@ -247,6 +256,31 @@ class AgentPlanner {
     return (replan: false, reason: null);
   }
 
+  // 최근 추천에 쓰인 아이템 id 집합 — findForTpo의 동점 타이브레이커를
+  // "wardrobe 순회 순서"에서 "최근에 안 입은 순"으로 바꾸는 재료다.
+  // Firestore 조회 결과를 인자로 받는 순수 함수라 단위 테스트가 가능하다.
+  //
+  // userChoice로 거르지 않는다. 여기서 세는 건 "실제로 입었는가"가 아니라
+  // "최근에 제시됐는가"이기 때문이다 — 해결하려는 문제가 옷장의 12.6%만
+  // 반복해서 노출되는 것이므로, 사용자가 거절한 조합도 이미 한 번 노출된
+  // 이상 다시 1순위로 올릴 이유가 없다. accepted는 실제 착용이라 당연히
+  // 포함되고, rejected_with_alternative는 "그 상황에 안 맞다고 판단된"
+  // 조합이라 역시 뒤로 미는 게 맞다.
+  @visibleForTesting
+  static Set<String> recentItemIdsFrom(
+    List<RecommendationEntry> recent,
+    DateTime now, {
+    Duration window = _recencyWindow,
+  }) {
+    final cutoff = now.subtract(window);
+    final out = <String>{};
+    for (final entry in recent) {
+      if (entry.createdAt.isBefore(cutoff)) continue;
+      out.addAll(entry.itemIds);
+    }
+    return out;
+  }
+
   static Future<void> _prepareRecommendationFor(
     String uid,
     OutfitCalendarEntry plan,
@@ -293,9 +327,18 @@ class AgentPlanner {
       }
     }
 
+    // 최근 추천 이력을 조회해 동점 타이브레이커 재료로 넘긴다. 조회가
+    // 실패하면 빈 집합이 되고, 그러면 findForTpo는 현행과 동일하게 동작한다
+    // (폴백 방향은 언제나 보수적으로).
+    final recentItemIds = recentItemIdsFrom(
+      await FirestoreService.recentRecommendationsSilently(uid),
+      DateTime.now(),
+    );
     final match = OutfitMatcher.findForTpo(
       wardrobe: wardrobe,
       formalityHint: tag.formalityHint,
+      policy: _matchPolicy,
+      recentItemIds: recentItemIds,
     );
     // 레벨 4: 조합 자체가 불가 — 조용히 넘기지 않고 무엇이 부족한지 로그로 남긴다.
     if (match.candidates.isEmpty) {

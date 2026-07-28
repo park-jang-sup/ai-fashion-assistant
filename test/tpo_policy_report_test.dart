@@ -595,4 +595,140 @@ void main() {
       expect(empty, isEmpty, reason: '$key 정책에서 조합 불가 태그: $empty');
     }
   });
+
+  // ── 다양성(옷장 회전) A/B ────────────────────────────────────────────
+  // 표8~표12에서 생성기·폭·색상 세 축이 모두 0/9로 나왔고, 표9에서 후보 풀을
+  // 두 배로 넓혀도 실제 등장 아이템은 그대로였다(활용률 75%→37.5%). 병목이
+  // 조합 단계가 아니라 그 앞의 topPerCategory 상위 N 컷이라는 뜻이다.
+  // 격식 점수가 취하는 값이 몇 개뿐이라 동점이 대량 발생하고, 동점은 정렬
+  // 안정성에 기대 wardrobe 순회 순서로 갈린다 — 그래서 9개 태그가 모두 같은
+  // 옷 11벌을 돌려 쓴다(커버리지 12.6%).
+  // 여기서는 (a) 그 동점 집합이 실제로 얼마나 큰지(=회전 가능 여지)와
+  // (b) 아이템 점수에 최근 감점을 넣으면 회전이 실제로 도는지를 잰다.
+  test('다양성 정책 A/B 리포트 (동점 규모 × 최근 감점)', () {
+    // ── 표 13 — 카테고리별 최고점 동점 규모 ─────────────────
+    // "채택"은 policy.candidatesPerCategory(기본 2)이고 "동점"은 그 최고점을
+    // 공유하는 전체 벌 수다. 동점이 2 이하면 감점을 넣어도 돌릴 여지가 없고,
+    // 크면 클수록 커버리지 상한이 높다.
+    print('\n[표13] 카테고리별 최고점 동점 규모 (채택 ${TpoMatchPolicy.current.effectiveCandidatesPerCategory}벌)');
+    print('| 태그 | 요구격식 | 상의 | 하의 | 아우터 | 신발 |');
+    print('|---|---|---|---|---|---|');
+    var tiedTotal = 0;
+    var takenTotal = 0;
+    for (final tag in TpoTags.all) {
+      final targetRank = legacyFormalityRank[tag.formalityHint] ?? 0;
+      final scores = <String, List<double>>{};
+      for (final item in wardrobe) {
+        final attrs = item.attributes;
+        if (attrs == null || !categories.contains(item.category)) continue;
+        final rank = legacyFormalityRank[attrs.formality];
+        var score = rank == null ? 0.5 : legacyFormalityFitScore(targetRank, rank);
+        if (OutfitMatcher.isNeutralColor(attrs.color)) score += 1;
+        if (score <= 0) continue; // scored 경로 기준
+        scores.putIfAbsent(item.category, () => []).add(score);
+      }
+      final cells = <String>[];
+      for (final c in categories) {
+        final list = scores[c];
+        if (list == null || list.isEmpty) {
+          cells.add('-');
+          continue;
+        }
+        final top = list.reduce((a, b) => a > b ? a : b);
+        final tied = list.where((v) => v == top).length;
+        final taken = TpoMatchPolicy.current.effectiveCandidatesPerCategory;
+        tiedTotal += tied;
+        takenTotal += tied < taken ? tied : taken;
+        cells.add('${top.toStringAsFixed(1)}점 ${tied}벌');
+      }
+      print('| ${tag.label} | ${tag.formalityHint} | ${cells.join(' | ')} |');
+    }
+    print('  최고점 동점 합계 $tiedTotal벌 중 $takenTotal벌만 채택 — '
+        '나머지 ${tiedTotal - takenTotal}벌이 순회 순서로 탈락한다');
+
+    // ── 표 14 — 최근 감점 강도별 순차 시뮬레이션 ──────────────
+    // 9개 태그를 순서대로 처리하며 앞선 태그의 1번 후보를 recent에 누적한다.
+    // 하루 한 건씩 추천이 쌓이는 실제 운용과 같은 구조라, 감점이 옷장 회전을
+    // 실제로 만들어내는지 그대로 재현된다. recent를 누적하지 않는(=현행)
+    // 경우가 penalty 0.0 행이다.
+    const diversityPolicies = <String, TpoMatchPolicy>{
+      '0.0 (현행)': TpoMatchPolicy.current,
+      '0.4 (동점만)': TpoMatchPolicy.diversityTieBreak,
+      '1.0 (무채색급)': TpoMatchPolicy.diversityModerate,
+      '2.0 (격식급)': TpoMatchPolicy.diversityStrong,
+    };
+    final poolSize = wardrobe
+        .where((i) => i.attributes != null && categories.contains(i.category))
+        .length;
+
+    print('\n[표14] 최근 감점 강도별 순차 시뮬레이션 (모집단 $poolSize벌)');
+    print('| 감점 | 고유 아이템 | 커버리지 | 1번 후보 고유 | isFallback 태그 수 |');
+    print('|---|---|---|---|---|');
+    final firstPickByPolicy = <String, List<String>>{};
+    for (final entry in diversityPolicies.entries) {
+      final recent = <String>{};
+      final all = <String>{};
+      final firstPicks = <String>{};
+      final picks = <String>[];
+      var fallbackCount = 0;
+      for (final tag in TpoTags.all) {
+        final r = OutfitMatcher.findForTpo(
+          wardrobe: wardrobe,
+          formalityHint: tag.formalityHint,
+          policy: entry.value,
+          recentItemIds: recent,
+        );
+        if (r.isFallback) fallbackCount++;
+        for (final c in r.candidates) {
+          for (final i in c.items) {
+            all.add(i.id);
+          }
+        }
+        if (r.candidates.isNotEmpty) {
+          final top = r.candidates.first.items.map((i) => i.id).toList();
+          firstPicks.addAll(top);
+          picks.add(_sig(r.candidates.first.items));
+          // 실제로 사용자에게 제시되는 건 1번 후보이므로 그것만 누적한다.
+          recent.addAll(top);
+        }
+      }
+      firstPickByPolicy[entry.key] = picks;
+      final pct = poolSize == 0 ? 0.0 : all.length / poolSize * 100;
+      print('| ${entry.key} | ${all.length} | ${pct.toStringAsFixed(1)}% | '
+          '${firstPicks.length} | $fallbackCount |');
+    }
+
+    // ── 표 15 — 감점이 TPO 정확도를 해치지 않았는지 ────────────
+    // 회전이 늘어도 격식이 무너지면 의미가 없다. 감점 강도를 올렸을 때
+    // isFallback 태그가 늘거나 1번 후보 구성이 무너지는지 확인한다.
+    print('\n[표15] 감점 강도별 1번 후보 변화 (현행 대비)');
+    print('| 태그 | 0.4 | 1.0 | 2.0 |');
+    print('|---|---|---|---|');
+    final base = firstPickByPolicy['0.0 (현행)']!;
+    for (var i = 0; i < TpoTags.all.length; i++) {
+      String mark(String key) {
+        final list = firstPickByPolicy[key]!;
+        if (i >= list.length || i >= base.length) return '-';
+        return list[i] != base[i] ? 'O' : '-';
+      }
+      print('| ${TpoTags.all[i].label} | ${mark('0.4 (동점만)')} | '
+          '${mark('1.0 (무채색급)')} | ${mark('2.0 (격식급)')} |');
+    }
+
+    // 감점을 켜서 조합 자체가 사라지는 태그가 생기면 과도한 변경이다.
+    for (final entry in diversityPolicies.entries) {
+      final recent = <String>{};
+      for (final tag in TpoTags.all) {
+        final r = OutfitMatcher.findForTpo(
+          wardrobe: wardrobe,
+          formalityHint: tag.formalityHint,
+          policy: entry.value,
+          recentItemIds: recent,
+        );
+        expect(r.candidates, isNotEmpty,
+            reason: '${entry.key} 정책 · ${tag.label}에서 조합 불가');
+        recent.addAll(r.candidates.first.items.map((i) => i.id));
+      }
+    }
+  });
 }

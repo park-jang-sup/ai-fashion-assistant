@@ -26,6 +26,9 @@ WardrobeItem _item(String id, String category, String color, String formality) =
     );
 
 // 조합 안에 같은 카테고리가 두 벌 들어가지 않는다는 불변식.
+String _sigOf(OutfitMatch m) =>
+    (m.items.map((i) => i.id).toList()..sort()).join(',');
+
 Set<String> _categories(OutfitMatch m) => m.items.map((i) => i.category).toSet();
 
 void main() {
@@ -420,6 +423,114 @@ void main() {
       for (final c in fullCombos) {
         expect(_categories(c), {'상의', '하의', '아우터', '신발'});
       }
+    });
+
+    // 최근 감점은 topPerCategory의 상위 N 컷 **이전**, 아이템 점수 단계에서
+    // 작동해야 한다. 조합 점수에 넣으면 이미 잘린 뒤라 아무 효과가 없다
+    // (표9에서 후보 풀을 두 배로 늘려도 등장 아이템이 그대로였던 것과 같은
+    // 이유). 아래 테스트들이 그 위치를 못박는다.
+    test('감점 0이거나 recent가 비면 현행과 완전히 동일하다', () {
+      String sig(TpoMatchResult r) => r.candidates.map((c) => _sigOf(c)).join('|');
+      final baseline = OutfitMatcher.findForTpo(
+        wardrobe: wideWardrobe,
+        formalityHint: '캐주얼',
+      );
+      // 감점은 있으나 recent가 빈 경우
+      expect(
+        sig(OutfitMatcher.findForTpo(
+          wardrobe: wideWardrobe,
+          formalityHint: '캐주얼',
+          policy: TpoMatchPolicy.diversityStrong,
+        )),
+        sig(baseline),
+      );
+      // recent는 있으나 감점이 0인 경우
+      expect(
+        sig(OutfitMatcher.findForTpo(
+          wardrobe: wideWardrobe,
+          formalityHint: '캐주얼',
+          recentItemIds: {'wt-0', 'wb-0'},
+        )),
+        sig(baseline),
+      );
+    });
+
+    test('최근 아이템은 동점 집합 안에서 뒤로 밀린다', () {
+      // wideWardrobe는 전부 캐주얼·유채색이라 8벌 모두 3.0점 동점이다.
+      // 현행에서는 순회 순서로 wt-0/wb-0이 뽑히는데, 그 둘을 recent에 넣으면
+      // 다음 후보로 교체돼야 한다.
+      final before = OutfitMatcher.findForTpo(
+        wardrobe: wideWardrobe,
+        formalityHint: '캐주얼',
+      ).candidates.first.items.map((i) => i.id).toSet();
+
+      final after = OutfitMatcher.findForTpo(
+        wardrobe: wideWardrobe,
+        formalityHint: '캐주얼',
+        policy: TpoMatchPolicy.diversityTieBreak,
+        recentItemIds: before,
+      ).candidates.first.items.map((i) => i.id).toSet();
+
+      expect(after.intersection(before), isEmpty,
+          reason: '최근 아이템이 그대로 1번 후보에 남음: $after');
+    });
+
+    test('감점 0.4는 격식 등급을 넘지 못한다(자격이 아니라 순서만 바꾼다)', () {
+      // 정확 일치(diff 0 → 3.0)이지만 최근에 입은 상의 vs 인접 등급
+      // (diff 1 → 1.0)이고 안 입은 상의. 3.0 - 0.4 = 2.6 > 1.0이므로
+      // 여전히 격식이 맞는 쪽이 이겨야 한다.
+      // 캐주얼(diff 2)은 0점이라 scored 필터에서 아예 탈락해 비교가 성립하지
+      // 않으므로 세미포멀을 쓴다.
+      final fitRecent = _item('fit', '상의', '레드', '포멀');
+      final unfitFresh = _item('unfit', '상의', '블루', '세미포멀');
+      final bottom = _item('bt', '하의', '옐로우', '포멀');
+
+      final r = OutfitMatcher.findForTpo(
+        wardrobe: [fitRecent, unfitFresh, bottom],
+        formalityHint: '포멀',
+        policy: TpoMatchPolicy.diversityTieBreak,
+        recentItemIds: {'fit'},
+      );
+      expect(r.candidates.first.items.map((i) => i.id), contains('fit'));
+    });
+
+    test('감점이 충분히 크면 격식 등급을 넘어선다', () {
+      // 3.0 - 2.5 = 0.5 < 1.0이라 인접 등급 쪽이 앞선다. 감점 2.0이면 정확히
+      // 동점(1.0)이 되어 순서가 뒤집히지 않으므로 2.5로 확실히 가른다 —
+      // 이 경계가 곧 "회전을 위해 TPO 정확도를 얼마나 포기하는가"다.
+      final fitRecent = _item('fit', '상의', '레드', '포멀');
+      final unfitFresh = _item('unfit', '상의', '블루', '세미포멀');
+      final bottom = _item('bt', '하의', '옐로우', '포멀');
+
+      final r = OutfitMatcher.findForTpo(
+        wardrobe: [fitRecent, unfitFresh, bottom],
+        formalityHint: '포멀',
+        policy: const TpoMatchPolicy(recencyPenalty: 2.5),
+        recentItemIds: {'fit'},
+      );
+      expect(r.candidates.first.items.map((i) => i.id), contains('unfit'));
+    });
+
+    test('감점은 자격(keep)이 아니라 순서만 바꾼다 — isFallback 불변', () {
+      // 감점이 score를 0 밑으로 내려도 scored 통과 여부는 그대로여야 한다.
+      // 그렇지 않으면 "최근에 뭘 입었는가"가 폴백 판정을 바꾼다.
+      final top = _item('t', '상의', '레드', '포멀');
+      final bottom = _item('b', '하의', '블루', '포멀');
+      final wardrobe = [top, bottom];
+
+      final plain = OutfitMatcher.findForTpo(
+        wardrobe: wardrobe,
+        formalityHint: '포멀',
+      );
+      final penalized = OutfitMatcher.findForTpo(
+        wardrobe: wardrobe,
+        formalityHint: '포멀',
+        policy: const TpoMatchPolicy(recencyPenalty: 10.0),
+        recentItemIds: {'t', 'b'},
+      );
+      expect(penalized.isFallback, plain.isFallback);
+      expect(penalized.mismatchedCategories, plain.mismatchedCategories);
+      expect(penalized.candidates, isNotEmpty);
     });
 
     test('생성기 축이 폭·색상과 분리된다(enumeratedOnly)', () {
