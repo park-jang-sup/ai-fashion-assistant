@@ -652,7 +652,7 @@ void main() {
     // 실제로 만들어내는지 그대로 재현된다. recent를 누적하지 않는(=현행)
     // 경우가 penalty 0.0 행이다.
     const diversityPolicies = <String, TpoMatchPolicy>{
-      '0.0 (현행)': TpoMatchPolicy.current,
+      '0.0 (현행)': TpoMatchPolicy.diversityOff,
       '0.4 (동점만)': TpoMatchPolicy.diversityTieBreak,
       '1.0 (무채색급)': TpoMatchPolicy.diversityModerate,
       '2.0 (격식급)': TpoMatchPolicy.diversityStrong,

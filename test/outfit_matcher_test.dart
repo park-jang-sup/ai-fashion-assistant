@@ -444,14 +444,43 @@ void main() {
         )),
         sig(baseline),
       );
-      // recent는 있으나 감점이 0인 경우
+      // recent는 있으나 감점이 0인 경우 — current는 기본값이 0.4로 바뀌어
+      // 더 이상 "감점 0" 정책이 아니므로, 감점 0을 보장하는 diversityOff를
+      // 명시해야 이 서브케이스의 의도(감점 자체가 0이면 무손상)가 성립한다.
       expect(
         sig(OutfitMatcher.findForTpo(
           wardrobe: wideWardrobe,
           formalityHint: '캐주얼',
+          policy: TpoMatchPolicy.diversityOff,
           recentItemIds: {'wt-0', 'wb-0'},
         )),
         sig(baseline),
+      );
+    });
+
+    test('기본 정책(current)은 이제 감점이 켜져 있다', () {
+      // 표14 근거로 2026-07에 recencyPenalty 기본값을 0.0→0.4로 올린 것이
+      // 사고가 아니라 의도임을 값과 실제 동작 양쪽으로 못박는다.
+      expect(TpoMatchPolicy.current.recencyPenalty, 0.4);
+      expect(TpoMatchPolicy.diversityOff.recencyPenalty, 0.0);
+
+      String sig(TpoMatchResult r) => r.candidates.map((c) => _sigOf(c)).join('|');
+      const recent = {'wt-0', 'wb-0'};
+      final withCurrent = OutfitMatcher.findForTpo(
+        wardrobe: wideWardrobe,
+        formalityHint: '캐주얼',
+        recentItemIds: recent,
+      );
+      final withDiversityOff = OutfitMatcher.findForTpo(
+        wardrobe: wideWardrobe,
+        formalityHint: '캐주얼',
+        policy: TpoMatchPolicy.diversityOff,
+        recentItemIds: recent,
+      );
+      expect(
+        sig(withCurrent),
+        isNot(sig(withDiversityOff)),
+        reason: 'current(0.4)가 recent 아이템을 실제로 밀어내지 않음: ${sig(withCurrent)}',
       );
     });
 

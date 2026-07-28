@@ -87,7 +87,8 @@ class TpoMatchPolicy {
   // current↔enumeratedOnly(생성기) / enumeratedOnly↔wide(폭) /
   // enumeratedOnly↔color(색상)로 비교해야 귀속이 성립한다.
   final bool forceEnumerated;
-  // 최근 추천/착용된 아이템에 매길 감점. 기본 0.0 = 현행(감점 없음).
+  // 최근 추천/착용된 아이템에 매길 감점. 기본 0.4 — 표14 실측 근거로
+  // 2026-07에 0.0에서 올렸다(커버리지 12.6%→33.3%, isFallback 0/9 유지).
   //
   // 이 값이 조합 점수가 아니라 **아이템 점수**에 들어간다는 게 핵심이다.
   // 표9에서 후보 풀을 72→144로 두 배 늘려도 실제 등장 아이템이 54로
@@ -96,10 +97,10 @@ class TpoMatchPolicy {
   // 아무것도 바뀌지 않는다.
   //
   // 격식 적합도 점수가 취하는 값은 {0, 0.5, 1, 1.5, 2, 3, 4}이고 인접 값
-  // 간격의 최솟값은 0.5다. 따라서 감점이 0.5 미만이면 동점 집합 안에서만
-  // 순서를 바꾸고(=순회 순서 타이브레이커를 "최근에 안 입은 순"으로 교체),
-  // 그 이상이면 무채색 보너스(+1)나 격식 등급까지 넘어설 수 있다.
-  // 어디까지 허용할지는 실측으로 정한다(표14).
+  // 간격의 최솟값은 0.5다. 기본값 0.4는 그 간격보다 작아 동점 집합 안에서만
+  // 순서를 바꾸고(=순회 순서 타이브레이커를 "최근에 안 입은 순"으로 교체)
+  // 격식 등급은 절대 못 넘는다. 그 이상(표14의 1.0/2.0)은 무채색 보너스나
+  // 격식 등급까지 넘어설 수 있어 실측 없이는 기본값으로 쓰지 않는다.
   final double recencyPenalty;
 
   const TpoMatchPolicy({
@@ -110,7 +111,7 @@ class TpoMatchPolicy {
     this.candidatesPerCategory = 2,
     this.usePairwiseColorScore = false,
     this.forceEnumerated = false,
-    this.recencyPenalty = 0.0,
+    this.recencyPenalty = 0.4,
   });
 
   // 후보 폭을 넓히거나 조합 단위 채점을 켜면 기존 "기본+한 칸 교체+미니"
@@ -146,11 +147,15 @@ class TpoMatchPolicy {
   // ── 다양성(옷장 회전) A/B용 프리셋 ──
   // 폭·색상·생성기는 전부 현행 그대로 두고 감점만 켠다 — 표8~표12에서 그
   // 세 축이 이 옷장에서 무효로 판정됐으므로 섞을 이유가 없다.
+  // off(0.0):     감점 없음 — recencyPenalty가 current의 기본값이 되기
+  //                전(current) 리포트 비교 기준선을 계속 쓸 수 있게 남겨둔다.
   // tieBreak(0.4): 동점 집합 안에서만 재정렬. 격식 등급을 절대 넘지 않는다.
+  //                current의 기본값과 동일하다(둘 다 표14 채택값 0.4).
   // moderate(1.0): 무채색 보너스(+1)와 같은 크기 — 최근 입은 무채색보다
   //                안 입은 유채색이 앞선다.
   // strong(2.0):   격식 인접 등급(3↔1)까지 넘어설 수 있다. 회전은 최대지만
   //                TPO 정확도를 해칠 수 있어 실측 없이는 쓰지 않는다.
+  static const diversityOff = TpoMatchPolicy(recencyPenalty: 0.0);
   static const diversityTieBreak = TpoMatchPolicy(recencyPenalty: 0.4);
   static const diversityModerate = TpoMatchPolicy(recencyPenalty: 1.0);
   static const diversityStrong = TpoMatchPolicy(recencyPenalty: 2.0);
