@@ -81,7 +81,7 @@ class AgentPlanner {
       if (planned.isEmpty) return (created: 0, firstLabel: null);
       debugPrint('[PLAN] 선제 추천 체크: 다가오는 예정 ${planned.length}건');
 
-      final wardrobe = await FirestoreService.wardrobeStream().first;
+      final wardrobe = await FirestoreService.wardrobeStream(uid).first;
       final usable = wardrobe.where((i) => i.attributes != null).toList();
       if (usable.length < 2) return (created: 0, firstLabel: null);
 
@@ -625,7 +625,7 @@ class AgentPlanner {
   // 결과는 UI 카드로 반환하고, 저장은 사용자가 날짜별로 확정할 때 이뤄진다.
   // 진행 불가/실패는 조용히 넘기지 않고 StateError로 사유를 던져 UI가 안내한다.
   static Future<List<WeeklyPlanDay>> generateWeeklyPlan(String uid) async {
-    final wardrobe = await FirestoreService.wardrobeStream().first;
+    final wardrobe = await FirestoreService.wardrobeStream(uid).first;
     final usable = wardrobe.where((i) => i.attributes != null).toList();
     if (usable.length < 2) {
       throw StateError('플랜을 세우려면 속성이 분석된 옷이 2벌 이상 필요해요.');
@@ -810,7 +810,7 @@ class AgentPlanner {
         ),
       ));
 
-      final existingItems = await FirestoreService.wardrobeStream().first;
+      final existingItems = await FirestoreService.wardrobeStream(uid).first;
       final candidates = OutfitMatcher.findCandidateMatches(
         newItem: newItem,
         existingItems: existingItems,

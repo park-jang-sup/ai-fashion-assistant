@@ -16,6 +16,9 @@ class WardrobeItem {
   // FashionCLIP 512차원 L2정규화 벡터(tools/backfill_embeddings로 백필됨).
   // null = 백필 이전 데이터이거나 백필 대상 제외('전신' 카테고리 등).
   final List<double>? embedding;
+  // 이 옷을 소유한 사용자. 레거시 문서(백필 이전)에는 없을 수 있어 nullable.
+  // 화면에서 쓰지는 않지만, 쿼리 필터와 쓰기 시 기록을 위해 모델에 둔다.
+  final String? ownerUid;
 
   const WardrobeItem({
     required this.id,
@@ -27,6 +30,7 @@ class WardrobeItem {
     this.attributes,
     this.size,
     this.embedding,
+    this.ownerUid,
   });
 
   factory WardrobeItem.fromFirestore(DocumentSnapshot doc) {
@@ -47,6 +51,7 @@ class WardrobeItem {
       embedding: (embeddingMap?['vector'] as List?)
           ?.map((e) => (e as num).toDouble())
           .toList(),
+      ownerUid: data['ownerUid'] as String?,
     );
   }
 
@@ -58,5 +63,6 @@ class WardrobeItem {
         'createdAt': FieldValue.serverTimestamp(),
         if (attributes != null) 'attributes': attributes!.toFirestore(),
         if (size != null) 'size': size!.toFirestore(),
+        if (ownerUid != null) 'ownerUid': ownerUid,
       };
 }

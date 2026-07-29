@@ -18,9 +18,13 @@ class FirestoreService {
   static const _fittingCacheCol = 'fitting_cache';
   static const _usersCol = 'users';
 
-  static Stream<List<WardrobeItem>> wardrobeStream() {
+  // uid를 인자로 받는다 — 이 서비스가 FirebaseAuth를 직접 참조하지 않고
+  // 호출부가 명시적으로 넘기게 해서, 인증이 아직 복원되지 않은 시점에
+  // 빈 문자열이나 임의 값으로 조회하는 실수를 호출부에서 막게 한다.
+  static Stream<List<WardrobeItem>> wardrobeStream(String uid) {
     return _db
         .collection(_wardrobeCol)
+        .where('ownerUid', isEqualTo: uid)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map(
@@ -36,6 +40,7 @@ class FirestoreService {
     required String category,
     String? subCategory,
     ClothingSize? size,
+    required String ownerUid,
   }) async {
     final doc = await _db.collection(_wardrobeCol).add({
       'imageUrl': imageUrl,
@@ -44,6 +49,7 @@ class FirestoreService {
       if (subCategory != null) 'subCategory': subCategory,
       'createdAt': FieldValue.serverTimestamp(),
       if (size != null) 'size': size.toFirestore(),
+      'ownerUid': ownerUid,
     });
     return doc.id;
   }

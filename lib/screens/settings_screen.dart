@@ -7,6 +7,7 @@ import 'package:workmanager/workmanager.dart';
 import '../constants/app_colors.dart';
 import '../models/user_profile.dart';
 import '../services/firestore_service.dart';
+import '../services/google_auth_service.dart';
 import '../services/notification_service.dart';
 import 'agent_log_screen.dart';
 import 'body_profile_screen.dart';
@@ -27,6 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   UserProfile? _profile;
   bool _pushEnabled = true;
   bool _marketingEnabled = false;
+  bool _linkingGoogle = false;
 
   @override
   void initState() {
@@ -132,6 +134,94 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // 이미 연동된 구글 계정 이메일. 없으면 null(미연동).
+  String? _linkedGoogleEmail() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+    for (final info in user.providerData) {
+      if (info.providerId == 'google.com') return info.email;
+    }
+    return null;
+  }
+
+  // E.2 — 교체가 아니라 승격: 지금 세션(익명 uid 포함)에 구글 계정을
+  // 연결한다. linkWithCredential은 uid를 바꾸지 않으므로 옷장/이력이
+  // 그대로 유지된다(signInWithCredential을 쓰면 새 uid로 전환돼 기존
+  // 데이터가 고아가 되므로 여기서는 절대 쓰지 않는다).
+  Future<void> _linkGoogleAccount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    setState(() => _linkingGoogle = true);
+    try {
+      final credential = await GoogleAuthService.pickCredential();
+      if (credential == null) return; // 계정 선택 취소
+
+      try {
+        await user.linkWithCredential(credential);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Google 계정이 연동되었습니다.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'provider-already-linked') {
+          // 이미 연결됨 — 조용히 성공 처리.
+        } else if (e.code == 'credential-already-in-use') {
+          // 이 구글 계정이 이미 다른 uid에 연결돼 있다(예: 재설치 후 다시
+          // 연동을 시도하는 경우). 묻지 않고 전환하면 지금 기기의 데이터가
+          // 고아가 되므로, 사용자 동의를 받은 뒤에만 그 기존 계정으로
+          // signInWithCredential 전환한다.
+          await _handleCredentialAlreadyInUse(credential);
+        } else {
+          rethrow;
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('연동 실패: $e'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _linkingGoogle = false);
+    }
+  }
+
+  Future<void> _handleCredentialAlreadyInUse(AuthCredential credential) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('이미 연결된 계정'),
+        content: const Text(
+          '이 Google 계정은 이미 다른 계정에 연결되어 있습니다.\n'
+          '기존 계정으로 로그인하시겠습니까? 현재 기기의 데이터는 유지되지 않습니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('로그인', style: TextStyle(color: AppColors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await FirebaseAuth.instance.signInWithCredential(credential);
+      // uid가 바뀌므로 main.dart의 authStateChanges StreamBuilder가 이 화면을
+      // 포함해 앱 전체를 그 기존 계정 상태로 다시 그린다.
+    }
+  }
+
   // agent_meta/background 문서를 실시간 표시 — "백그라운드가 안 돌고
   // 있는데 모르는" 상황을 막는 유일한 장치(B.5).
   Widget _buildBackgroundStatus(String uid) {
@@ -179,6 +269,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     final showBackgroundDiagnostics =
         defaultTargetPlatform == TargetPlatform.android && uid != null;
+    final linkedGoogleEmail = _linkedGoogleEmail();
     return Container(
       color: Colors.white,
       child: SingleChildScrollView(
@@ -243,6 +334,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _SettingsRow(label: '개인정보처리방침', onTap: () => _comingSoon('개인정보처리방침')),
                 _SettingsRow(label: '오픈소스 라이선스', onTap: _openLicensePage),
                 const _SettingsRow(label: '앱 버전', trailingText: '1.0.0'),
+                const SizedBox(height: 28),
+                const _SectionLabel('계정'),
+                _SettingsRow(
+                  label: '계정 연동',
+                  trailingText: linkedGoogleEmail ??
+                      (_linkingGoogle ? '연동 중...' : 'Google 계정 연동'),
+                  onTap: linkedGoogleEmail == null && !_linkingGoogle
+                      ? _linkGoogleAccount
+                      : null,
+                ),
                 const SizedBox(height: 32),
                 GestureDetector(
                   onTap: _signOut,

@@ -287,7 +287,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 // 대표 아이템 썸네일을 만들려면 itemIds → WardrobeItem 매칭이
                 // 필요하다(_recordedEntryCard 참고).
                 : StreamBuilder<List<WardrobeItem>>(
-                    stream: FirestoreService.wardrobeStream(),
+                    // uid를 못 구하면 스트림을 만들지 않는다(빈 문자열/임의
+                    // 값 조회로 "옷장이 비었다"는 잘못된 화면을 막기 위함).
+                    stream: _uid != null
+                        ? FirestoreService.wardrobeStream(_uid!)
+                        : const Stream<List<WardrobeItem>>.empty(),
                     builder: (context, wardrobeSnapshot) {
                       final wardrobeById = {
                         for (final w in wardrobeSnapshot.data ?? const <WardrobeItem>[]) w.id: w,

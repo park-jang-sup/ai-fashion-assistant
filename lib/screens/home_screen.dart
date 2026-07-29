@@ -181,7 +181,7 @@ class _RecommendationCard extends StatelessWidget {
         final entry = snapshot.data;
         if (entry != null) {
           return StreamBuilder<List<WardrobeItem>>(
-            stream: FirestoreService.wardrobeStream(),
+            stream: FirestoreService.wardrobeStream(uid),
             builder: (context, wardrobeSnapshot) {
               final byId = {
                 for (final i in wardrobeSnapshot.data ?? const <WardrobeItem>[]) i.id: i,
@@ -838,7 +838,8 @@ class _WeeklyCalendarSectionState extends State<_WeeklyCalendarSection> {
     // 그날 기록이 여러 건이어도(예: 나중에 다시 기록) 모두 한눈에 보이도록
     // 옷장 스트림을 구독해 대표 이미지까지 갖춘 카드로 전부 나열한다.
     return StreamBuilder<List<WardrobeItem>>(
-      stream: FirestoreService.wardrobeStream(),
+      // build() 맨 앞에서 _uid == null이면 이미 return된 뒤라 여기선 non-null.
+      stream: FirestoreService.wardrobeStream(_uid!),
       builder: (context, snapshot) {
         final wardrobeById = {
           for (final w in snapshot.data ?? const <WardrobeItem>[]) w.id: w,

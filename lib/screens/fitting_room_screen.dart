@@ -1496,7 +1496,9 @@ Future<List<_PopupSlide>> _matchStyleRecommendations(
   final selectedWithAttrs = selected.where((i) => i.attributes != null).toList();
   if (selectedWithAttrs.isEmpty) return const [];
 
-  final wardrobe = await FirestoreService.wardrobeStream().first;
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) return const [];
+  final wardrobe = await FirestoreService.wardrobeStream(uid).first;
   final fittingIds = selected.map((i) => i.id).toSet();
   const allCategories = ['상의', '하의', '아우터', '신발', '액세서리'];
 
@@ -1830,6 +1832,7 @@ class _WardrobePickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
       minChildSize: 0.4,
@@ -1890,7 +1893,11 @@ class _WardrobePickerSheet extends StatelessWidget {
               ),
               Expanded(
                 child: StreamBuilder<List<WardrobeItem>>(
-                  stream: FirestoreService.wardrobeStream(),
+                  // uid를 못 구하면 스트림을 만들지 않는다(빈 문자열/임의 값
+                  // 조회로 "옷장이 비었다"는 잘못된 화면을 막기 위함).
+                  stream: uid != null
+                      ? FirestoreService.wardrobeStream(uid)
+                      : const Stream<List<WardrobeItem>>.empty(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(

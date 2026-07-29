@@ -19,7 +19,8 @@ Future<void> runSimilarityCheck() async {
   if (FirebaseAuth.instance.currentUser == null) {
     await FirebaseAuth.instance.signInAnonymously();
   }
-  final wardrobe = await FirestoreService.wardrobeStream().first;
+  final uid = FirebaseAuth.instance.currentUser!.uid;
+  final wardrobe = await FirestoreService.wardrobeStream(uid).first;
   final withEmbedding = wardrobe.where((i) => i.embedding != null).length;
   debugPrint('[유사옷검색] 전체 옷장 ${wardrobe.length}벌 중 '
       'embedding 있음 $withEmbedding벌 / 없음 ${wardrobe.length - withEmbedding}벌');

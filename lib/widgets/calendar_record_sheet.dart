@@ -103,7 +103,7 @@ class _CalendarRecordSheetState extends State<_CalendarRecordSheet> {
     if (uid == null) return const _SheetData(fittings: [], wardrobe: []);
     final results = await Future.wait([
       FirestoreService.getRecentHistorySilently(uid, limit: 50),
-      FirestoreService.wardrobeStream().first,
+      FirestoreService.wardrobeStream(uid).first,
     ]);
     final history = results[0] as List<OutfitHistoryEntry>;
     final wardrobe = results[1] as List<WardrobeItem>;

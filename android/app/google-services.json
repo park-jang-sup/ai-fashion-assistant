@@ -12,7 +12,20 @@
           "package_name": "com.fashionai.ai_fashion_assistant"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "838064162852-m64nttvnu9f6l1acskrt7l39rn9hs6m3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fashionai.ai_fashion_assistant",
+            "certificate_hash": "735208c47d0676f6ece87738cd2df451440106da"
+          }
+        },
+        {
+          "client_id": "838064162852-is9nsjsdlsm7sbc9fb94jcperfpod13r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAnbQKKgj2vxyUI7nbqRj7TJ8HpT4Q8OnI"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "838064162852-is9nsjsdlsm7sbc9fb94jcperfpod13r.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "838064162852-ka3iodec6sjatk7d813c7uh6va5kralc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.yujaehyuk.fashionai.test3462"
+              }
+            }
+          ]
         }
       }
     }

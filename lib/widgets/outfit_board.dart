@@ -528,6 +528,7 @@ class _BoardItemPickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     return SafeArea(
       child: Container(
         decoration: const BoxDecoration(
@@ -609,7 +610,12 @@ class _BoardItemPickerSheet extends StatelessWidget {
             SizedBox(
               height: 150,
               child: StreamBuilder<List<WardrobeItem>>(
-                stream: FirestoreService.wardrobeStream(),
+                // uid를 못 구하면(인증 미복원) 빈 문자열/임의 값으로 조회하지
+                // 않고 스트림 자체를 만들지 않는다 — "옷장이 비었다"는 잘못된
+                // 화면을 막기 위함.
+                stream: uid != null
+                    ? FirestoreService.wardrobeStream(uid)
+                    : const Stream<List<WardrobeItem>>.empty(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(

@@ -2,17 +2,23 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 현재 앱은 uid로 아이템을 구분하지 않고 모든 로그인 사용자가
-    // 같은 wardrobe 컬렉션을 공유한다. 일단 "인증된 사용자만 허용"으로
-    // permission-denied를 해결하되, 사용자별 데이터 분리는 별도 작업 필요.
+    // 옷장 — 본인 것만. ownerUid가 없는 문서(백필 누락)는 읽히지 않는다.
     match /wardrobe/{itemId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null
+                  && resource.data.ownerUid == request.auth.uid;
+      allow create: if request.auth != null
+                    && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if request.auth != null
+                            && resource.data.ownerUid == request.auth.uid;
     }
 
     // fitting_job_controller.dart가 가상 피팅 결과를 캐싱하는 컬렉션.
-    // doc id는 사용자 사진+옷 조합의 SHA-256 해시라 개인 식별 정보가 아니다.
+    // doc id가 "사용자 사진 + 옷 조합"의 SHA-256이라 열거만 막으면 충분하다.
+    // 키를 아는 본인만 접근할 수 있고, 키는 자기 사진에서 파생되므로 남이
+    // 만들어낼 수 없다. 코드가 doc id 직접 접근만 하므로 list는 필요 없다.
     match /fitting_cache/{cacheKey} {
-      allow read, write: if request.auth != null;
+      allow get, write: if request.auth != null;
+      allow list: if false;
     }
 
     // 체형/취향 프로필(키·몸무게·퍼스널컬러 등)은 개인 민감정보라

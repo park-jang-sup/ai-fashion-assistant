@@ -137,6 +137,8 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   // 화면을 나가도 절대 dispose하지 않는 것으로 레이스 자체를 없앤다.
   static Future<void>? _bgRemoverInitFuture;
 
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+
   @override
   void initState() {
     super.initState();
@@ -505,6 +507,21 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   }
 
   Future<void> _pickAndUpload(ImageSource source) async {
+    // 소유자 없이는 문서를 쓸 수 없다 — 업로드 흐름(사진 선택→크롭→카테고리
+    // 선택→...)을 다 거치고 나서야 실패하면 사용자 입력이 낭비되므로 맨 앞에서
+    // 확인한다.
+    final ownerUid = _uid;
+    if (ownerUid == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('로그인 상태를 확인할 수 없어 등록할 수 없습니다.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
     // 해상도를 미리 낮춰 두면 Storage 업로드는 물론, 이후 AI 분석/피팅 때마다
     // 반복되는 다운로드·base64 인코딩 페이로드도 함께 줄어든다.
     var xFile = await ImagePicker().pickImage(
@@ -585,6 +602,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         category: category,
         subCategory: subCategory,
         size: size,
+        ownerUid: ownerUid,
       );
       // 속성 추출은 업로드 완료를 기다리게 하지 않고 백그라운드로 흘려보낸다.
       // (배경 제거본이 아니라 항상 원본으로 분석 — 배경 제거 결과가 나빠도
@@ -656,7 +674,11 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     return Stack(
       children: [
         StreamBuilder<List<WardrobeItem>>(
-          stream: FirestoreService.wardrobeStream(),
+          // uid를 못 구하면 스트림을 만들지 않는다(빈 문자열/임의 값 조회로
+          // "옷장이 비었다"는 잘못된 화면을 막기 위함).
+          stream: _uid != null
+              ? FirestoreService.wardrobeStream(_uid!)
+              : const Stream<List<WardrobeItem>>.empty(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const _LoadingView();

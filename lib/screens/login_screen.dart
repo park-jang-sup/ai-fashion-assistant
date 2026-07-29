@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_colors.dart';
+import '../services/google_auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,10 +13,17 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
-  Future<void> _signInAnonymously() async {
+  // 이 화면은 currentUser가 없을 때만 보인다(main.dart의 authStateChanges
+  // 라우팅) — 연결할 기존 세션이 없으므로 link가 아니라 signIn이다.
+  // 이 Google 계정이 이미 다른 uid에 연결돼 있었다면(재설치 케이스) 그
+  // uid로 그대로 로그인되어 옷장/이력이 복원된다 — E단계 관문 2가 바로
+  // 이 경로다.
+  Future<void> _continueWithGoogle() async {
     setState(() => _isLoading = true);
     try {
-      await FirebaseAuth.instance.signInAnonymously();
+      final credential = await GoogleAuthService.pickCredential();
+      if (credential == null) return; // 사용자가 계정 선택을 취소함
+      await FirebaseAuth.instance.signInWithCredential(credential);
       // 성공 시 StreamBuilder가 AppShell로 자동 전환
     } catch (e) {
       if (mounted) {
@@ -97,7 +105,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLoginButtons() {
     return Column(
       children: [
-        // Google — 현재 실제 동작하는 로그인(익명 인증)에 연결해 테스트 가능하게 유지
         _SnsButton(
           label: 'Google로 계속하기',
           color: Colors.white,
@@ -106,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
           icon: Icons.g_mobiledata,
           iconColor: const Color(0xFF4285F4),
           loading: _isLoading,
-          onTap: _isLoading ? null : _signInAnonymously,
+          onTap: _isLoading ? null : _continueWithGoogle,
         ),
         const SizedBox(height: 12),
         _SnsButton(
