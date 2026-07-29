@@ -15,13 +15,21 @@ import 'screens/wardrobe_screen.dart';
 import 'screens/fitting_room_screen.dart';
 import 'screens/calendar_screen.dart';
 import 'screens/settings_screen.dart';
+import 'package:workmanager/workmanager.dart';
 import 'services/agent_planner.dart';
 import 'services/agent_sweeper.dart';
+import 'services/background_agent.dart';
 import 'services/fitting_job_controller.dart';
 import 'services/fitting_progress.dart';
 import 'services/notification_service.dart';
 import 'debug/similarity_check.dart';
 import 'firebase_options.dart';
+
+// 킬 스위치 — B단계에서 도입한 백그라운드 코드를 컴파일 타임에 통째로 끈다.
+// `--dart-define=BG_AGENT=false`로 빌드하면 등록 코드가 건너뛰어져 A단계와
+// 완전히 동일하게 동작한다(USE_EMULATOR, RUN_SIMILARITY_CHECK와 동일 패턴).
+const kEnableBackgroundAgent =
+    bool.fromEnvironment('BG_AGENT', defaultValue: true);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -72,6 +80,29 @@ void main() async {
       await NotificationService.requestPermissionIfNeeded();
     } catch (e) {
       debugPrint('[Notification] 초기화 실패(무시하고 앱 계속): $e');
+    }
+  }
+
+  // 백그라운드 주기 실행 등록(B단계). Android 전용 — iOS의 Background Fetch는
+  // OS 재량이라 하루 한 번도 보장되지 않아 이번 범위에서 제외한다. 이 저장소는
+  // 릴리스 빌드에서만 터지는 네이티브 결함을 이미 겪었으므로, 등록 실패가
+  // 앱 기동 자체를 막지 않도록 통째로 감싼다.
+  if (kEnableBackgroundAgent && defaultTargetPlatform == TargetPlatform.android) {
+    try {
+      // isInDebugMode는 workmanager 0.9.0부터 deprecated·무동작이라 넘기지 않는다.
+      await Workmanager().initialize(backgroundCallbackDispatcher);
+      await Workmanager().registerPeriodicTask(
+        'dot-proactive-check',
+        'proactiveCheck',
+        frequency: const Duration(hours: 3),
+        // keep이 중요하다 — 앱을 열 때마다 replace하면 주기가 계속 리셋되어
+        // 영영 실행되지 않는다. (workmanager 0.9.0부터 periodic task는
+        // ExistingWorkPolicy가 아니라 ExistingPeriodicWorkPolicy를 쓴다.)
+        existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+        constraints: Constraints(networkType: NetworkType.connected),
+      );
+    } catch (e) {
+      debugPrint('[BG] 등록 실패(무시하고 앱 계속): $e');
     }
   }
 

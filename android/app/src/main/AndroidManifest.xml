@@ -11,6 +11,8 @@
         android:maxSdkVersion="28"/>
     <!-- 로컬 알림: Android 13+ 런타임 권한 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- WorkManager 주기 작업: 기기 재부팅 후에도 등록된 작업이 다시 스케줄되도록 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:label="ai_fashion_assistant"

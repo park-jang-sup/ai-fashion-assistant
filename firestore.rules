@@ -55,5 +55,10 @@ service cloud.firestore {
     match /users/{uid}/agent_tasks/{taskId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
+
+    // 백그라운드 실행 메타(마지막 실행 시각·결과) — 본인 것만.
+    match /users/{uid}/agent_meta/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
   }
 }

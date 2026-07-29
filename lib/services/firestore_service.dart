@@ -555,6 +555,48 @@ class FirestoreService {
     }
   }
 
+  // ── 백그라운드 실행 메타(진단용 — 마지막 실행 시각·결과, 본인만 접근 가능) ──
+  // BackgroundAgent의 빈도 가드가 참조하는 단일 문서. "가드 읽기/쓰기가
+  // 실패하면 실행하지 않는다" 원칙 때문에 다른 agent_* 메서드와 달리 실패를
+  // 삼키지 않고 그대로 던진다 — 호출부(BackgroundAgent.run)가 예외 여부로
+  // 가드 신뢰 가능 여부를 판단해야 한다.
+  static const _agentMetaCol = 'agent_meta';
+  static const _agentMetaBackgroundDocId = 'background';
+
+  static Future<Map<String, dynamic>?> getBackgroundAgentMeta(String uid) async {
+    final doc = await _db
+        .collection(_usersCol)
+        .doc(uid)
+        .collection(_agentMetaCol)
+        .doc(_agentMetaBackgroundDocId)
+        .get();
+    return doc.data();
+  }
+
+  static Future<void> setBackgroundAgentMeta(
+    String uid,
+    Map<String, dynamic> data,
+  ) async {
+    await _db
+        .collection(_usersCol)
+        .doc(uid)
+        .collection(_agentMetaCol)
+        .doc(_agentMetaBackgroundDocId)
+        .set(data, SetOptions(merge: true));
+  }
+
+  // 설정 화면의 상태 표시(B.5)용 — 백그라운드가 문서를 갱신하면 앱이 열려
+  // 있어도 실시간으로 반영된다.
+  static Stream<Map<String, dynamic>?> backgroundAgentMetaStream(String uid) {
+    return _db
+        .collection(_usersCol)
+        .doc(uid)
+        .collection(_agentMetaCol)
+        .doc(_agentMetaBackgroundDocId)
+        .snapshots()
+        .map((doc) => doc.data());
+  }
+
   // ── 착장 캘린더 (OOTD 기록, 본인만 접근 가능) ──
   // date 필드의 range(>=, <=)와 orderBy가 같은 필드라 복합 인덱스가 필요 없다.
   static const _calendarCol = 'calendar';

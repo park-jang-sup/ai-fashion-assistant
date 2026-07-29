@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
+import 'package:workmanager/workmanager.dart';
 import '../constants/app_colors.dart';
 import '../models/user_profile.dart';
 import '../services/firestore_service.dart';
@@ -75,6 +79,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // B단계 검증용 — 3시간 주기를 기다리지 않고 즉시 확인한다. force: true로
+  // 빈도 가드를 우회한다.
+  void _triggerBackgroundNow() {
+    Workmanager().registerOneOffTask(
+      'dot-bg-manual-${DateTime.now().millisecondsSinceEpoch}',
+      'proactiveCheck',
+      inputData: {'force': true},
+    );
+  }
+
+  // 시연용 — 버튼 → 앱 완전 종료 → 잠금화면 알림 순서로 촬영하기 위해 30초
+  // 지연을 둔다. 즉시 실행은 앱이 열린 상태에서 알림이 뜨므로 "앱을 안
+  // 켜도 준비된다"의 증명이 되지 못한다.
+  void _triggerBackgroundDelayed() {
+    Workmanager().registerOneOffTask(
+      'dot-bg-delayed-${DateTime.now().millisecondsSinceEpoch}',
+      'proactiveCheck',
+      initialDelay: const Duration(seconds: 30),
+      inputData: {'force': true},
+    );
+  }
+
   void _openLicensePage() {
     showLicensePage(
       context: context,
@@ -106,8 +132,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // agent_meta/background 문서를 실시간 표시 — "백그라운드가 안 돌고
+  // 있는데 모르는" 상황을 막는 유일한 장치(B.5).
+  Widget _buildBackgroundStatus(String uid) {
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: FirestoreService.backgroundAgentMetaStream(uid),
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        if (data == null) {
+          return const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text('아직 실행 기록 없음',
+                style: TextStyle(color: AppColors.textPlaceholder, fontSize: 11)),
+          );
+        }
+        final fmt = DateFormat('MM/dd HH:mm:ss');
+        final startedAt = (data['startedAt'] as Timestamp?)?.toDate();
+        final lastRunAt = (data['lastRunAt'] as Timestamp?)?.toDate();
+        final lastError = data['lastError'] as String?;
+        final incomplete = startedAt != null &&
+            (lastRunAt == null || startedAt.isAfter(lastRunAt));
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '마지막 완료: ${lastRunAt != null ? fmt.format(lastRunAt) : '없음'}',
+                style: const TextStyle(color: AppColors.textPlaceholder, fontSize: 11),
+              ),
+              if (incomplete)
+                const Text('⚠ 마지막 실행이 완료되지 않음',
+                    style: TextStyle(color: AppColors.red, fontSize: 11)),
+              if (lastError != null)
+                Text('오류: $lastError',
+                    style: const TextStyle(color: AppColors.red, fontSize: 11)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final showBackgroundDiagnostics =
+        defaultTargetPlatform == TargetPlatform.android && uid != null;
     return Container(
       color: Colors.white,
       child: SingleChildScrollView(
@@ -155,6 +226,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: (v) => setState(() => _marketingEnabled = v),
                   ),
                 ),
+                if (showBackgroundDiagnostics) ...[
+                  const SizedBox(height: 28),
+                  const _SectionLabel('백그라운드 에이전트(진단)'),
+                  _buildBackgroundStatus(uid),
+                  _SettingsRow(label: '즉시 실행 (테스트)', onTap: _triggerBackgroundNow),
+                  _SettingsRow(
+                    label: '지연 실행 30초 (시연용)',
+                    sub: '누른 뒤 앱을 완전히 종료해도 실행됩니다',
+                    onTap: _triggerBackgroundDelayed,
+                  ),
+                ],
                 const SizedBox(height: 28),
                 const _SectionLabel('정보'),
                 _SettingsRow(label: '이용약관', onTap: () => _comingSoon('이용약관')),
