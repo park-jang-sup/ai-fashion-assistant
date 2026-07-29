@@ -47,24 +47,43 @@ class AgentPlanner {
     return DateTime(now.year, now.month, now.day);
   }
 
-  // ── 레벨 1: 선제 추천 트리거 (홈 진입 시 1회) ────────────
+  // ── 레벨 1: 선제 추천 트리거 (홈 진입 시 1회 / 백그라운드 주기 실행) ──
   // 오늘~+3일의 'planned' 예정 중 아직 추천이 없는 날에 대해, TPO 격식에 맞는
   // 조합을 자기 평가 루프로 골라 미리 추천으로 저장한다. 부가 기능이라 어느
   // 단계에서 실패하든 조용히 무시한다.
-  static Future<void> runProactiveCheck(String uid) async {
+  //
+  // 반환값(C단계 — 백그라운드 알림 문구용): created는 이번 실행에서 새로
+  // 저장된 추천 건수, firstLabel은 그중 첫 번째 추천의 표시용 라벨(예:
+  // "내일 [결혼식]")이다. 실패/스킵 시 (created: 0, firstLabel: null).
+  // 앱 내 기존 호출부(main.dart)는 이 반환값을 쓰지 않으므로 영향이 없다.
+  //
+  // maxPlans는 백그라운드 실행 시간 상한(WorkManager ~10분) 때문에 도입한
+  // 처리량 제한이다. null이면 현행과 동일하게 제한이 없다 — 앱 내 호출은
+  // 인자를 넘기지 않으므로 동작이 바뀌지 않는다. planned는 이미 date
+  // 오름차순으로 조회되므로(calendarEntriesForRange의 orderBy('date')),
+  // take(maxPlans)는 자연히 "가장 가까운 일정부터" N건을 고른다.
+  static Future<({int created, String? firstLabel})> runProactiveCheck(
+    String uid, {
+    int? maxPlans,
+  }) async {
+    var created = 0;
+    String? firstLabel;
     try {
       final today = _todayMidnight();
       final horizon = today.add(const Duration(days: _proactiveHorizonDays));
       final entries = await FirestoreService.calendarEntriesForRange(uid, today, horizon);
       // isPlanned==false(이미 착장을 기록/확정한 날)는 여기서 이미 제외되므로
       // "기록된 날은 재계획하지 않는다"는 별도 체크가 필요 없다.
-      final planned = entries.where((e) => e.isPlanned).toList();
-      if (planned.isEmpty) return;
+      var planned = entries.where((e) => e.isPlanned).toList();
+      if (maxPlans != null) {
+        planned = planned.take(maxPlans).toList();
+      }
+      if (planned.isEmpty) return (created: 0, firstLabel: null);
       debugPrint('[PLAN] 선제 추천 체크: 다가오는 예정 ${planned.length}건');
 
       final wardrobe = await FirestoreService.wardrobeStream().first;
       final usable = wardrobe.where((i) => i.attributes != null).toList();
-      if (usable.length < 2) return;
+      if (usable.length < 2) return (created: 0, firstLabel: null);
 
       final weather = await WeatherService.fetch();
 
@@ -120,14 +139,21 @@ class AgentPlanner {
           ));
         }
 
-        await _prepareRecommendationFor(uid, plan, usable,
+        final madeRecommendation = await _prepareRecommendationFor(
+            uid, plan, usable,
             replanCount: replanCount, previousItemIds: previousItemIds);
+        if (madeRecommendation) {
+          created++;
+          firstLabel ??= '${_relativeLabel(plan.date)} [${plan.tpoTag}]';
+        }
         if (i < planned.length - 1) {
           await Future.delayed(_planStepDelay);
         }
       }
+      return (created: created, firstLabel: firstLabel);
     } catch (e) {
       debugPrint('[PLAN] 선제 추천 체크 예외로 중단: $e');
+      return (created: 0, firstLabel: null);
     }
   }
 
@@ -281,7 +307,8 @@ class AgentPlanner {
     return out;
   }
 
-  static Future<void> _prepareRecommendationFor(
+  // 반환값: 추천을 실제로 저장했으면 true (runProactiveCheck의 created 집계용).
+  static Future<bool> _prepareRecommendationFor(
     String uid,
     OutfitCalendarEntry plan,
     List<WardrobeItem> wardrobe, {
@@ -351,7 +378,7 @@ class AgentPlanner {
           relatedDocId: plan.id,
         ),
       ));
-      return;
+      return false;
     }
     unawaited(FirestoreService.addAgentLogSilently(
       uid,
@@ -417,7 +444,7 @@ class AgentPlanner {
         ));
       },
     );
-    if (outcome == null) return;
+    if (outcome == null) return false;
 
     // 매처가 차선을 줬거나(격식 부적합) Gemini 점수도 낮으면 fallback으로 표기.
     final isFallback =
@@ -476,7 +503,7 @@ class AgentPlanner {
       weatherNote: weatherNote,
     );
     final recId = await FirestoreService.addRecommendationSilently(uid, entry);
-    if (recId == null) return;
+    if (recId == null) return false;
 
     final scorePhrase = outcome.bestScore != null ? '${outcome.bestScore}점 조합을' : '조합을';
     unawaited(FirestoreService.addAgentLogSilently(
@@ -512,6 +539,7 @@ class AgentPlanner {
         ));
       }
     }
+    return true;
   }
 
   // 캘린더 기록과 대조할 추천을 찾을 때 허용하는 날짜 오차. 정확히 같은
