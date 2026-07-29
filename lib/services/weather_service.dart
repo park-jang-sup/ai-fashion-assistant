@@ -125,12 +125,20 @@ class WeatherService {
   static DateTime? _cachedAt;
   static const _cacheTtl = Duration(minutes: 30);
 
+  // 가장 최근 fetch() 호출(캐시 히트 포함)의 성공 여부 — 진단용 관찰 지점.
+  // 백그라운드 실행(background_agent.dart)이 agent_meta/background에
+  // lastWeatherOk로 그대로 기록해, 날씨 API 실패율을 실행 이력과 함께
+  // 추적할 수 있게 한다. 격리된 아이솔레이트마다 별도 상태라 백그라운드
+  // 실행 간 오염되지 않는다.
+  static bool lastFetchOk = true;
+
   // 실패(네트워크 오류/타임아웃/파싱 실패)하면 null — 호출부는 하드코딩된
   // 값으로 폴백하지 말고 위젯을 숨기거나 "불러오지 못했다"고 정직하게 표시한다.
   static Future<WeatherSnapshot?> fetch() async {
     final cached = _cache;
     final cachedAt = _cachedAt;
     if (cached != null && cachedAt != null && DateTime.now().difference(cachedAt) < _cacheTtl) {
+      lastFetchOk = true;
       return cached;
     }
 
@@ -146,6 +154,7 @@ class WeatherService {
       final response = await _client.get(uri).timeout(const Duration(seconds: 10));
       if (response.statusCode != 200) {
         debugPrint('[WEATHER] 조회 실패: HTTP ${response.statusCode}');
+        lastFetchOk = false;
         return null;
       }
       final snapshot = WeatherSnapshot.fromOpenMeteo(
@@ -155,9 +164,11 @@ class WeatherService {
       _cachedAt = DateTime.now();
       debugPrint('[WEATHER] 조회 성공: ${snapshot.current.tempC.round()}°C '
           '${snapshot.current.condition.label}, 7일 예보 ${snapshot.daily.length}건');
+      lastFetchOk = true;
       return snapshot;
     } catch (e) {
       debugPrint('[WEATHER] 조회 실패: $e');
+      lastFetchOk = false;
       return null;
     }
   }

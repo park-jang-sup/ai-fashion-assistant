@@ -4,7 +4,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 import '../firebase_options.dart';
+import 'agent_planner.dart';
+import 'agent_sweeper.dart';
 import 'firestore_service.dart';
+import 'notification_service.dart';
+import 'weather_service.dart';
 
 // WorkManager가 부르는 진입점. @pragma('vm:entry-point')가 없으면 릴리스
 // 빌드에서 트리 셰이킹으로 제거되어 "디버그는 정상, 릴리스만 안 도는" 형태로
@@ -16,8 +20,8 @@ void backgroundCallbackDispatcher() {
   });
 }
 
-// B단계: 콜백이 타임스탬프만 찍는 빈 백그라운드. 에이전트 로직(AgentSweeper,
-// AgentPlanner.runProactiveCheck)은 C단계에서 run()의 표시된 자리에 연결한다.
+// C단계: AgentSweeper(태스크 복구) → AgentPlanner.runProactiveCheck(선제
+// 추천, maxPlans로 처리량 제한) → 알림 순으로 연결한다.
 class BackgroundAgent {
   static const _minInterval = Duration(hours: 10);
 
@@ -98,19 +102,57 @@ class BackgroundAgent {
       return true;
     }
 
-    // ── C단계에서 채울 자리 ──────────────────────────────────
-    // 6-1. AgentSweeper.run(uid)
-    // 6-2. 3초 대기
-    // 6-3. AgentPlanner.runProactiveCheck(uid, maxPlans: 2)
-    // 6-4. created > 0 이면 NotificationService.showRecommendationReady(firstLabel)
-    // 6-5. 로그 드레인 대기
-    // B단계에서는 의도적으로 비워둔다.
+    var resultCreated = 0;
+    String? lastError;
+    try {
+      // 6-1. 상태 지속성 복구 — 실패한 태스크를 이어서 처리(최대 2건).
+      await AgentSweeper.run(uid);
+      // 6-2. API 호출 분산 — main.dart의 AppShell.initState와 동일한 취지.
+      await Future.delayed(const Duration(seconds: 3));
+      // 6-3. 선제 추천. WorkManager 실행 시간 한도(~10분) 때문에 가장
+      // 가까운 일정 2건까지만 처리한다(앱 내 호출은 제한 없음, 영향 없음).
+      final result = await AgentPlanner.runProactiveCheck(uid, maxPlans: 2);
+      resultCreated = result.created;
+      // 6-4. 새 추천이 생겼을 때만 알림 — 없는데 알림이 오면 사용자가 금방
+      // 끈다. 하루 상한은 이미 빈도 가드(10시간)가 맡고 있다.
+      if (result.created > 0 && result.firstLabel != null) {
+        try {
+          await NotificationService.init();
+          await NotificationService.showRecommendationReady(result.firstLabel!);
+        } catch (e) {
+          debugPrint('[BG] 알림 발송 실패(무시): $e');
+        }
+      }
+    } catch (e) {
+      // AgentSweeper.run / AgentPlanner.runProactiveCheck는 내부에서 이미
+      // 예외를 삼키므로 원칙적으로 여기 도달하지 않는다 — 방어적으로만 남긴다.
+      lastError = '$e';
+      debugPrint('[BG] 파이프라인 예외: $e');
+    }
+
+    // 6-5. 로그 드레인. agent_planner.dart의 활동 로그 쓰기(addAgentLogSilently)
+    // 상당수가 unawaited로 던져진다 — 포그라운드에서는 아이솔레이트가 계속
+    // 살아 있어 문제없지만, 이 콜백은 반환되는 순간 아이솔레이트가 종료되어
+    // 완료되지 않은 Firestore 쓰기가 잘려나갈 수 있다. 보장이 아니라 유예다.
+    // 근본 해법(전부 await로 전환)은 범위가 크고 동기 흐름의 지연을 늘려
+    // 하지 않는다 — 여기서 짧게 기다리는 것으로 한계를 감수한다.
+    await Future.delayed(const Duration(seconds: 3));
 
     try {
       await FirestoreService.setBackgroundAgentMeta(uid, {
         'lastRunAt': Timestamp.fromDate(DateTime.now()),
-        'lastResultCreated': 0,
-        'lastError': null,
+        'lastResultCreated': resultCreated,
+        'lastError': lastError,
+        // 진단용 — 날씨 API 실패율을 실행 이력과 함께 추적하기 위한 표시.
+        // 실패해도 실행에는 영향을 주지 않는다(WeatherService 호출부는
+        // 이미 null 폴백으로 조용히 넘어간다). 이번 실행에서 날씨를 한
+        // 번도 조회하지 않았으면(예: 처리할 일정이 없어 조기 반환) 기본값
+        // true가 그대로 유지된다.
+        'lastWeatherOk': WeatherService.lastFetchOk,
+        // 누적 카운터 — FieldValue.increment는 필드가 없으면 0에서
+        // 시작하므로 기존 문서에 없던 필드라도 별도 초기화가 필요 없다.
+        'weatherTotalCount': FieldValue.increment(1),
+        'weatherOkCount': FieldValue.increment(WeatherService.lastFetchOk ? 1 : 0),
       });
     } catch (e) {
       // 완료 기록 실패는 다음 실행 판단에 영향을 주지만, 이번 실행 자체는
