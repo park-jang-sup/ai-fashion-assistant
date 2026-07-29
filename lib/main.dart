@@ -19,6 +19,7 @@ import 'services/agent_planner.dart';
 import 'services/agent_sweeper.dart';
 import 'services/fitting_job_controller.dart';
 import 'services/fitting_progress.dart';
+import 'services/notification_service.dart';
 import 'debug/similarity_check.dart';
 import 'firebase_options.dart';
 
@@ -62,6 +63,17 @@ void main() async {
 
   // 착장 캘린더(table_calendar)의 한국어 월/요일 표기를 위해 로케일 데이터 초기화.
   await initializeDateFormatting('ko_KR', null);
+
+  // 로컬 알림 초기화 + 첫 실행 시 런타임 권한 요청(Android 13+). 신규 네이티브
+  // 플러그인 초기화라 실패해도 앱 구동을 막지 않도록 통째로 감싼다.
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    try {
+      await NotificationService.init();
+      await NotificationService.requestPermissionIfNeeded();
+    } catch (e) {
+      debugPrint('[Notification] 초기화 실패(무시하고 앱 계속): $e');
+    }
+  }
 
   if (isMobile) {
     await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);

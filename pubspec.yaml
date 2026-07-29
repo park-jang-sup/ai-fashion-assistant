@@ -30,6 +30,7 @@ dependencies:
   # 배경제거 ONNX→TFLite 교체 후보용. release 안정성 검증됨(스파이크 이력은
   # docs/tflite_background_removal_spike_notes.md 참조).
   tflite_flutter: ^0.12.1
+  flutter_local_notifications: ^17.2.3
 
 dev_dependencies:
   flutter_test:

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_colors.dart';
 import '../models/user_profile.dart';
 import '../services/firestore_service.dart';
+import '../services/notification_service.dart';
 import 'agent_log_screen.dart';
 import 'body_profile_screen.dart';
 import 'scrap_screen.dart';
@@ -133,6 +134,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 28),
                 const _SectionLabel('설정'),
                 _SettingsRow(label: '내 스크랩', onTap: _openScraps),
+                _SettingsRow(
+                  label: '테스트 알림 보내기',
+                  onTap: () =>
+                      NotificationService.showRecommendationReady('내일 [결혼식]'),
+                ),
                 _SettingsRow(
                   label: '푸시 알림',
                   trailing: Switch.adaptive(
