@@ -66,5 +66,17 @@ service cloud.firestore {
     match /users/{uid}/agent_meta/{docId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
+
+    // 데모 옷장 — 심사·시연용 공개 읽기 전용 세트(F'단계). 앱은 읽기만 하고,
+    // 채우는 것은 tools/seed_demo_wardrobe 스크립트로만 한다. write를 막아
+    // 사용자 데이터(users/{uid}, ownerUid 격리)와 컬렉션 수준에서 분리한다.
+    // imageUrl/cutoutImageUrl은 원본 wardrobe 문서 값을 그대로 재사용한다 —
+    // storage.rules가 wardrobe_images/wardrobe_cutouts를 request.auth != null
+    // read로 열어두고 있어 인증된 다른 계정에서도 로드된다는 성질에 기댄다.
+    // Storage를 사용자별로 조이면 데모 이미지도 함께 깨진다.
+    match /demo_wardrobe/{itemId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
   }
 }

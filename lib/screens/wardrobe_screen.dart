@@ -810,6 +810,46 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     );
   }
 
+  // F'.1.4 — 데모 옷장(demo_wardrobe) 118벌을 현재 계정으로 복사한다.
+  // items.isEmpty일 때만 렌더링되는 _buildEmptyState() 안에만 두어(700~701행),
+  // 시드 후 이 자리가 그리드로 교체되며 버튼이 자연히 사라진다 — 별도의
+  // 중복 시드 경로를 만들지 않는다. _isUploading으로 잠가 연타를 막는다
+  // (기존 업로드 오버레이를 재사용 — F'.1.4의 "로딩 상태 필수" 요구).
+  Future<void> _seedDemoWardrobe() async {
+    final uid = _uid;
+    if (uid == null) return;
+    setState(() {
+      _busyTitle = '데모 옷장을 불러오는 중입니다...';
+      _busySubtitle = '118벌을 준비하고 있어요, 잠시만 기다려 주세요';
+      _isUploading = true;
+    });
+    try {
+      final count = await FirestoreService.seedDemoWardrobe(uid);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('데모 옷장 $count벌을 불러왔습니다.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      // 이 경로는 폴백이 "아무것도 하지 않음"이면 안 된다(F'.1.4) — 실패를
+      // 조용히 삼키지 않고 재시도 가능한 안내를 낸다.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('데모 옷장을 불러오지 못했습니다: $e — 다시 시도해 주세요'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -838,6 +878,30 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
           const Text(
             '새 옷을 등록해 보세요!',
             style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+          ),
+          const SizedBox(height: 24),
+          GestureDetector(
+            onTap: _isUploading ? null : _seedDemoWardrobe,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Text(
+                '데모 옷장 불러오기',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '내 옷을 등록하기 전에 기능을 먼저 확인할 수 있어요',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
         ],
       ),

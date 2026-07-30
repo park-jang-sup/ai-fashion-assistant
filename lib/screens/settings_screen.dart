@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:workmanager/workmanager.dart';
 import '../constants/app_colors.dart';
 import '../models/user_profile.dart';
+import '../services/background_agent.dart';
 import '../services/firestore_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/notification_service.dart';
@@ -101,6 +103,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
       initialDelay: const Duration(seconds: 30),
       inputData: {'force': true},
     );
+  }
+
+  // F'.3 계측 검증용 — inputData 없이 등록한다. backgroundCallbackDispatcher가
+  // `inputData?['force'] == true`로 읽으므로 이 경로는 force:false로
+  // run()에 들어가 실제 빈도 가드(shouldRunNow)를 그대로 태운다. 위 두
+  // 버튼은 force:true라 가드를 항상 우회해 skipped:true를 온디맨드로 만들
+  // 수 없었다 — 이 버튼이 그 결핍을 메운다. 직전에 위 버튼 중 하나를 눌러
+  // lastRunAt이 10시간 이내로 갱신된 상태라면, 이 실행은 invocationLog에
+  // skipped:true로 기록된다.
+  void _triggerBackgroundNaturalCadence() {
+    Workmanager().registerOneOffTask(
+      'dot-bg-natural-${DateTime.now().millisecondsSinceEpoch}',
+      'proactiveCheck',
+    );
+  }
+
+  // F'.1.5 — isDemo:true인 문서만 골라 지운다(FirestoreService.clearDemoWardrobe
+  // 가 그 조건으로 쿼리). 직접 등록한 옷까지 날아가는 사고를 막기 위해
+  // 확인 다이얼로그 없이는 삭제하지 않는다.
+  Future<void> _clearDemoWardrobe() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('데모 옷장 비우기'),
+        content: const Text(
+          '데모로 불러온 옷만 삭제됩니다.\n직접 등록한 옷은 그대로 남습니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('삭제', style: TextStyle(color: AppColors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      final count = await FirestoreService.clearDemoWardrobe(uid);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('데모 옷장 $count벌을 삭제했습니다.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('삭제 실패: $e'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _openLicensePage() {
@@ -242,6 +307,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final lastError = data['lastError'] as String?;
         final incomplete = startedAt != null &&
             (lastRunAt == null || startedAt.isAfter(lastRunAt));
+        final invokeCount = data['invokeCount'] as int?;
+        final skipCount = data['skipCount'] as int?;
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Column(
@@ -257,6 +324,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if (lastError != null)
                 Text('오류: $lastError',
                     style: const TextStyle(color: AppColors.red, fontSize: 11)),
+              // F'.3 발화 계측 — invokeCount는 "uid+meta 읽기 성공까지 도달한
+              // 실행 수"(agent_meta), 아래 로컬 카운터는 Firestore·auth와
+              // 무관한 "OS가 콜백을 부른 수"(기기 로컬 파일). 둘의 차이가
+              // 곧 인증/초기화 단계에서 죽은 실행 수다.
+              if (invokeCount != null)
+                Text(
+                  'invokeCount: $invokeCount'
+                  '${skipCount != null ? ' (skip $skipCount)' : ''}',
+                  style: const TextStyle(color: AppColors.textPlaceholder, fontSize: 11),
+                ),
+              FutureBuilder<int>(
+                future: BackgroundAgent.readLocalInvocationCount(),
+                builder: (context, localSnapshot) {
+                  final localCount = localSnapshot.data;
+                  if (localCount == null) return const SizedBox.shrink();
+                  return Text(
+                    '로컬 발화 카운터: $localCount',
+                    style: const TextStyle(color: AppColors.textPlaceholder, fontSize: 11),
+                  );
+                },
+              ),
             ],
           ),
         );
@@ -317,15 +405,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: (v) => setState(() => _marketingEnabled = v),
                   ),
                 ),
+                if (uid != null)
+                  _SettingsRow(
+                    label: '데모 옷장 비우기',
+                    sub: '데모로 불러온 옷만 삭제됩니다',
+                    onTap: _clearDemoWardrobe,
+                  ),
                 if (showBackgroundDiagnostics) ...[
                   const SizedBox(height: 28),
                   const _SectionLabel('백그라운드 에이전트(진단)'),
+                  // seed.py --owner-uid / report.py가 둘 다 uid를 요구하는데
+                  // 앱에 노출되는 곳이 없어 여기 붙인다. 탭하면 복사.
+                  GestureDetector(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: uid));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('uid를 복사했습니다'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        'uid: $uid (탭하여 복사)',
+                        style: const TextStyle(
+                          color: AppColors.textPlaceholder,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ),
                   _buildBackgroundStatus(uid),
                   _SettingsRow(label: '즉시 실행 (테스트)', onTap: _triggerBackgroundNow),
                   _SettingsRow(
                     label: '지연 실행 30초 (시연용)',
                     sub: '누른 뒤 앱을 완전히 종료해도 실행됩니다',
                     onTap: _triggerBackgroundDelayed,
+                  ),
+                  _SettingsRow(
+                    label: '주기 실행 시뮬레이션 (가드 적용)',
+                    sub: 'force 없이 등록 — 최근 실행이 있으면 skipped로 기록됩니다',
+                    onTap: _triggerBackgroundNaturalCadence,
                   ),
                 ],
                 const SizedBox(height: 28),

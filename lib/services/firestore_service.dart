@@ -115,6 +115,69 @@ class FirestoreService {
     await _db.collection(_wardrobeCol).doc(id).delete();
   }
 
+  // ── 데모 옷장 (F'단계 — 심사위원 실행 경로 확보) ──
+  // demo_wardrobe는 tools/seed_demo_wardrobe 스크립트만 채우는 읽기 전용
+  // 컬렉션(firestore.rules가 write: false). attributes/embedding은 검증 없이
+  // 원본 그대로 옮기기만 하면 되므로 addWardrobeItem(모델 기반, attributes·
+  // embedding 미지원)을 재사용하지 않고 raw map을 직접 다룬다.
+  static const _demoWardrobeCol = 'demo_wardrobe';
+
+  // demo_wardrobe 전체를 현재 계정의 wardrobe로 복사한다. WriteBatch 하나로
+  // 묶어 전부 성공하거나 전부 실패한다(반쪽 옷장 방지 — 118건은 배치 상한
+  // 500에 여유롭게 들어간다). 문서 id는 새로 발급한다 — demo_wardrobe의 id를
+  // 그대로 쓰면 두 번째 심사위원이 시드할 때 충돌한다. createdAt은 원본
+  // Timestamp를 그대로 옮긴다 — serverTimestamp()로 일괄 부여하면 118벌이
+  // 전부 같은 시각이 되어 동점 정렬이 순회 순서로 갈린다. 반환값은 시드된
+  // 건수.
+  static Future<int> seedDemoWardrobe(String uid) async {
+    final snapshot = await _db.collection(_demoWardrobeCol).get();
+    if (snapshot.docs.isEmpty) return 0;
+
+    final batch = _db.batch();
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final newRef = _db.collection(_wardrobeCol).doc();
+      batch.set(newRef, {
+        'imageUrl': data['imageUrl'],
+        if (data['cutoutImageUrl'] != null) 'cutoutImageUrl': data['cutoutImageUrl'],
+        'category': data['category'],
+        if (data['subCategory'] != null) 'subCategory': data['subCategory'],
+        'createdAt': data['createdAt'],
+        if (data['attributes'] != null) 'attributes': data['attributes'],
+        if (data['size'] != null) 'size': data['size'],
+        if (data['embedding'] != null) 'embedding': data['embedding'],
+        'ownerUid': uid,
+        'isDemo': true,
+      });
+    }
+    await batch.commit();
+    return snapshot.docs.length;
+  }
+
+  // 설정 화면 "데모 옷장 비우기" — isDemo:true인 문서만 골라 삭제한다.
+  // 직접 등록한 옷(isDemo 없음)은 대상이 아니다. 500건 단위로 나눠 커밋한다
+  // (정상 플로우는 118건=1묶음이지만, 비우지 않고 재시드를 반복하면 누적될
+  // 수 있어 Firestore 배치 상한 500을 넘지 않게 방어한다). 반환값은 삭제 건수.
+  static Future<int> clearDemoWardrobe(String uid) async {
+    final snapshot = await _db
+        .collection(_wardrobeCol)
+        .where('ownerUid', isEqualTo: uid)
+        .where('isDemo', isEqualTo: true)
+        .get();
+    final docs = snapshot.docs;
+    if (docs.isEmpty) return 0;
+
+    const chunkSize = 400;
+    for (var i = 0; i < docs.length; i += chunkSize) {
+      final batch = _db.batch();
+      for (final doc in docs.skip(i).take(chunkSize)) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+    return docs.length;
+  }
+
   // ── 가상 피팅 결과 캐시 (doc id = 사용자 사진+옷 조합의 SHA-256 해시) ──
   static Future<String?> getCachedFittingImageUrl(String cacheKey) async {
     final doc = await _db.collection(_fittingCacheCol).doc(cacheKey).get();

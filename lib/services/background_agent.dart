@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/widgets.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:workmanager/workmanager.dart';
 import '../firebase_options.dart';
 import 'agent_planner.dart';
@@ -45,10 +48,64 @@ class BackgroundAgent {
   // 대기). false = Firebase 초기화 자체가 실패한 경우로 한정 — 그 외에는
   // 이 프로젝트가 이미 가진 태스크 큐(agent_tasks)와 재시도가 겹치지
   // 않도록 항상 true를 반환한다.
+  //
+  // F'.3 발화 계측 — 세 값이 각각 다른 것을 센다(HANDOFF 4-5: debugPrint는
+  // 릴리스 빌드에서 안 찍힌다, 실측 근거):
+  //  1. 로컬 파일 카운터(_bumpLocalInvocationCounter) — "OS가 콜백을 불렀다"
+  //     의 릴리스 안전 기준선. Firebase.initializeApp()보다 앞에서 증가하므로
+  //     Firestore·auth 성패와 무관하다. 설정 화면에서 읽는다(readLocalInvocationCount).
+  //  2. agent_meta의 invokeCount — "uid 확보+meta 읽기 성공까지 도달한 실행
+  //     횟수"다. Firestore 인증 자체가 안 된 실행은 여기 안 잡힌다.
+  //  3. 위 debugPrint 줄 — 디버그 빌드 전용 보조 확인 수단. 릴리스 기준선으로
+  //     쓰지 않는다.
+  // (1)과 (2)의 차이가 "Firebase 초기화 실패 또는 인증 복원 타임아웃으로
+  // 죽은 실행" 수다.
+  static const _invocationLogCap = 500;
+  static const _localInvocationCountFileName = 'bg_local_invocation_count.txt';
+
+  static Future<File> _localInvocationCountFile() async {
+    final dir = await getApplicationSupportDirectory();
+    return File('${dir.path}/$_localInvocationCountFileName');
+  }
+
+  // Firestore·auth와 무관한 릴리스 발화 기준선. shared_preferences는 이
+  // 저장소 pubspec에 없고(2026-07-30 확인), 이미 의존성인 path_provider로
+  // 텍스트 파일 하나면 충분해 새 의존성을 추가하지 않는다. 킬 스위치
+  // BG_AGENT(main.dart)는 bool.fromEnvironment 컴파일 타임 상수라 재사용할
+  // 저장 수단이 아니다. 카운터 자체가 실패해도(드묾) 콜백은 계속되어야 하므로
+  // 삼킨다 — 그 경우 릴리스 기준선 쪽만 그 실행을 놓친다.
+  static Future<void> _bumpLocalInvocationCounter() async {
+    try {
+      final file = await _localInvocationCountFile();
+      var count = 0;
+      if (await file.exists()) {
+        count = int.tryParse(await file.readAsString()) ?? 0;
+      }
+      await file.writeAsString('${count + 1}');
+    } catch (e) {
+      debugPrint('[BG] 로컬 발화 카운터 기록 실패(무시): $e');
+    }
+  }
+
+  // 설정 화면이 읽는 진입점 — Firestore 없이 값을 낸다.
+  static Future<int> readLocalInvocationCount() async {
+    try {
+      final file = await _localInvocationCountFile();
+      if (!await file.exists()) return 0;
+      return int.tryParse(await file.readAsString()) ?? 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   static Future<bool> run({bool force = false}) async {
+    // 디버그 빌드 전용 보조 로그 — 릴리스 기준선은 아래 로컬 카운터다.
+    debugPrint('[BG] 콜백 진입(force=$force)');
     // 백그라운드 콜백은 별도 아이솔레이트에서 실행되므로 main()의 초기화가
     // 전혀 적용돼 있지 않다 — 여기서 다시 해야 한다.
     WidgetsFlutterBinding.ensureInitialized();
+    // Firebase 초기화보다 앞에 있어야 그 실패와 무관하게 이 실행이 기록된다.
+    await _bumpLocalInvocationCounter();
 
     try {
       await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -87,7 +144,36 @@ class BackgroundAgent {
 
     final lastRunAt = (meta?['lastRunAt'] as Timestamp?)?.toDate();
     final now = DateTime.now();
-    if (!shouldRunNow(lastRunAt: lastRunAt, now: now, force: force)) {
+    final skippedByGuard = !shouldRunNow(lastRunAt: lastRunAt, now: now, force: force);
+
+    // F'.3 발화 간격 계측 — invokeCount/skipCount는 위 주석대로 "meta 읽기
+    // 성공까지 도달한 실행"만 센다. invocationLog는 시계열(구간 목록)이
+    // 필요해서이고(단일 필드 덮어쓰기로는 마지막 값만 남아 간격이 안 나옴),
+    // 상한(500)을 두어 무한히 자라지 않게 한다 — main.dart의 3시간 주기
+    // 기준 남은 측정 기간(~30일) 최대 발화(240회)의 2배 여유. 상한 미만에서는
+    // arrayUnion으로 원자적 append(동시 실행에 안전, 추가 read 없음), 상한에
+    // 닿았을 때만 이미 읽어둔 meta로 잘라서 통짜로 덮어쓴다(그 경계에서만
+    // read-modify-write 경합 가능 — 500회에 한 번꼴이라 감수). 이 쓰기가
+    // 실패해도 콜백 전체를 죽이지 않는다: 스킵 경로면 그대로 스킵, 통과
+    // 경로면 그대로 파이프라인을 계속한다. at은 기기 시계다(이 문서의 다른
+    // 시각 필드도 전부 기기 시계라 서버 시각 검증 수단이 없다) — 간격은
+    // invocationLog 내부 at끼리만 계산해야 한다.
+    try {
+      final currentLog = (meta?['invocationLog'] as List?) ?? const [];
+      final entry = {'at': Timestamp.fromDate(now), 'skipped': skippedByGuard};
+      final invocationLogUpdate = currentLog.length >= _invocationLogCap
+          ? [...currentLog.skip(currentLog.length - _invocationLogCap + 1), entry]
+          : FieldValue.arrayUnion([entry]);
+      await FirestoreService.setBackgroundAgentMeta(uid, {
+        'invocationLog': invocationLogUpdate,
+        'invokeCount': FieldValue.increment(1),
+        if (skippedByGuard) 'skipCount': FieldValue.increment(1),
+      });
+    } catch (e) {
+      debugPrint('[BG] invocationLog 기록 실패(무시): $e');
+    }
+
+    if (skippedByGuard) {
       return true;
     }
 

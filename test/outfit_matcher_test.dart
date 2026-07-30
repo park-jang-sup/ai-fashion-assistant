@@ -196,6 +196,66 @@ void main() {
     });
   });
 
+  group('findForTpo — shortfall(조합 자체 불가)', () {
+    // F'.2.4 위험군: 데모를 부르지 않은 심사위원이 자기 옷을 두세 벌만
+    // 등록했는데 전부 같은 카테고리(예: 상의)이면, "옷장이 아예 0벌"이 아니라
+    // "attributes 보유 아이템은 있지만 하의가 하나도 없는" 상태로 이 분기에
+    // 도달한다. relaxed(격식 무시)조차 하의를 못 채우면 조합 자체가 안 나온다
+    // — usable>=2를 통과하고도 shortfall에 닿는 좁은 창.
+    test('상의만 2벌(하의 0벌)이면 조합 불가 — shortfall에 하의가 명시된다', () {
+      final top1 = _item('top-only-1', '상의', '화이트', '캐주얼');
+      final top2 = _item('top-only-2', '상의', '블랙', '캐주얼');
+
+      final result = OutfitMatcher.findForTpo(
+        wardrobe: [top1, top2],
+        formalityHint: '캐주얼',
+      );
+
+      expect(result.candidates, isEmpty);
+      expect(result.isFallback, isFalse);
+      expect(result.shortfall, contains('하의'));
+      expect(result.shortfall, isNot(contains('상의')));
+    });
+
+    test('하의만 2벌(상의 0벌)이어도 대칭적으로 조합 불가 — shortfall에 상의가 명시된다', () {
+      final bottom1 = _item('bottom-only-1', '하의', '네이비', '캐주얼');
+      final bottom2 = _item('bottom-only-2', '하의', '그레이', '캐주얼');
+
+      final result = OutfitMatcher.findForTpo(
+        wardrobe: [bottom1, bottom2],
+        formalityHint: '캐주얼',
+      );
+
+      expect(result.candidates, isEmpty);
+      expect(result.shortfall, contains('상의'));
+      expect(result.shortfall, isNot(contains('하의')));
+    });
+
+    // _outfitCategories(outfit_matcher.dart:167)는 상의·하의·아우터·신발
+    // 4종뿐이지만, 등록 가능한 카테고리는 6종이다(wardrobe_screen.dart의
+    // _uploadCategories — 액세서리·전신 포함). 옷장이 그 두 카테고리로만
+    // 채워지면 allPerCategory 자체가 통째로 비어(410행 필터에서 전부
+    // 걸러짐) scored/relaxed 둘 다 빈 맵이 되고, hasCore도 relaxed 체크도
+    // 실패해 shortfall로 떨어진다 — 위 두 케이스(한쪽 카테고리만 없음)와
+    // 다른 경로다. 심사위원이 원피스(전신)나 가방(액세서리)을 먼저 올리면
+    // 그 즉시 밟힌다.
+    test('액세서리·전신만 2벌이면(핵심 카테고리 자체가 없음) 조합 불가 — 상의·하의 모두 shortfall', () {
+      final accessory = _item('acc-only-1', '액세서리', '블랙', '캐주얼');
+      final onepiece = _item('onepiece-only-1', '전신', '베이지', '캐주얼');
+
+      final result = OutfitMatcher.findForTpo(
+        wardrobe: [accessory, onepiece],
+        formalityHint: '캐주얼',
+      );
+
+      // 이 케이스는 상의·하의 둘 다 없다(위 두 케이스는 한쪽만 없었다) —
+      // shortfall에 두 카테고리가 모두 명시되어야 한다.
+      expect(result.candidates, isEmpty);
+      expect(result.shortfall, contains('상의'));
+      expect(result.shortfall, contains('하의'));
+    });
+  });
+
   // candidatesPerCategory(후보 폭)와 usePairwiseColorScore(조합 단위 색상
   // 채점). 두 축 모두 기본값이 현행이라, 먼저 "기본 정책은 아무것도 바뀌지
   // 않는다"를 못박고 그다음에 각 축의 효과를 본다.

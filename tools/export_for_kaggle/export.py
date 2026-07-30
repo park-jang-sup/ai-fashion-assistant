@@ -135,7 +135,14 @@ def download_and_resize_image(
 
 
 def export_wardrobe(
-    db, bucket, output_dir: Path, max_side: int, bg_color: str, force: bool, counts: ExportCounts
+    db,
+    bucket,
+    output_dir: Path,
+    max_side: int,
+    bg_color: str,
+    force: bool,
+    counts: ExportCounts,
+    owner_uid: str | None = None,
 ) -> list[dict]:
     images_dir = output_dir / "images"
     images_dir.mkdir(parents=True, exist_ok=True)
@@ -149,6 +156,16 @@ def export_wardrobe(
         # to_dict()를 쓴다.
         data = doc.to_dict() or {}
         item_id = doc.id
+
+        # isDemo 문서는 F'단계 데모 시드로 생긴 복제본이라 항상 제외한다
+        # (F'.3 지표 오염 방지 — task_demo_ready_v2.md 금지 사항). --owner-uid를
+        # 주면 그 uid 소유 문서로도 한 번 더 좁힌다(멀티 계정 상태에서 표9
+        # 커버리지가 남의 옷장과 섞이는 것을 막는다).
+        if data.get("isDemo"):
+            continue
+        if owner_uid is not None and data.get("ownerUid") != owner_uid:
+            continue
+
         attrs = data.get("attributes") or {}
 
         cutout_url = data.get("cutoutImageUrl")
@@ -296,6 +313,11 @@ def main() -> None:
     parser.add_argument("--max-side", type=int, default=DEFAULT_MAX_SIDE, help="이미지 긴 변 리사이즈 목표(px)")
     parser.add_argument("--bg-color", default="white", help="투명 cutout PNG를 JPEG로 저장할 때 채울 배경색")
     parser.add_argument("--force", action="store_true", help="이미 존재하는 이미지도 다시 다운로드")
+    parser.add_argument(
+        "--owner-uid",
+        help="이 uid 소유 문서로만 좁힌다(생략 시 isDemo만 제외하고 전체). "
+        "F'.3 표9 재계산 전 본인 uid로 좁혀 데모/타 계정과 섞이지 않게 할 것",
+    )
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir).resolve()
@@ -307,8 +329,12 @@ def main() -> None:
 
     counts = ExportCounts()
 
-    print("=== 1/4 옷장 이미지 + 메타데이터 내보내는 중 ===")
-    rows = export_wardrobe(db, bucket, output_dir, args.max_side, args.bg_color, args.force, counts)
+    print("=== 1/4 옷장 이미지 + 메타데이터 내보내는 중 (isDemo 제외"
+          f"{', ownerUid=' + args.owner_uid if args.owner_uid else ''}) ===")
+    rows = export_wardrobe(
+        db, bucket, output_dir, args.max_side, args.bg_color, args.force, counts,
+        owner_uid=args.owner_uid,
+    )
 
     fieldnames = ["itemId", "category", "subCategory", "createdAt", "imageSource", "hasImageFile", *ATTRIBUTE_FIELDS]
     with open(output_dir / "items.csv", "w", newline="", encoding="utf-8") as f:
