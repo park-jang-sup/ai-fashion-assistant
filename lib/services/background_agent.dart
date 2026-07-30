@@ -60,6 +60,11 @@ class BackgroundAgent {
   //     쓰지 않는다.
   // (1)과 (2)의 차이가 "Firebase 초기화 실패 또는 인증 복원 타임아웃으로
   // 죽은 실행" 수다.
+  //
+  // 판정: (1) - (2)가 **음수**로 나오면 그건 죽은 실행이 아니라 로컬
+  // 카운터 자체가 도중에 리셋된 것이다(배터리 최적화가 프로세스를 정지시킨
+  // 순간과 파일 쓰기가 겹치면 발생 — 2026-07-29 실측: 정지 후 약 100초 뒤
+  // 재시도). 그 구간의 조기 사망 건수는 산출 불가로 보고한다.
   static const _invocationLogCap = 500;
   static const _localInvocationCountFileName = 'bg_local_invocation_count.txt';
 
@@ -74,6 +79,12 @@ class BackgroundAgent {
   // BG_AGENT(main.dart)는 bool.fromEnvironment 컴파일 타임 상수라 재사용할
   // 저장 수단이 아니다. 카운터 자체가 실패해도(드묾) 콜백은 계속되어야 하므로
   // 삼킨다 — 그 경우 릴리스 기준선 쪽만 그 실행을 놓친다.
+  //
+  // writeAsString은 통짜 덮어쓰기라, 배터리 최적화가 그 도중 프로세스를
+  // 정지시키면(2026-07-29 실측 근거) 파일이 빈 채로 남아 다음 실행의
+  // int.tryParse가 null → 카운터가 조용히 0으로 리셋된다. 임시 파일에 쓰고
+  // rename으로 갈아끼운다 — 같은 디렉터리 내 rename은 원자적이라 중간에
+  // 죽어도 이전 완전한 값이나 새 완전한 값만 남고 반쪽 파일이 생기지 않는다.
   static Future<void> _bumpLocalInvocationCounter() async {
     try {
       final file = await _localInvocationCountFile();
@@ -81,7 +92,9 @@ class BackgroundAgent {
       if (await file.exists()) {
         count = int.tryParse(await file.readAsString()) ?? 0;
       }
-      await file.writeAsString('${count + 1}');
+      final tmpFile = File('${file.path}.tmp');
+      await tmpFile.writeAsString('${count + 1}');
+      await tmpFile.rename(file.path);
     } catch (e) {
       debugPrint('[BG] 로컬 발화 카운터 기록 실패(무시): $e');
     }
