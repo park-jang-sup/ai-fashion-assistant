@@ -32,10 +32,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _marketingEnabled = false;
   bool _linkingGoogle = false;
 
+  // agent_meta 스트림과 별개로 관리한다 — D 케이스(로그아웃 상태에서 조기
+  // 반환)처럼 agent_meta를 건드리지 않는 실행은 스트림이 emit하지 않아
+  // 이 값이 그 안에 있으면 영영 안 바뀐다(2026-07-31 실기기 관측). 화면
+  // 진입 시 한 번 읽고, 수동 새로고침으로만 갱신한다.
+  ({String path, bool exists, int value, String? lastError})? _localCounterDiag;
+
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _refreshLocalCounterDiagnostics();
+  }
+
+  Future<void> _refreshLocalCounterDiagnostics() async {
+    final diag = await BackgroundAgent.readLocalCounterDiagnostics();
+    if (mounted) setState(() => _localCounterDiag = diag);
   }
 
   Future<void> _loadProfile() async {
@@ -334,21 +346,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   '${skipCount != null ? ' (skip $skipCount)' : ''}',
                   style: const TextStyle(color: AppColors.textPlaceholder, fontSize: 11),
                 ),
-              FutureBuilder<int>(
-                future: BackgroundAgent.readLocalInvocationCount(),
-                builder: (context, localSnapshot) {
-                  final localCount = localSnapshot.data;
-                  if (localCount == null) return const SizedBox.shrink();
-                  return Text(
-                    '로컬 발화 카운터: $localCount',
-                    style: const TextStyle(color: AppColors.textPlaceholder, fontSize: 11),
-                  );
-                },
-              ),
             ],
           ),
         );
       },
+    );
+  }
+
+  // agent_meta 스트림과 무관하게(위 _buildBackgroundStatus와 별도) 항상 그릴
+  // 수 있어야 한다 — data == null(실행 기록 없음) 상태에서도 로컬 카운터는
+  // 기기 단위로 이미 존재할 수 있다. 오른쪽 새로고침 아이콘으로 언제든 다시
+  // 읽는다(D처럼 agent_meta를 안 건드리는 실행 뒤에도 값을 확인하려면
+  // 스트림 emit을 기다릴 수 없다).
+  Widget _buildLocalCounterDiagnostics() {
+    final diag = _localCounterDiag;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: diag == null
+                ? const Text(
+                    '로컬 카운터 읽는 중...',
+                    style: TextStyle(color: AppColors.textPlaceholder, fontSize: 11),
+                  )
+                : Text(
+                    '로컬 발화 카운터: ${diag.value}'
+                    '${diag.exists ? '' : ' (파일 없음)'}'
+                    '${diag.lastError != null ? '\n오류: ${diag.lastError}' : ''}'
+                    '\n경로: ${diag.path}',
+                    style: const TextStyle(color: AppColors.textPlaceholder, fontSize: 11),
+                  ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh, size: 16),
+            tooltip: '다시 읽기',
+            onPressed: _refreshLocalCounterDiagnostics,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -437,6 +476,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
+                  _buildLocalCounterDiagnostics(),
                   _buildBackgroundStatus(uid),
                   _SettingsRow(label: '즉시 실행 (테스트)', onTap: _triggerBackgroundNow),
                   _SettingsRow(

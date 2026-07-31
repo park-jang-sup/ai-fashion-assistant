@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -53,7 +54,7 @@ class BackgroundAgent {
   // 릴리스 빌드에서 안 찍힌다, 실측 근거):
   //  1. 로컬 파일 카운터(_bumpLocalInvocationCounter) — "OS가 콜백을 불렀다"
   //     의 릴리스 안전 기준선. Firebase.initializeApp()보다 앞에서 증가하므로
-  //     Firestore·auth 성패와 무관하다. 설정 화면에서 읽는다(readLocalInvocationCount).
+  //     Firestore·auth 성패와 무관하다. 설정 화면에서 읽는다(readLocalCounterDiagnostics).
   //  2. agent_meta의 invokeCount — "uid 확보+meta 읽기 성공까지 도달한 실행
   //     횟수"다. Firestore 인증 자체가 안 된 실행은 여기 안 잡힌다.
   //  3. 위 debugPrint 줄 — 디버그 빌드 전용 보조 확인 수단. 릴리스 기준선으로
@@ -78,6 +79,13 @@ class BackgroundAgent {
     return File('${dir.path}/$_localInvocationCountFileName');
   }
 
+  // 카운터 쓰기가 릴리스에서 실패해도 debugPrint만으로는 증거가 안 남는다
+  // (한계로 남기기로 했던 지점이 실제로 문제가 됐다 — 2026-07-31). 마지막
+  // 시도의 성패를 메모리에 남겨 UI(진단 패널)와 다음 agent_meta 쓰기 양쪽에서
+  // 회수할 수 있게 한다. 성공하면 지운다 — "마지막 시도"만 반영해야 오래된
+  // 오류가 계속 표시되는 걸 막는다.
+  static String? lastLocalCounterError;
+
   // Firestore·auth와 무관한 릴리스 발화 기준선. shared_preferences는 이
   // 저장소 pubspec에 없고(2026-07-30 확인), 이미 의존성인 path_provider로
   // 텍스트 파일 하나면 충분해 새 의존성을 추가하지 않는다. 킬 스위치
@@ -100,19 +108,26 @@ class BackgroundAgent {
       final tmpFile = File('${file.path}.tmp');
       await tmpFile.writeAsString('${count + 1}');
       await tmpFile.rename(file.path);
+      lastLocalCounterError = null;
     } catch (e) {
+      lastLocalCounterError = '$e';
       debugPrint('[BG] 로컬 발화 카운터 기록 실패(무시): $e');
     }
   }
 
-  // 설정 화면이 읽는 진입점 — Firestore 없이 값을 낸다.
-  static Future<int> readLocalInvocationCount() async {
+  // 설정 화면이 읽는 진단 진입점 — Firestore 없이 값을 낸다. 파일 절대 경로·
+  // 존재 여부·현재 값·마지막 오류를 함께 반환한다: "파일이 아예 없다"(백그
+  // 라운드가 한 번도 쓰지 못함)와 "파일은 있는데 값이 낮다"(일부 실행만
+  // 실패)는 원인이 다르므로 값 하나만으로는 구분이 안 된다.
+  static Future<({String path, bool exists, int value, String? lastError})>
+      readLocalCounterDiagnostics() async {
     try {
       final file = await _localInvocationCountFile();
-      if (!await file.exists()) return 0;
-      return int.tryParse(await file.readAsString()) ?? 0;
+      final exists = await file.exists();
+      final value = exists ? (int.tryParse(await file.readAsString()) ?? 0) : 0;
+      return (path: file.path, exists: exists, value: value, lastError: lastLocalCounterError);
     } catch (e) {
-      return 0;
+      return (path: '(경로 확인 실패)', exists: false, value: 0, lastError: '$e');
     }
   }
 
@@ -122,6 +137,15 @@ class BackgroundAgent {
     // 백그라운드 콜백은 별도 아이솔레이트에서 실행되므로 main()의 초기화가
     // 전혀 적용돼 있지 않다 — 여기서 다시 해야 한다.
     WidgetsFlutterBinding.ensureInitialized();
+    // path_provider_android는 dartPluginClass로 등록되는 federated 플러그인이라
+    // (.dart_tool/flutter_build/dart_plugin_registrant.dart의 _PluginRegistrant가
+    // PathProviderAndroid.registerWith()를 호출) 메인 아이솔레이트 시작 때는
+    // 엔진이 자동으로 이걸 실행해 주지만, workmanager 콜백처럼 별도 진입점으로
+    // 만들어진 아이솔레이트에서는 보장이 아니다. flutter_local_notifications는
+    // 자바 쪽 GeneratedPluginRegistrant로 등록돼 이미 동작하는 것과 대조된다.
+    // 비용이 0이라 명시적으로 호출한다(실기기에서 로컬 카운터가 D 케이스에서만
+    // 재현 안 되는 비대칭 증상의 유력한 원인 — 2026-07-31).
+    DartPluginRegistrant.ensureInitialized();
     // Firebase 초기화보다 앞에 있어야 그 실패와 무관하게 이 실행이 기록된다.
     await _bumpLocalInvocationCounter();
 
@@ -186,6 +210,10 @@ class BackgroundAgent {
         'invocationLog': invocationLogUpdate,
         'invokeCount': FieldValue.increment(1),
         if (skippedByGuard) 'skipCount': FieldValue.increment(1),
+        // 이번 실행의 로컬 카운터 쓰기가 실패했으면 Firestore로도 회수한다 —
+        // 로컬 파일 자체는 릴리스에서 debugPrint 외에 증거를 안 남기므로,
+        // 이 쓰기가 그 실패를 관측 가능하게 만드는 유일한 경로다.
+        if (lastLocalCounterError != null) 'localCounterError': lastLocalCounterError,
       });
     } catch (e) {
       debugPrint('[BG] invocationLog 기록 실패(무시): $e');
