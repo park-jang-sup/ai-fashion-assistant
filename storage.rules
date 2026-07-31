@@ -2,22 +2,39 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+    // 삭제 요청에는 request.resource가 없다(null) — null 체크가 없으면
+    // deleteWardrobeImage()가 전부 permission-denied로 죽는다. 업로드일
+    // 때만 크기·타입을 검사하고, 삭제는 그대로 통과시킨다.
+    function isValidImage(maxMb) {
+      return request.resource == null
+          || (request.resource.size < maxMb * 1024 * 1024
+              && request.resource.contentType.matches('image/.*'));
+    }
+
     // storage_service.dart가 wardrobe_images/{fileName}에 업로드/삭제한다.
     // Firestore 규칙과 마찬가지로 인증된 사용자(익명 포함)에게만 허용.
+    // wardrobe_screen.dart의 pickImage가 imageQuality 80~85로 이미 압축해
+    // JPEG는 대체로 1MB 미만이므로 상한 10MB.
     match /wardrobe_images/{fileName} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isValidImage(10);
     }
 
     // storage_service.dart의 uploadWardrobeCutout이 온디바이스 배경 제거
-    // 결과(투명 PNG)를 wardrobe_cutouts/{fileName}에 업로드한다.
+    // 결과(투명 PNG)를 wardrobe_cutouts/{fileName}에 업로드한다. 이쪽은
+    // 알파 채널이 있는 무손실 PNG라 같은 해상도에서도 JPEG보다 훨씬 커질
+    // 수 있어 상한을 20MB로 더 넉넉하게 둔다(wardrobe_images와 전역 상한을
+    // 공유하면 컷아웃 업로드만 조용히 실패한다).
     match /wardrobe_cutouts/{fileName} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isValidImage(20);
     }
 
     // storage_service.dart의 uploadFittingResult가 가상 피팅 캐시 이미지를
     // fitting_results/{cacheKey}.jpg에 업로드/덮어쓰기한다.
     match /fitting_results/{fileName} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isValidImage(10);
     }
   }
 }
