@@ -208,6 +208,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirmed == true) {
       await FirebaseAuth.instance.signOut();
+      try {
+        await GoogleAuthService.signOut();
+      } catch (e) {
+        debugPrint('[Auth] 구글 세션 로그아웃 실패(무시): $e');
+      }
     }
   }
 
