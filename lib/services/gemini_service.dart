@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
@@ -45,6 +46,99 @@ class GeminiService {
     }
   }
 
+  // ── 텍스트 계열 Gemini 프록시 호출 (A-1) ────────────────────
+  // 서버(functions/src/index.ts의 callGeminiText)는 requestBody를 가공 없이
+  // 그대로 중계하고 원본 JSON을 그대로 돌려준다. 그래서 이 두 헬퍼 아래의
+  // _extractTextFromResponse/_parseJsonObject 등 파싱 코드는 프록시 도입
+  // 전과 한 글자도 다르지 않다 — 직접 호출 때의 response.body(String)
+  // 자리에 프록시 결과를 문자열로 되돌려주는 것뿐이다.
+  static Future<String> _callProxyText({
+    required String model,
+    required Map<String, dynamic> requestBody,
+  }) async {
+    try {
+      final result = await _functions
+          .httpsCallable('callGeminiText',
+              options: HttpsCallableOptions(timeout: const Duration(seconds: 60)))
+          .call({'model': model, 'requestBody': requestBody});
+      return jsonEncode(result.data);
+    } on FirebaseFunctionsException catch (e) {
+      throw _mapProxyException(e);
+    }
+  }
+
+  static Stream<String> _callProxyTextStream({
+    required String model,
+    required Map<String, dynamic> requestBody,
+  }) async* {
+    final callable = _functions.httpsCallable('callGeminiText',
+        options: HttpsCallableOptions(timeout: const Duration(seconds: 60)));
+
+    // 예전에 Accept-Encoding: identity로 gzip 버퍼링을 막아 진짜 점진적
+    // 스트리밍을 확보했던 것과 같은 목적의 정체 감지 타임아웃 — 이벤트
+    // 간격이 60초를 넘으면 멈춘 것으로 보고 끊는다. HttpsCallableOptions의
+    // timeout은 호출 전체 1회 한도라 이걸 대체하지 않으므로 둘 다 둔다.
+    final responses = callable
+        .stream({'model': model, 'requestBody': requestBody}).timeout(const Duration(seconds: 60));
+
+    try {
+      await for (final response in responses) {
+        switch (response) {
+          case Chunk(:final partialData):
+            // cloud_functions가 플랫폼 채널로 돌려주는 partialData는 런타임
+            // 타입이 Map<Object?, Object?>라, as Map<String, dynamic>처럼
+            // 제네릭까지 검사하는 캐스트는 여기서 항상 실패한다(실기기에서
+            // "type '_Map<Object?, Object?>' is not a subtype of type
+            // 'Map<String, dynamic>'"로 실제 확인됨). _callProxyText의
+            // jsonEncode(result.data)가 문제없었던 건 jsonEncode가 키의
+            // 런타임 타입(String인지)만 보고 Map의 정적 제네릭은 안 보기
+            // 때문이다 — 같은 데이터라도 캐스트냐 인코딩이냐에 따라 결과가
+            // 갈린다. A-2에서 스트리밍을 또 쓸 때 같은 실수를 반복하지 않기
+            // 위해 남긴다.
+            final data = Map<String, dynamic>.from(partialData as Map);
+            final candidates = data['candidates'] as List?;
+            if (candidates != null && candidates.isNotEmpty) {
+              final content = (candidates[0] as Map)['content'] as Map?;
+              final parts0 = content?['parts'] as List?;
+              if (parts0 != null && parts0.isNotEmpty) {
+                final text = (parts0[0] as Map)['text'] as String?;
+                if (text != null && text.isNotEmpty) yield text;
+              }
+            }
+            break;
+          case Result():
+            break;
+        }
+      }
+    } on FirebaseFunctionsException catch (e) {
+      throw _mapProxyException(e);
+    }
+  }
+
+  // Callable 에러를 기존 withTextModelFallback이 알아듣는 예외로 되돌린다.
+  // - deadline-exceeded: 직접 호출 때 .timeout()이 던지던 TimeoutException과
+  //   같은 상황이다. 그냥 rethrow하면 FirebaseFunctionsException은
+  //   on TimeoutException에 안 걸려 폴백 없이 그냥 실패한다.
+  // - unauthenticated: 모델을 바꿔도 인증이 생기는 게 아니므로 폴백 왕복이
+  //   무의미하다. GeminiApiException으로 재구성하지 않고 그대로 전파한다.
+  // - 그 외 details에 upstreamStatus가 있으면(Gemini가 실제로 응답한 오류)
+  //   직접 호출 때와 동일하게 GeminiApiException으로 재구성해 isRetryable
+  //   (503/429) 판정이 그대로 동작하게 한다.
+  // - upstreamStatus가 없는 나머지 실패(네트워크 등)는 그대로 전파한다.
+  static Object _mapProxyException(FirebaseFunctionsException e) {
+    if (e.code == 'deadline-exceeded') return TimeoutException(e.message);
+    if (e.code == 'unauthenticated') return e;
+    final details = e.details;
+    if (details is Map) {
+      final status = details['upstreamStatus'];
+      if (status is int) {
+        final message = details['upstreamMessage'] as String? ?? e.message ?? '알 수 없는 오류';
+        return GeminiApiException(status, message);
+      }
+    }
+    return e;
+  }
+
   // 이미지 합성 모델 — 둘 중 하나만 주석 해제해서 사용. 필요할 때 바꿔가며
   // 비교해볼 수 있도록 나머지는 주석으로 남겨둔다.
   // 동일 조건(사람 사진 1장 + 옷 1장) 비교 결과 Nano Banana 2가 평균
@@ -54,6 +148,11 @@ class GeminiService {
 
   // 커넥션을 재사용해 매 요청마다의 TLS 핸드셰이크 비용을 줄인다.
   static final http.Client _client = http.Client();
+
+  // Storage 버킷과 같은 리전(asia-northeast3) — 배포 후 리전을 바꾸려면
+  // 함수를 지우고 다시 올려야 하므로 처음부터 맞춰둔다.
+  static final FirebaseFunctions _functions =
+      FirebaseFunctions.instanceFor(region: 'asia-northeast3');
 
   // 같은 세션에서 분석 → 가상 피팅을 연달아 실행하면 동일한 이미지 URL을
   // 반복 다운로드하게 되므로, 바이트를 캐시해 재다운로드를 피한다.
@@ -116,7 +215,7 @@ class GeminiService {
       {'inlineData': {'mimeType': 'image/jpeg', 'data': base64Encode(bytes)}},
     ];
 
-    final requestBody = jsonEncode({
+    final requestBody = {
       'contents': [{'parts': parts}],
       'generationConfig': {
         'temperature': 0.2,
@@ -127,25 +226,12 @@ class GeminiService {
         'responseMimeType': 'application/json',
         'thinkingConfig': {'thinkingBudget': 0},
       },
-    });
+    };
 
-    final response = await _client
-        .post(
-          Uri.parse(
-              '$_baseUrl/models/${model ?? _textModel}:generateContent?key=${Env.geminiApiKey}'),
-          headers: {'Content-Type': 'application/json'},
-          body: requestBody,
-        )
-        // preview 모델이라 3.5-flash보다 응답 지연이 더 클 수 있어 여유를 둔다.
-        .timeout(const Duration(seconds: 60));
+    final responseBody =
+        await _callProxyText(model: model ?? _textModel, requestBody: requestBody);
 
-    if (response.statusCode != 200) {
-      final errorBody = jsonDecode(response.body);
-      final message = (errorBody['error']?['message'] as String?) ?? '알 수 없는 오류';
-      throw GeminiApiException(response.statusCode, message);
-    }
-
-    final text = _extractTextFromResponse(response.body);
+    final text = _extractTextFromResponse(responseBody);
     return ClothingAttributes.fromJson(_parseJsonObject(text));
   }
 
@@ -173,7 +259,7 @@ class GeminiService {
       {'inlineData': {'mimeType': 'image/jpeg', 'data': base64Encode(resizedBytes)}},
     ];
 
-    final requestBody = jsonEncode({
+    final requestBody = {
       'contents': [{'parts': parts}],
       'generationConfig': {
         'temperature': 0.1,
@@ -184,24 +270,12 @@ class GeminiService {
         // JSON 출력 전에 잘려나가는 것을 방지한다.
         'thinkingConfig': {'thinkingBudget': 0},
       },
-    });
+    };
 
-    final response = await _client
-        .post(
-          Uri.parse(
-              '$_baseUrl/models/${model ?? _textModel}:generateContent?key=${Env.geminiApiKey}'),
-          headers: {'Content-Type': 'application/json'},
-          body: requestBody,
-        )
-        .timeout(const Duration(seconds: 60));
+    final responseBody =
+        await _callProxyText(model: model ?? _textModel, requestBody: requestBody);
 
-    if (response.statusCode != 200) {
-      final errorBody = jsonDecode(response.body);
-      final message = (errorBody['error']?['message'] as String?) ?? '알 수 없는 오류';
-      throw GeminiApiException(response.statusCode, message);
-    }
-
-    final text = _extractTextFromResponse(response.body);
+    final text = _extractTextFromResponse(responseBody);
     final result = ClothingSize.fromJson(_parseJsonObject(text));
     debugPrint(
         '[TIMING] extractSizeFromChart total: ${stopwatch.elapsedMilliseconds}ms');
@@ -314,27 +388,15 @@ class GeminiService {
     // maxOutputTokens는 thinking(추론) 토큰과 같은 예산을 공유한다.
     // 스타일링 조언은 어느 정도 추론이 품질에 도움이 되므로 thinking은
     // 끄지 않되, 실제 답변이 잘리지 않도록 예산을 넉넉히 둔다.
-    final requestBody = jsonEncode({
+    final requestBody = {
       'contents': [{'parts': parts}],
       'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 3000},
-    });
+    };
 
-    final response = await _client
-        .post(
-          Uri.parse(
-              '$_baseUrl/models/${model ?? _textModel}:generateContent?key=${Env.geminiApiKey}'),
-          headers: {'Content-Type': 'application/json'},
-          body: requestBody,
-        )
-        .timeout(const Duration(seconds: 60));
+    final responseBody =
+        await _callProxyText(model: model ?? _textModel, requestBody: requestBody);
 
-    if (response.statusCode != 200) {
-      final errorBody = jsonDecode(response.body);
-      final message = (errorBody['error']?['message'] as String?) ?? '알 수 없는 오류';
-      throw GeminiApiException(response.statusCode, message);
-    }
-
-    return _extractTextFromResponse(response.body);
+    return _extractTextFromResponse(responseBody);
   }
 
   // ── 주간 코디 플랜 (여러 날 일정을 한 번에 계획) ──────────
@@ -375,7 +437,7 @@ $feedbackSection
 각 원소는 {"date":"YYYY-MM-DD","itemIds":["id1","id2"],"reason":"한 줄 이유(한국어)"} 형식입니다.
 ''';
 
-    final requestBody = jsonEncode({
+    final requestBody = {
       'contents': [
         {'parts': [{'text': prompt}]}
       ],
@@ -387,24 +449,12 @@ $feedbackSection
         // 다른 JSON 호출과 동일하게 thinking 예산을 꺼서 출력이 잘리지 않게 한다.
         'thinkingConfig': {'thinkingBudget': 0},
       },
-    });
+    };
 
-    final response = await _client
-        .post(
-          Uri.parse(
-              '$_baseUrl/models/${model ?? _textModel}:generateContent?key=${Env.geminiApiKey}'),
-          headers: {'Content-Type': 'application/json'},
-          body: requestBody,
-        )
-        .timeout(const Duration(seconds: 60));
+    final responseBody =
+        await _callProxyText(model: model ?? _textModel, requestBody: requestBody);
 
-    if (response.statusCode != 200) {
-      final errorBody = jsonDecode(response.body);
-      final message = (errorBody['error']?['message'] as String?) ?? '알 수 없는 오류';
-      throw GeminiApiException(response.statusCode, message);
-    }
-
-    return _extractTextFromResponse(response.body);
+    return _extractTextFromResponse(responseBody);
   }
 
   // ── 코디 텍스트 분석 (스트리밍) ──────────────────────────
@@ -443,54 +493,12 @@ $feedbackSection
       ...imageParts,
     ];
 
-    final requestBody = jsonEncode({
+    final requestBody = {
       'contents': [{'parts': parts}],
       'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 3000},
-    });
+    };
 
-    final request = http.Request(
-      'POST',
-      Uri.parse(
-          '$_baseUrl/models/${model ?? _textModel}:streamGenerateContent?alt=sse&key=${Env.geminiApiKey}'),
-    )
-      ..headers['Content-Type'] = 'application/json'
-      // gzip 응답은 dart:io가 자동 압축 해제하면서 전체 바디를 다 받을 때까지
-      // 스트림을 버퍼링해버려 SSE 청크가 한꺼번에 도착한 것처럼 보이게 만든다.
-      // 압축을 아예 받지 않도록 요청해 진짜 점진적 스트리밍이 되게 한다.
-      ..headers['Accept-Encoding'] = 'identity'
-      ..body = requestBody;
-
-    final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 60));
-
-    if (streamedResponse.statusCode != 200) {
-      final errorBody = await streamedResponse.stream.bytesToString();
-      final decoded = jsonDecode(errorBody);
-      final message = (decoded['error']?['message'] as String?) ?? '알 수 없는 오류';
-      throw GeminiApiException(streamedResponse.statusCode, message);
-    }
-
-    // 이벤트 사이 간격이 60초를 넘으면(응답이 멈춘 것으로 간주) 타임아웃시킨다.
-    // Stream.timeout은 이벤트가 올 때마다 타이머를 리셋하므로 전체 응답
-    // 길이와 무관하게 "멈춘 상태"만 감지한다.
-    final lines = streamedResponse.stream
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .timeout(const Duration(seconds: 60));
-
-    await for (final line in lines) {
-      if (!line.startsWith('data:')) continue;
-      final jsonStr = line.substring(5).trim();
-      if (jsonStr.isEmpty) continue;
-
-      final data = jsonDecode(jsonStr) as Map<String, dynamic>;
-      final candidates = data['candidates'] as List?;
-      if (candidates == null || candidates.isEmpty) continue;
-      final content = (candidates[0] as Map)['content'] as Map?;
-      final parts0 = content?['parts'] as List?;
-      if (parts0 == null || parts0.isEmpty) continue;
-      final text = (parts0[0] as Map)['text'] as String?;
-      if (text != null && text.isNotEmpty) yield text;
-    }
+    yield* _callProxyTextStream(model: model ?? _textModel, requestBody: requestBody);
   }
 
   // ── 내부 공통 유틸 ─────────────────────────────────────────

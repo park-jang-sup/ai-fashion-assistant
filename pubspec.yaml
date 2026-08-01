@@ -20,6 +20,11 @@ dependencies:
   http: ^1.2.2
   firebase_auth: ^5.5.3
   firebase_app_check: ^0.3.2+3
+  # 5.4.1부터 stream()(스트리밍 Callable) 지원. 6.x는 firebase_core 4.x
+  # 세대와 짝이라(펍 BoM 기준) 올리면 core/firestore/auth/storage/app_check
+  # 전부 메이저 업그레이드가 딸려온다 — A-1은 프록시 추가만이 목적이므로
+  # 지금 세대(firebase_core ^3.10.1)에 맞는 5.x로 고정한다.
+  cloud_functions: ^5.4.1
   crypto: ^3.0.7
   image_background_remover: ^2.0.0
   path_provider: ^2.1.6

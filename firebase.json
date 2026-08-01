@@ -1,1 +1,58 @@
-{"firestore":{"rules":"firestore.rules","indexes":"firestore.indexes.json"},"storage":{"rules":"storage.rules"},"emulators":{"auth":{"port":9099},"firestore":{"port":8080},"ui":{"enabled":true,"port":4000}},"flutter":{"platforms":{"android":{"default":{"projectId":"ai-fashion-assistant-personal","appId":"1:838064162852:android:0c33107cc18fb2191670b1","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"ai-fashion-assistant-personal","appId":"1:838064162852:ios:08688958e7944f8f1670b1","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"ai-fashion-assistant-personal","configurations":{"android":"1:838064162852:android:0c33107cc18fb2191670b1","ios":"1:838064162852:ios:08688958e7944f8f1670b1"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": {
+    "source": "functions",
+    "predeploy": [
+      "npm --prefix \"$RESOURCE_DIR\" run build"
+    ]
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "functions": {
+      "port": 5001
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    }
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "ai-fashion-assistant-personal",
+          "appId": "1:838064162852:android:0c33107cc18fb2191670b1",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "ai-fashion-assistant-personal",
+          "appId": "1:838064162852:ios:08688958e7944f8f1670b1",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "ai-fashion-assistant-personal",
+          "configurations": {
+            "android": "1:838064162852:android:0c33107cc18fb2191670b1",
+            "ios": "1:838064162852:ios:08688958e7944f8f1670b1"
+          }
+        }
+      }
+    }
+  }
+}
