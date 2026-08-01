@@ -44,9 +44,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# API Keys
-lib/config/env.dart
-
 # Kaggle 데이터 내보내기 도구 — 출력물/자격증명 키 파일 방지
 tools/export_for_kaggle/output/
 tools/export_for_kaggle/wardrobe_export.zip

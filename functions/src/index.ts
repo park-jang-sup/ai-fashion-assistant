@@ -3,12 +3,23 @@ import {defineSecret} from "firebase-functions/params";
 
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 
-// 클라이언트 GeminiService의 _textModel/textModelFallback과 이 배열은 반드시
-// 같은 커밋에서 함께 바꾼다. 어긋나면 폴백 경로만 조용히 invalid-argument로
-// 죽는다 - 이 저장소는 모델을 이미 두 번 갈아탔다(gemini-3-flash-preview →
-// 3.5-flash, 2.5-flash → 3.1-flash-lite).
-// A-2에서 이미지 합성 모델(gemini-3.1-flash-image)을 옮길 때 이 배열에 추가한다.
-const ALLOWED_MODELS = ["gemini-3.5-flash", "gemini-3.1-flash-lite"];
+// 이 함수는 텍스트/이미지 양쪽 모델을 중계한다. 이름이 Text인 것은
+// A-1에서 텍스트만 옮겼기 때문이고 A-2에서 이미지 모델이 추가됐다.
+// 이름을 바꾸려면 클라이언트 호출명과 함께 바꾸고 재배포해야 한다.
+//
+// 클라이언트 GeminiService의 _textModel/textModelFallback/_imageModel과 이
+// 배열은 반드시 같은 커밋에서 함께 바꾼다. 어긋나면 폴백 경로만 조용히
+// invalid-argument로 죽는다 - 이 저장소는 모델을 이미 두 번 갈아탔다
+// (gemini-3-flash-preview → 3.5-flash, 2.5-flash → 3.1-flash-lite).
+const ALLOWED_MODELS = [
+  "gemini-3.5-flash",
+  "gemini-3.1-flash-lite",
+  // A-2: 가상 피팅 이미지 합성(Nano Banana 2). 텍스트 계열과 요청/응답
+  // 스키마가 다르지만(inlineData 여러 장, responseModalities: IMAGE),
+  // 서버는 requestBody를 가공 없이 그대로 중계하므로 화이트리스트에만
+  // 추가하면 된다 - 별도 처리 분기가 필요 없다.
+  "gemini-3.1-flash-image",
+];
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -96,12 +107,20 @@ export const callGeminiText = onCall(
       throw new HttpsError("invalid-argument", "requestBody가 필요합니다.");
     }
 
+    const requestBodyJson = JSON.stringify(requestBody);
+    // A-2 이미지 경로 페이로드 실측용 - 핸드오프의 "3.5MB 안팎" 추산을
+    // 실측치로 바꾸는 목적. 값 자체(옷 이미지 base64)는 로그에 남기지
+    // 않고 바이트 수만 남긴다.
+    console.log(
+      `[callGeminiText] model=${model} requestBytes=${Buffer.byteLength(requestBodyJson, "utf8")}`
+    );
+
     const key = geminiApiKey.value();
     const endpoint = request.acceptsStreaming ?
       `${GEMINI_BASE_URL}/models/${model}:streamGenerateContent?alt=sse&key=${key}` :
       `${GEMINI_BASE_URL}/models/${model}:generateContent?key=${key}`;
 
-    const upstream = await fetchUpstream(endpoint, JSON.stringify(requestBody));
+    const upstream = await fetchUpstream(endpoint, requestBodyJson);
 
     if (!request.acceptsStreaming) {
       let text: string;

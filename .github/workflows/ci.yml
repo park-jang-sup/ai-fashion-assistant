@@ -12,7 +12,6 @@ jobs:
         with:
           flutter-version: 3.41.6
           channel: stable
-      - run: cp lib/config/env.example.dart lib/config/env.dart
       - run: flutter pub get
       - run: flutter analyze
       # tools/export_for_kaggle/output/items.json은 .gitignore 대상이라 CI

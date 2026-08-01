@@ -4,15 +4,12 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
-import '../config/env.dart';
 import '../models/clothing_attributes.dart';
 import '../models/clothing_size.dart';
 import '../models/user_profile.dart';
 import 'gemini_api_exception.dart';
 
 class GeminiService {
-  static const _baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
-
   // 모델명을 한 곳에 모아서 나중에 교체하기 쉽게 관리한다.
   // gemini-3-flash-preview로 시도해봤으나 응답이 중간에 잘리는 등
   // preview 특유의 불안정함이 반복 확인돼 안정적인 gemini-3.5-flash로 되돌림.
@@ -171,7 +168,15 @@ class GeminiService {
   // 반복 다운로드하게 되므로, 바이트를 캐시해 재다운로드를 피한다.
   static final Map<String, Uint8List> _imageCache = {};
 
-  // ── 가상 피팅 이미지 생성 ────────────────────────────────
+  // ── 가상 피팅 이미지 생성 (A-2: 이미지 합성도 프록시로 이전) ──────
+  // callGeminiText를 그대로 재사용한다 — 서버는 model/requestBody를 안 가리는
+  // 범용 중계기라 이미지 전용 함수를 새로 만들 이유가 없다(A-1의 엔진 포팅
+  // 최소화 원칙과 같은 이유). _callProxyText가 FirebaseFunctionsException을
+  // 이미 _mapProxyException으로 재구성해주므로, 아래에서 statusCode를 직접
+  // 검사하던 옛 코드가 사라지고 _extractImageFromResponse는 한 글자도 안
+  // 바뀐다 — 프록시 결과 문자열을 직접 호출 때의 response.body 자리에
+  // 그대로 넣는 것뿐이다(텍스트 계열 호출들과 동일한 패턴, gemini_service.dart
+  // 상단 A-1 주석 참고).
   static Future<Uint8List> generateFittingImage({
     required String userPhotoUrl,
     required List<String> clothingImageUrls,
@@ -194,26 +199,13 @@ class GeminiService {
       }),
     ];
 
-    final requestBody = jsonEncode({
+    final requestBody = {
       'contents': [{'parts': parts}],
       'generationConfig': {'responseModalities': ['IMAGE', 'TEXT']},
-    });
+    };
 
-    final response = await _client
-        .post(
-          Uri.parse('$_baseUrl/models/$_imageModel:generateContent?key=${Env.geminiApiKey}'),
-          headers: {'Content-Type': 'application/json'},
-          body: requestBody,
-        )
-        .timeout(const Duration(seconds: 60));
-
-    if (response.statusCode != 200) {
-      final errorBody = jsonDecode(response.body);
-      final message = (errorBody['error']?['message'] as String?) ?? '알 수 없는 오류';
-      throw GeminiApiException(response.statusCode, message);
-    }
-
-    return _extractImageFromResponse(response.body);
+    final responseBody = await _callProxyText(model: _imageModel, requestBody: requestBody);
+    return _extractImageFromResponse(responseBody);
   }
 
   // ── 옷 사진 1장 → 속성 추출 (등록 시점 백그라운드 / 분석 시점 폴백) ──
