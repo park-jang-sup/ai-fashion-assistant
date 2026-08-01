@@ -31,7 +31,18 @@ async function fetchUpstream(endpoint: string, body: string): Promise<Response> 
   try {
     return await fetch(endpoint, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: {
+        "Content-Type": "application/json",
+        // 클라이언트가 Gemini를 직접 호출하던 시절 Accept-Encoding: identity를
+        // 붙였던 것과 같은 이유 - gzip으로 압축된 응답은 압축 해제가 끝나야
+        // 청크가 나오므로, 서버 도착 시점엔 이미 SSE 이벤트 여러 개가 뭉쳐서
+        // 한꺼번에 풀린다. 이 헤더가 없으면 스트리밍 경로가 예외 없이 끝까지
+        // 돌아도(reader.read 반복 자체는 성공) 클라이언트에 청크가 점진적으로
+        // 도착하지 않고 완성본이 한 번에 뜨는 것처럼 체감된다 - 실기기에서
+        // 실제로 이렇게 확인됨. 비스트리밍 경로도 같은 함수를 타 영향을
+        // 받지만 텍스트 응답이라 압축 안 된 대역폭 증가는 무시할 수준이다.
+        "Accept-Encoding": "identity",
+      },
       body,
       signal: controller.signal,
     });
