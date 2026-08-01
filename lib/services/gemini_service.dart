@@ -121,15 +121,28 @@ class GeminiService {
   //   on TimeoutException에 안 걸려 폴백 없이 그냥 실패한다.
   // - unauthenticated: 모델을 바꿔도 인증이 생기는 게 아니므로 폴백 왕복이
   //   무의미하다. GeminiApiException으로 재구성하지 않고 그대로 전파한다.
+  // - data-loss: 서버가 업스트림 응답 본문을 다 읽지 못했을 때(연결 끊김)
+  //   던지는 코드. 실제로 Gemini가 503을 준 것은 아니지만, 성격이 "지금은
+  //   실패해도 다시 시도하면 될 수 있는 일시적 문제"로 동일하므로 기존
+  //   503/429 재시도 판정(isRetryable)에 그대로 태운다.
+  // - details.reason == invalid-json: 200(또는 SSE 청크)인데 본문이 유효
+  //   JSON이 아니었던 경우. 직접 호출 때 _parseJsonObject가 던지던
+  //   FormatException과 같은 성격이므로 동일하게 재구성한다.
   // - 그 외 details에 upstreamStatus가 있으면(Gemini가 실제로 응답한 오류)
   //   직접 호출 때와 동일하게 GeminiApiException으로 재구성해 isRetryable
   //   (503/429) 판정이 그대로 동작하게 한다.
-  // - upstreamStatus가 없는 나머지 실패(네트워크 등)는 그대로 전파한다.
+  // - 위 어디에도 안 걸리는 나머지 실패(네트워크 등)는 그대로 전파한다.
   static Object _mapProxyException(FirebaseFunctionsException e) {
     if (e.code == 'deadline-exceeded') return TimeoutException(e.message);
     if (e.code == 'unauthenticated') return e;
+    if (e.code == 'data-loss') {
+      return GeminiApiException(503, e.message ?? '연결이 끊겼습니다.');
+    }
     final details = e.details;
     if (details is Map) {
+      if (details['reason'] == 'invalid-json') {
+        return FormatException(e.message ?? '알 수 없는 오류');
+      }
       final status = details['upstreamStatus'];
       if (status is int) {
         final message = details['upstreamMessage'] as String? ?? e.message ?? '알 수 없는 오류';

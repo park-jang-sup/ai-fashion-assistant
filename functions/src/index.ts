@@ -91,7 +91,24 @@ export const callGeminiText = onCall(
     const upstream = await fetchUpstream(endpoint, JSON.stringify(requestBody));
 
     if (!request.acceptsStreaming) {
-      const text = await upstream.text();
+      let text: string;
+      try {
+        text = await upstream.text();
+      } catch (err) {
+        // 헤더는 받았지만(fetchUpstream 통과) 본문 전송 도중 연결이 끊긴
+        // 경우 - AbortError도 네트워크 실패도 아니라 fetchUpstream의 catch를
+        // 거치지 않고 여기서 처음 발생한다. 안 잡으면 프레임워크가 디테일
+        // 없는 internal로 뭉개 클라이언트가 재시도 여부를 판단할 근거를
+        // 잃는다. "응답이 끊겨 온전히 못 받음"은 어느 모델을 썼는지와
+        // 무관한 순수 네트워크 문제이므로 data-loss로 명시하고, 클라이언트
+        // _mapProxyException이 이를 GeminiApiException(503)으로 재구성해
+        // 기존 재시도(isRetryable) 판정에 태워 대체 모델로 넘어가게 한다.
+        const message = err instanceof Error ? err.message : String(err);
+        throw new HttpsError(
+          "data-loss",
+          `업스트림 응답 본문을 읽는 중 연결이 끊겼습니다: ${message}`
+        );
+      }
       if (!upstream.ok) {
         const message = extractUpstreamErrorMessage(text);
         throw new HttpsError("internal", message, {
@@ -99,7 +116,22 @@ export const callGeminiText = onCall(
           upstreamMessage: message,
         });
       }
-      return JSON.parse(text);
+      try {
+        return JSON.parse(text);
+      } catch (err) {
+        // 200인데 본문이 유효 JSON이 아닌 경우 - Gemini는 성공으로 응답했지만
+        // 파싱 불가한 바디를 준 것이므로, 직접 호출 시절 _parseJsonObject가
+        // 던지던 FormatException(1차 모델 응답이 중간에 잘림 등)과 같은
+        // 성격의 실패다. reason: invalid-json으로 표시해 클라이언트가
+        // FormatException으로 재구성하게 한다 - withTextModelFallback은
+        // 이미 FormatException을 "대체 모델로 넘어갈 이유"로 처리한다.
+        const message = err instanceof Error ? err.message : String(err);
+        throw new HttpsError(
+          "internal",
+          `Gemini 응답이 유효한 JSON이 아닙니다: ${message}`,
+          {reason: "invalid-json"}
+        );
+      }
     }
 
     // 스트리밍 경로 - SSE data: 라인을 텍스트 추출 없이 원본 JSON 그대로 중계한다.
@@ -116,7 +148,22 @@ export const callGeminiText = onCall(
     const decoder = new TextDecoder();
     let buffer = "";
     for (;;) {
-      const {done, value} = await reader.read();
+      let done: boolean;
+      let value: Uint8Array | undefined;
+      try {
+        ({done, value} = await reader.read());
+      } catch (err) {
+        // SSE 스트리밍 도중 연결이 끊긴 경우 - 비스트리밍 경로의 upstream.text()
+        // 실패와 같은 성격(본문 전송 중 단절)이라 동일하게 data-loss로 던진다.
+        // 다만 이 경로의 실제 착지점은 fitting_job_controller의 catch(e) →
+        // [STREAM-FALLBACK] → 비스트리밍 재시도이므로, 여기서의 코드 선택보다
+        // "internal로 뭉개지 않고 원인을 남긴다"는 점이 더 중요하다.
+        const message = err instanceof Error ? err.message : String(err);
+        throw new HttpsError(
+          "data-loss",
+          `스트리밍 응답을 읽는 중 연결이 끊겼습니다: ${message}`
+        );
+      }
       if (done) break;
       buffer += decoder.decode(value, {stream: true});
       const lines = buffer.split("\n");
@@ -125,7 +172,22 @@ export const callGeminiText = onCall(
         if (!line.startsWith("data:")) continue;
         const jsonStr = line.slice(5).trim();
         if (!jsonStr) continue;
-        response?.sendChunk(JSON.parse(jsonStr));
+        let chunk: unknown;
+        try {
+          chunk = JSON.parse(jsonStr);
+        } catch (err) {
+          // SSE 한 청크가 깨진 JSON인 경우 - 비스트리밍 경로의 JSON.parse(text)
+          // 실패와 같은 응답 형식 문제이므로 동일하게 invalid-json으로 표시한다.
+          // 이 예외도 결국 [STREAM-FALLBACK]으로 착지하지만, 원인을 남겨야
+          // 나중에 로그에서 "형식 문제였는지 연결 문제였는지" 구분할 수 있다.
+          const message = err instanceof Error ? err.message : String(err);
+          throw new HttpsError(
+            "internal",
+            `SSE 청크가 유효한 JSON이 아닙니다: ${message}`,
+            {reason: "invalid-json"}
+          );
+        }
+        response?.sendChunk(chunk);
       }
     }
     // 최종 반환값은 쓰지 않는다 - 클라이언트가 청크를 누적해 직접 파싱한다.
