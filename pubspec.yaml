@@ -38,6 +38,10 @@ dependencies:
   flutter_local_notifications: ^17.2.3
   workmanager: ^0.9.0
   google_sign_in: ^6.2.1
+  # cloud_functions와 같은 이유(27행 주석 참고) — 16.x는 firebase_core 4.x
+  # 세대와 짝이라 올리면 Firebase 스택 전체가 메이저 업그레이드된다. B단계는
+  # FCM 추가가 목적이므로 지금 세대에 맞는 15.x로 고정한다.
+  firebase_messaging: ^15.2.10
 
 dev_dependencies:
   flutter_test:
