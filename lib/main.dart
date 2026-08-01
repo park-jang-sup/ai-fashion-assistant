@@ -22,6 +22,7 @@ import 'services/background_agent.dart';
 import 'services/fitting_job_controller.dart';
 import 'services/fitting_progress.dart';
 import 'services/notification_service.dart';
+import 'services/fcm_service.dart';
 import 'debug/similarity_check.dart';
 import 'firebase_options.dart';
 
@@ -185,6 +186,20 @@ class _AppShellState extends State<AppShell> {
         await AgentSweeper.run(uid);
         await Future.delayed(const Duration(seconds: 2));
         await AgentPlanner.runProactiveCheck(uid);
+      }());
+    }
+
+    // FCM 토큰 등록(B단계) — StreamBuilder가 LoginScreen에서 AppShell로
+    // 전환될 때마다(=인증 상태가 생길 때마다) initState가 다시 돌아, 앱
+    // 시작 시 이미 로그인돼 있던 경우와 방금 로그인한 경우를 둘 다 덮는다.
+    // 신규 네이티브 플러그인이라 실패해도 앱 구동을 막지 않도록 감싼다.
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      unawaited(() async {
+        try {
+          await FcmService.init();
+        } catch (e) {
+          debugPrint('[FCM] 초기화 실패(무시): $e');
+        }
       }());
     }
   }

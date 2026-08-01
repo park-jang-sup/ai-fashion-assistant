@@ -1,7 +1,19 @@
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {defineSecret} from "firebase-functions/params";
+import {initializeApp} from "firebase-admin/app";
+import {getFirestore} from "firebase-admin/firestore";
+import {getMessaging} from "firebase-admin/messaging";
+
+// firebase-admin 14.x부터 admin.firestore()/admin.messaging() 같은
+// 네임스페이스 호환 API가 최상위 export에서 빠졌다 - getFirestore()/
+// getMessaging() 모듈형 API를 직접 써야 한다.
+initializeApp();
 
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
+
+// notification_service.dart(로컬 알림)와 반드시 같은 채널을 써야 한다 -
+// B단계 함정 6. 다르면 사용자가 알림 설정을 두 번 관리해야 한다.
+const FCM_NOTIFICATION_CHANNEL_ID = "agent_recommendation";
 
 // 이 함수는 텍스트/이미지 양쪽 모델을 중계한다. 이름이 Text인 것은
 // A-1에서 텍스트만 옮겼기 때문이고 A-2에서 이미지 모델이 추가됐다.
@@ -224,5 +236,60 @@ export const callGeminiText = onCall(
     }
     // 최종 반환값은 쓰지 않는다 - 클라이언트가 청크를 누적해 직접 파싱한다.
     return {};
+  }
+);
+
+// B단계 진단용 테스트 푸시 - 호출한 uid의 모든 등록 기기로 발송한다.
+// A-1 함정 1과 같은 이유로 onCall + request.auth 검사: onRequest로 만들면
+// 누구나 호출 가능한 무료 푸시 게이트웨이가 된다. 스케줄러(C단계)는 아직
+// 안 만든다 - 이 함수는 "토큰이 등록돼 있으면 서버가 이 기기로 알림을
+// 보낼 수 있는가"만 확인하는 용도다.
+export const sendTestPush = onCall(
+  {region: "asia-northeast3"},
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    }
+
+    const uid = request.auth.uid;
+    const tokensSnapshot = await getFirestore()
+      .collection("users")
+      .doc(uid)
+      .collection("fcm_tokens")
+      .get();
+
+    const tokens = tokensSnapshot.docs.map((doc) => doc.id);
+    if (tokens.length === 0) {
+      // 등록된 토큰이 없는 것은 오류가 아니라 "아직 이 기기가 토큰을 못
+      // 올렸다"는 정상 상태(예: 권한 거부, 갱신 전)이므로 예외 대신
+      // 빈 결과를 돌려주고 클라이언트가 문구로 안내하게 한다.
+      return {sentCount: 0, tokenCount: 0};
+    }
+
+    // 로컬 알림(notification_service.dart)과 같은 채널을 지정해야 사용자
+    // 알림 설정이 하나로 유지된다(함정 6). data 없이 notification만 보내면
+    // 앱이 백그라운드/종료 상태일 때 OS가 직접 시스템 트레이에 그려주므로,
+    // 지금 단계(토큰 배선 확인)에서는 이걸로 충분하다 - 탭했을 때 특정
+    // 화면으로 보내는 딥링크는 C단계에서 실제 트리거와 함께 설계한다.
+    const response = await getMessaging().sendEachForMulticast({
+      tokens,
+      notification: {
+        title: "DOT 테스트 푸시",
+        body: "서버에서 보낸 FCM 테스트 알림입니다.",
+      },
+      android: {
+        notification: {channelId: FCM_NOTIFICATION_CHANNEL_ID},
+      },
+    });
+
+    console.log(
+      `[sendTestPush] uid=${uid} tokenCount=${tokens.length} ` +
+      `successCount=${response.successCount} failureCount=${response.failureCount}`
+    );
+
+    return {
+      sentCount: response.successCount,
+      tokenCount: tokens.length,
+    };
   }
 );

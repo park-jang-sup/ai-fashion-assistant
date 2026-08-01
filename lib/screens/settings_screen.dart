@@ -8,6 +8,7 @@ import 'package:workmanager/workmanager.dart';
 import '../constants/app_colors.dart';
 import '../models/user_profile.dart';
 import '../services/background_agent.dart';
+import '../services/fcm_service.dart';
 import '../services/firestore_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/notification_service.dart';
@@ -172,6 +173,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('삭제 실패: $e'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // B단계 진단용 — 이 uid에 등록된 모든 기기로 서버가 실제로 푸시를
+  // 보낼 수 있는지 확인한다. 토큰이 0건이면 "아직 등록 안 됨"과 발송
+  // 실패를 구분해서 안내한다.
+  Future<void> _sendTestPush() async {
+    try {
+      final result = await FcmService.sendTestPush();
+      if (!mounted) return;
+      final message = result.tokenCount == 0
+          ? '등록된 기기가 없습니다. 잠시 후 다시 시도해주세요.'
+          : '${result.tokenCount}개 기기 중 ${result.sentCount}개로 발송했습니다.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('FCM 테스트 푸시 실패: $e'),
             behavior: SnackBarBehavior.floating,
             backgroundColor: AppColors.red,
           ),
@@ -432,6 +459,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   label: '테스트 알림 보내기',
                   onTap: () =>
                       NotificationService.showRecommendationReady('내일 [결혼식]'),
+                ),
+                _SettingsRow(
+                  label: 'FCM 테스트 푸시',
+                  sub: '서버가 이 계정의 등록 기기로 직접 보냅니다',
+                  onTap: _sendTestPush,
                 ),
                 _SettingsRow(
                   label: '푸시 알림',
