@@ -184,10 +184,12 @@ class FirestoreService {
     return doc.data()?['imageUrl'] as String?;
   }
 
-  static Future<void> cacheFittingResult(String cacheKey, String imageUrl) async {
+  static Future<void> cacheFittingResult(
+      String cacheKey, String imageUrl, String ownerUid) async {
     await _db.collection(_fittingCacheCol).doc(cacheKey).set({
       'imageUrl': imageUrl,
       'createdAt': FieldValue.serverTimestamp(),
+      'ownerUid': ownerUid,
     });
   }
 

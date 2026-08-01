@@ -272,7 +272,13 @@ class FittingJobController extends ChangeNotifier {
   ) async {
     try {
       final imageUrl = await StorageService.uploadFittingResult(bytes, cacheKey);
-      await FirestoreService.cacheFittingResult(cacheKey, imageUrl);
+      // fitting_cache의 create 규칙이 ownerUid == request.auth.uid를 요구한다.
+      // uid가 없으면 캐시 문서 저장만 건너뛴다(폴백 = 아무것도 하지 않음) —
+      // 방금 만든 이미지는 fittingImageUrl로는 계속 반영되어 화면·스크랩에 쓰인다.
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        await FirestoreService.cacheFittingResult(cacheKey, imageUrl, uid);
+      }
       fittingImageUrl = imageUrl;
       notifyListeners();
       _logFittingHistorySilently(clothingItems, imageUrl);

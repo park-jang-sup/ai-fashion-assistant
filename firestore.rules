@@ -8,17 +8,36 @@ service cloud.firestore {
                   && resource.data.ownerUid == request.auth.uid;
       allow create: if request.auth != null
                     && request.resource.data.ownerUid == request.auth.uid;
-      allow update, delete: if request.auth != null
-                            && resource.data.ownerUid == request.auth.uid;
+      // update와 delete를 분리한다 — 삭제 요청에는 request.resource가 없어서(null),
+      // 여기 묶은 채로 request.resource.data.ownerUid를 검사하면 옷 삭제가 전부
+      // permission-denied로 죽는다(storage.rules의 isValidImage와 같은 함정).
+      // update만 "수정 후에도 ownerUid가 그대로인가"를 검사해 본인 문서의
+      // ownerUid를 남의 uid로 바꿔 상대 옷장에 아이템을 밀어 넣는 경로를 막는다.
+      allow update: if request.auth != null
+                    && resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if request.auth != null
+                    && resource.data.ownerUid == request.auth.uid;
     }
 
     // fitting_job_controller.dart가 가상 피팅 결과를 캐싱하는 컬렉션.
     // doc id가 "사용자 사진 + 옷 조합"의 SHA-256이라 열거만 막으면 충분하다.
-    // 키를 아는 본인만 접근할 수 있고, 키는 자기 사진에서 파생되므로 남이
-    // 만들어낼 수 없다. 코드가 doc id 직접 접근만 하므로 list는 필요 없다.
+    // list를 막는 이유는 "키를 만들 수 없다"이지만, write는 그것만으론
+    // 부족하다 — 키를 우연히 알아낸 제3자가 write는 여전히 시도할 수 있으므로
+    // "내가 만든 문서만 내 것"을 ownerUid로 검사한다. delete는 쓸 일이 없으므로
+    // 막아 캐시 무효화 공격 표면을 아예 없앤다.
+    // 기존 캐시 문서에는 ownerUid가 없다 — 새 update 규칙이 그 문서들의 갱신을
+    // 막지만(get은 계속 됨), forceRegenerate로 재생성했을 때 캐시 갱신만 조용히
+    // 실패하는 정도라 원래 실패를 무시하는 경로다. 별도 마이그레이션 없이 둔다.
     match /fitting_cache/{cacheKey} {
-      allow get, write: if request.auth != null;
+      allow get: if request.auth != null;
       allow list: if false;
+      allow create: if request.auth != null
+                    && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if request.auth != null
+                    && resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.ownerUid == request.auth.uid;
+      allow delete: if false;
     }
 
     // 체형/취향 프로필(키·몸무게·퍼스널컬러 등)은 개인 민감정보라
