@@ -2,7 +2,7 @@
   "name": "functions",
   "description": "DOT 서버 프록시 - 텍스트 계열 Gemini 호출 중계 (A-1)",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "lib/index.js",
   "scripts": {
