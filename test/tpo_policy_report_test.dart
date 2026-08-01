@@ -639,7 +639,7 @@ void main() {
         final taken = TpoMatchPolicy.current.effectiveCandidatesPerCategory;
         tiedTotal += tied;
         takenTotal += tied < taken ? tied : taken;
-        cells.add('${top.toStringAsFixed(1)}점 ${tied}벌');
+        cells.add('${top.toStringAsFixed(1)}점 $tied벌');
       }
       print('| ${tag.label} | ${tag.formalityHint} | ${cells.join(' | ')} |');
     }

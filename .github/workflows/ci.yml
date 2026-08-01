@@ -1,0 +1,23 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.6
+          channel: stable
+      - run: cp lib/config/env.example.dart lib/config/env.dart
+      - run: flutter pub get
+      - run: flutter analyze
+      # tools/export_for_kaggle/output/items.json은 .gitignore 대상이라 CI
+      # 체크아웃엔 없다. 이 파일 존재 여부로 등록을 가르는 두 테스트
+      # (tpo_policy_report_test.dart, color_rule_verification_test.dart)가
+      # skip:으로 빠지므로, CI의 통과 수가 로컬(140)보다 적게 나오는 것이
+      # 정상이다 — 실패가 아니다.
+      - run: flutter test
