@@ -33,14 +33,16 @@ async function fetchUpstream(endpoint: string, body: string): Promise<Response> 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // 클라이언트가 Gemini를 직접 호출하던 시절 Accept-Encoding: identity를
-        // 붙였던 것과 같은 이유 - gzip으로 압축된 응답은 압축 해제가 끝나야
-        // 청크가 나오므로, 서버 도착 시점엔 이미 SSE 이벤트 여러 개가 뭉쳐서
-        // 한꺼번에 풀린다. 이 헤더가 없으면 스트리밍 경로가 예외 없이 끝까지
-        // 돌아도(reader.read 반복 자체는 성공) 클라이언트에 청크가 점진적으로
-        // 도착하지 않고 완성본이 한 번에 뜨는 것처럼 체감된다 - 실기기에서
-        // 실제로 이렇게 확인됨. 비스트리밍 경로도 같은 함수를 타 영향을
-        // 받지만 텍스트 응답이라 압축 안 된 대역폭 증가는 무시할 수준이다.
+        // 원래 클라이언트에 있던 헤더를 서버로 옮길 때 누락된 것을 복원.
+        // 클라이언트가 Gemini를 직접 호출하던 시절엔 gzip 응답 버퍼링을
+        // 피하려고 Accept-Encoding: identity를 붙였었다. 서버 이전 시
+        // 이 헤더가 함께 옮겨지지 않아 복원했으나, 짧은 응답(analyzeOutfit
+        // 스트리밍, 약 100자)에서는 [TIMING] 첫 청크~전체 완료 간격이
+        // 추가 전(200~230ms)과 후(243~255ms)로 사실상 동일해 효과가
+        // 관측되지 않았다 - 원인이 압축이 아니라 Gemini가 짧은 응답을
+        // 애초에 한 번에 방출하는 것일 가능성이 있다(handoff_2026-08-01.md
+        // §2-9 참고). 유해하지는 않고 응답이 긴 경로(주간 플랜 등)에서는
+        // 값을 할 수 있어 제거하지 않고 유지한다.
         "Accept-Encoding": "identity",
       },
       body,
