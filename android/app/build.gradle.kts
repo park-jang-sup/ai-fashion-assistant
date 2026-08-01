@@ -2,8 +2,10 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-    // google-services.json 파일을 넣기 전까지는 아래 줄을 주석으로 유지해야 빌드 에러가 나지 않습니다.
-    // id("com.google.gms.google-services")
+    // B단계(FCM)에서 활성화 — google-services.json이 이미 있어 주석의 전제
+    // 조건(파일 없음)이 더는 성립하지 않는다. FCM이 이 플러그인이 생성하는
+    // 리소스에 의존하는 부분이 있어 여기서 켠다(handoff §5 함정 4).
+    id("com.google.gms.google-services")
 }
 
 android {
