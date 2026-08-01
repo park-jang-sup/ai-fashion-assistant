@@ -810,7 +810,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     );
   }
 
-  // F'.1.4 — 데모 옷장(demo_wardrobe) 118벌을 현재 계정으로 복사한다.
+  // F'.1.4 — 데모 옷장(demo_wardrobe) 전량을 현재 계정으로 복사한다.
   // items.isEmpty일 때만 렌더링되는 _buildEmptyState() 안에만 두어(700~701행),
   // 시드 후 이 자리가 그리드로 교체되며 버튼이 자연히 사라진다 — 별도의
   // 중복 시드 경로를 만들지 않는다. _isUploading으로 잠가 연타를 막는다
@@ -820,7 +820,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     if (uid == null) return;
     setState(() {
       _busyTitle = '데모 옷장을 불러오는 중입니다...';
-      _busySubtitle = '118벌을 준비하고 있어요, 잠시만 기다려 주세요';
+      _busySubtitle = '데모 옷장을 준비하고 있어요, 잠시만 기다려 주세요';
       _isUploading = true;
     });
     try {

@@ -622,7 +622,7 @@ $clothingList
     final historySection =
         _buildHistorySection(recentHistoryText, isRelevanceRanked: isRelevanceRanked);
     return '''
-당신은 세련된 중년 남성을 위한 전문 패션 스타일리스트입니다.
+당신은 전문 패션 스타일리스트입니다.
 
 [핵심 지침 - 반드시 준수하세요]
 첫 번째 이미지는 착용자의 체형, 피부톤, 얼굴형, 전체적인 분위기를 파악하기 위한 참고 사진입니다.
@@ -665,7 +665,7 @@ $historySection
     final historySection =
         _buildHistorySection(recentHistoryText, isRelevanceRanked: isRelevanceRanked);
     return '''
-당신은 세련된 중년 남성을 위한 전문 패션 스타일리스트입니다.
+당신은 전문 패션 스타일리스트입니다.
 
 착용자 정보(사용자가 직접 입력): ${profile.toPromptLine()}
 
@@ -710,7 +710,7 @@ $historySection
     final historySection =
         _buildHistorySection(recentHistoryText, isRelevanceRanked: isRelevanceRanked);
     return '''
-당신은 세련된 중년 남성을 위한 전문 패션 스타일리스트입니다.
+당신은 전문 패션 스타일리스트입니다.
 아래에 텍스트로 설명된 의류 조합을 보고, 컬러 조합을 점수로 평가하고 코디 분석 및 다른 색상 추천을 해 주세요. 실제 이미지는 첨부되지 않았으니 아래 설명만으로 판단해 주세요.
 
 $itemLines

@@ -183,7 +183,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _openLicensePage() {
     showLicensePage(
       context: context,
-      applicationName: 'DOT.',
+      applicationName: 'DOT',
       applicationVersion: '1.0.0',
     );
   }

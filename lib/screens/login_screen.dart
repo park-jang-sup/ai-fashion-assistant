@@ -79,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return const Column(
       children: [
         Text(
-          'DOT.',
+          'DOT',
           style: TextStyle(
             color: Colors.black,
             fontSize: 36,
