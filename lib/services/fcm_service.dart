@@ -17,6 +17,13 @@ class FcmService {
   // 요청하므로(POST_NOTIFICATIONS, 로컬 알림과 동일 권한) 여기서 다시
   // requestPermission()을 부르지 않는다 — 중복 프롬프트를 피한다.
   static Future<void> init() async {
+    // [FCM-DIAG] 원인 조사용 임시 로그 — fcm_tokens에 토큰이 전혀 안 쌓이는데
+    // Dart 쪽 catch 블록도 네이티브 로그도 아무 신호가 없어서, init() 진입
+    // 자체가 안 되는지/getToken()에서 멈추는지/조용히 null이 오는지부터
+    // 구분해야 했다. 원인이 확정되면 이 블록의 로그·타임아웃 값(§아래)을
+    // 다시 볼 것 — 지금은 진단이 목적이라 세 지점만 최소로 찍는다.
+    debugPrint('[FCM-DIAG] init() 진입');
+
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       await _registerCurrentToken(uid);
@@ -33,7 +40,16 @@ class FcmService {
 
   static Future<void> _registerCurrentToken(String uid) async {
     try {
-      final token = await FirebaseMessaging.instance.getToken();
+      debugPrint('[FCM-DIAG] getToken() 호출 직전');
+      // 진단 목적의 타임아웃 — getToken()이 hang인지 조용한 null 반환인지
+      // 구분이 안 돼 넣었다. 10초는 임의값(정상 응답이면 훨씬 빨리 끝남).
+      // 원인이 확정되면 이 타임아웃과 재시도 정책을 다시 설계할 것 —
+      // 지금은 "진단"이 목적이라 실패해도 폴백은 원래 정책 그대로
+      // "아무것도 하지 않음"(토큰 저장을 건너뛸 뿐 앱 동작엔 영향 없음).
+      final token = await FirebaseMessaging.instance
+          .getToken()
+          .timeout(const Duration(seconds: 10));
+      debugPrint('[FCM-DIAG] getToken() 반환: ${token == null ? "null" : "non-null"}');
       if (token != null) await _saveToken(uid, token);
     } catch (e) {
       debugPrint('[FCM] 토큰 조회 실패(무시): $e');
@@ -44,12 +60,14 @@ class FcmService {
   // 여러 기기를 대비해 단일 필드가 아니라 컬렉션으로 둔다(함정 5).
   static Future<void> _saveToken(String uid, String token) async {
     try {
+      debugPrint('[FCM-DIAG] _saveToken() 진입');
       await _db
           .collection('users')
           .doc(uid)
           .collection('fcm_tokens')
           .doc(token)
           .set({'updatedAt': FieldValue.serverTimestamp()});
+      debugPrint('[FCM-DIAG] _saveToken() 완료');
     } catch (e) {
       debugPrint('[FCM] 토큰 저장 실패(무시): $e');
     }
