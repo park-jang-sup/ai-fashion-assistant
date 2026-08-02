@@ -1,7 +1,8 @@
 import {onCall, HttpsError} from "firebase-functions/v2/https";
+import {onSchedule} from "firebase-functions/v2/scheduler";
 import {defineSecret} from "firebase-functions/params";
 import {initializeApp} from "firebase-admin/app";
-import {getFirestore} from "firebase-admin/firestore";
+import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
 
 // firebase-admin 14.x부터 admin.firestore()/admin.messaging() 같은
@@ -291,5 +292,257 @@ export const sendTestPush = onCall(
       sentCount: response.successCount,
       tokenCount: tokens.length,
     };
+  }
+);
+
+// ── C단계 — 서버 스케줄러 트리거 ──────────────────────────────
+// 엔진(OutfitMatcher 이하)은 부르지 않는다. "추천이 없는 예정일"만 판정해
+// FCM으로 깨우고, 조합 생성은 클라이언트가 깨어났을 때 기존 runProactiveCheck
+// 경로가 그대로 한다(함정 7 - shouldReplanForWeather의 예보 임계값 로직은
+// 서버에 복제하지 않는다).
+
+const PROACTIVE_HORIZON_DAYS = 3; // agent_planner.dart의 _proactiveHorizonDays와 동일
+// 클라이언트 invocationLog(background_agent.dart)와 같은 값으로 맞춘다 -
+// 다르면 "기기 발화 vs 서버 발화" 비교표를 만들 때 한쪽만 먼저 잘려 왜곡된다.
+const SERVER_INVOCATION_LOG_CAP = 500;
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+// 서버(Cloud Functions) 런타임 시각은 UTC다. calendar/recommendations의
+// date/targetDate는 기기 로컬(한국, KST) 자정으로 정규화돼 저장되므로
+// (agent_planner.dart의 _todayMidnight), 서버도 KST 기준 자정을 계산해야
+// 같은 날짜로 비교된다. 사용자가 전부 한국 기준이라 타임존 라이브러리 없이
+// 고정 오프셋으로 충분하다.
+function kstMidnight(base: Date): Date {
+  const kst = new Date(base.getTime() + KST_OFFSET_MS);
+  const y = kst.getUTCFullYear();
+  const m = kst.getUTCMonth();
+  const d = kst.getUTCDate();
+  return new Date(Date.UTC(y, m, d) - KST_OFFSET_MS);
+}
+
+// "YYYY-MM-DD" 문자열도 KST 기준으로 만들어야 한다. Date.toISOString()은
+// UTC 기준이라, KST 자정으로 저장된 값(예: KST 8/2 00:00 = UTC 8/1 15:00)을
+// 그대로 넣으면 날짜 부분이 하루 당겨진다 - 실측으로 확인된 버그(§2-12류
+// 재발). kstMidnight()과 같은 +9시간 이동 방식을 그대로 재사용한다.
+function toKstDateString(date: Date): string {
+  const kst = new Date(date.getTime() + KST_OFFSET_MS);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(kst.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// 함정 9 - 지금은 users 컬렉션을 통째로 순회한다(사용자 2명뿐이라 지금은
+// 문제없음). 나중에 "최근 활동 기준으로 좁히기"를 넣을 자리를 이 함수
+// 하나로 열어둔다 - 호출부(스케줄 함수)는 이 함수의 반환 목록만 알면 되므로
+// 내부 구현만 바꾸면 된다. 처리량 상한도 이 자리에 나중에 추가할 것.
+// 주의: users/{uid} 루트 문서는 프로필을 저장한 사용자만 존재한다(마이페이지
+// 미방문 사용자는 문서가 없을 수 있음) - 지금 사용자 2명은 둘 다 프로필을
+// 저장해 문제없지만, 사용자가 늘면 이 가정이 깨질 수 있다는 걸 남겨둔다.
+async function getActiveUids(): Promise<string[]> {
+  const snapshot = await getFirestore().collection("users").get();
+  return snapshot.docs.map((doc) => doc.id);
+}
+
+// 오늘(KST)~+3일의 'planned' 예정 중, "아직 열려 있는"(dismissed==false) 추천이
+// 없는 가장 가까운 날짜 하나를 찾는다. 판정 기준은 클라이언트의
+// recommendationForDateSilently(firestore_service.dart)와 완전히 동일하게
+// targetDate==date && dismissed==false만 본다 - userChoice 조건은 넣지 않는다.
+//
+// 원래는 userChoice==null도 같이 걸었는데, 이게 버그였다: Firestore의
+// where('field','==',null)은 필드가 명시적으로 null로 저장된 문서만 매치하고,
+// 필드가 아예 없는 문서는 매치하지 않는다. recommendation_entry.dart:151이
+// userChoice가 null이면 필드를 아예 안 쓰므로(`if (userChoice != null)
+// 'userChoice': userChoice,`), 미응답 추천은 이 조건으로 절대 안 잡혀
+// recSnap이 항상 비어 있었다 - 즉 미확인 추천이 있어도 서버는 매번 "없음"으로
+// 판정해 3시간마다 중복 푸시를 보내는 구조적 버그였다(2026-08-02 실기기
+// 검증에서 발견). 판정 기준은 클라이언트와 동일하게 유지한다 - 어긋나면
+// 조용히 갈린다(함정 7의 축소판이 실제로 여기서 일어났다).
+// 여러 날짜가 걸려도 하나만 반환한다 - 나머지는 앱이 깨어나면 기존
+// runProactiveCheck가 한 번에 다 처리한다.
+async function findNextUntriggeredDate(uid: string): Promise<Date | undefined> {
+  const db = getFirestore();
+  const today = kstMidnight(new Date());
+  const horizon = new Date(today.getTime() + PROACTIVE_HORIZON_DAYS * 24 * 60 * 60 * 1000);
+
+  // status 필터는 여기서(TS) 건다 - calendarEntriesForRange(클라이언트)와
+  // 동일하게 date 범위만 쿼리에 걸어 복합 인덱스를 새로 안 만들어도 되게 한다.
+  const calendarSnap = await db
+    .collection("users").doc(uid).collection("calendar")
+    .where("date", ">=", Timestamp.fromDate(today))
+    .where("date", "<=", Timestamp.fromDate(horizon))
+    .orderBy("date")
+    .get();
+
+  for (const doc of calendarSnap.docs) {
+    const data = doc.data();
+    if (data.status !== "planned") continue;
+
+    const entryDate = data.date as FirebaseFirestore.Timestamp;
+    const recSnap = await db
+      .collection("users").doc(uid).collection("recommendations")
+      .where("targetDate", "==", entryDate)
+      .where("dismissed", "==", false)
+      .limit(1)
+      .get();
+
+    if (recSnap.empty) {
+      return entryDate.toDate();
+    }
+  }
+  return undefined;
+}
+
+// agent_meta/background에 서버 계측을 기록한다. 기존 클라이언트 필드
+// (invokeCount·invocationLog·lastRunAt 등, background_agent.dart)와 이름이
+// 겹치지 않도록 전부 server 접두어를 쓴다(함정 8) - 반드시 set(..., {merge:
+// true})만 쓴다. update()는 문서가 아직 없는 uid의 첫 실행에서 에러가 나고,
+// merge 없는 set()은 기존 필드를 통째로 지워 4주 표본이 날아간다 - 이 저장소가
+// C단계에서 되돌릴 수 없는 유일한 사고로 지목한 지점이다.
+//
+// 트랜잭션으로 감싼다 - 캡 도달 후 배열을 통째로 다시 쓰는 분기는 get()
+// 시점 스냅샷 기반이라, get()과 set() 사이에 다른 실행이 끼면 그 기록이
+// 조용히 덮어써질 수 있었다(read-modify-write 경합). 3시간 자연 주기끼리는
+// 안 겹치지만, 검증 단계에서 triggerScheduledCheckTest를 짧은 간격으로
+// 여러 번 수동 호출하면 이 경합이 훨씬 자주 발생할 수 있어 지금 고친다.
+// Firestore 트랜잭션은 낙관적 동시성 제어로 충돌 시 자동 재시도하므로
+// read-modify-write 전체가 원자적이 된다.
+//
+// 클라이언트 invocationLog(background_agent.dart)는 이 경합을 감수하기로
+// 이미 결정한 상태다(500회에 한 번꼴, 그쪽 주석 참고) - 서버 쪽에만 트랜잭션을
+// 추가하는 이유는 검증 단계의 수동 호출이 그 "드문 경우"를 훨씬 자주 만들 수
+// 있기 때문이다.
+//
+// 배열 항목 형태 - sendResult가 있으면(실제 발송을 시도한 경우)
+// {at, triggered, successCount, failureCount}, 없으면(발송 대상이 없거나
+// targetDate 자체가 없던 경우) 기존과 동일하게 {at, triggered}만 남는다.
+// 2026-08-02 실기기 검증 중 sendEachForMulticast 결과(성공/실패)를 아예
+// 로그·기록 어느 쪽에도 안 남기고 있던 계측 공백을 발견해 추가했다 -
+// "서버가 보냈다(triggered:true)"와 "FCM이 실제로 받아들였다"는 다른
+// 사실인데 후자를 확인할 방법이 없었다(그날 Doze로 인한 지연 하나를
+// 조사하는 데도 로그만으로는 안 돼 토큰에 직접 재발송해 확인해야 했다).
+// **이미 쌓인 옛 항목은 {at, triggered}뿐이라 이 필드가 없다** - 이 로그를
+// 나중에 읽는 쪽은 successCount/failureCount를 optional로 다뤄야 한다
+// (2026-08-02 이전 항목엔 없음). 클라이언트 invocationLog와는 어차피
+// 항목 형태가 이제 갈리므로, 나란히 비교할 땐 공통 필드(at, triggered)만
+// 본다.
+async function recordServerInvocation(
+  uid: string,
+  triggered: boolean,
+  sendResult?: {successCount: number; failureCount: number}
+): Promise<void> {
+  const db = getFirestore();
+  const docRef = db.collection("users").doc(uid).collection("agent_meta").doc("background");
+  const now = Timestamp.now();
+
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      const currentLog = (snap.data()?.serverInvocationLog as unknown[] | undefined) ?? [];
+      const entry = sendResult ?
+        {at: now, triggered, successCount: sendResult.successCount, failureCount: sendResult.failureCount} :
+        {at: now, triggered};
+      const nextLog = currentLog.length >= SERVER_INVOCATION_LOG_CAP ?
+        [...currentLog.slice(currentLog.length - SERVER_INVOCATION_LOG_CAP + 1), entry] :
+        [...currentLog, entry];
+
+      tx.set(docRef, {
+        serverInvokeCount: FieldValue.increment(1),
+        serverInvocationLog: nextLog,
+        serverLastRunAt: now,
+      }, {merge: true});
+    });
+  } catch (err) {
+    // 계측 실패는 판정 자체를 막지 않는다 - 이미 로그로 남길 것(console.error)
+    // 외에 할 수 있는 게 없고, 이 함수 호출 시점엔 이미 판정·발송이 끝나 있다.
+    console.error(`[C단계] agent_meta 계측 실패 uid=${uid}:`, err);
+  }
+}
+
+// onSchedule과 테스트용 onCall이 공유하는 핵심 로직 - sendTestPush와 같은
+// 패턴이다. 이 환경엔 gcloud가 없어 Cloud Scheduler를 수동 발화시킬 방법이
+// 없으므로, 3시간을 기다리지 않고 로직 자체를 즉시 검증하려면 이 분리가
+// 필수다.
+//
+// [2] 중복 호출(WorkManager와 FCM 탭이 거의 동시에 겹치는 경우) - 락을
+// 넣지 않았다. 경합 창이 수백ms~초 단위로 좁고, 겹쳐도 최악이 "같은 날짜
+// 추천 두 개"이지 데이터 손상이 아니다. 락을 넣으면 락에 막혀 스킵된 실행을
+// invokeCount/serverInvokeCount에 어떻게 셀지가 애매해져 t0부터 쌓은 계측
+// 표본의 해석이 바뀐다(함정 8의 연장선) - 실측으로 관측된 적 없는 문제를
+// 막으려다 확실한 계측을 훼손하는 셈이라 지금은 손대지 않는다. 같은 날짜에
+// 추천이 둘 생기는 게 실제로 관측되면 그때 다시 판단한다.
+async function runScheduledCheckCore(
+  uid: string
+): Promise<{triggered: boolean; targetDate?: string}> {
+  const targetDate = await findNextUntriggeredDate(uid);
+
+  if (!targetDate) {
+    await recordServerInvocation(uid, false);
+    return {triggered: false};
+  }
+
+  const targetDateStr = toKstDateString(targetDate);
+
+  const tokensSnap = await getFirestore()
+    .collection("users").doc(uid).collection("fcm_tokens").get();
+  const tokens = tokensSnap.docs.map((doc) => doc.id);
+
+  let sendResult: {successCount: number; failureCount: number} | undefined;
+
+  if (tokens.length > 0) {
+    // [3] data 페이로드로 서버 발화임을 클라이언트가 구분할 수 있게 한다 -
+    // 안 그러면 탭 이후 경로에서 기기 발화와 서버 발화가 다시 섞인다(함정 8이
+    // 막으려는 것이 서버 쪽 기록만은 아니다). 채널은 B단계와 동일하게
+    // agent_recommendation.
+    const response = await getMessaging().sendEachForMulticast({
+      tokens,
+      notification: {
+        title: "DOT",
+        body: "다가오는 일정에 맞는 코디를 준비했어요",
+      },
+      data: {source: "server_scheduler", targetDate: targetDateStr},
+      android: {notification: {channelId: FCM_NOTIFICATION_CHANNEL_ID}},
+    });
+    sendResult = {successCount: response.successCount, failureCount: response.failureCount};
+  }
+
+  await recordServerInvocation(uid, true, sendResult);
+  console.log(
+    `[C단계] uid=${uid} targetDate=${targetDateStr} triggered=true tokenCount=${tokens.length} ` +
+    `successCount=${sendResult?.successCount ?? "n/a"} failureCount=${sendResult?.failureCount ?? "n/a"}`
+  );
+  return {triggered: true, targetDate: targetDateStr};
+}
+
+// 3시간 주기 - 기존 WorkManager(main.dart)와 동일한 주기로 시작한다.
+// onSchedule은 Firebase가 내부적으로 만드는 Pub/Sub 토픽 + Cloud Scheduler
+// 잡으로 트리거되어 공개 HTTP 엔드포인트가 아예 없다 - onRequest + 수동
+// Cloud Scheduler 조합과 달리 A-1 함정 1과 같은 무방비 엔드포인트 리스크가
+// 구조적으로 생기지 않는다.
+export const scheduledProactiveCheck = onSchedule(
+  {schedule: "every 3 hours", region: "asia-northeast3"},
+  async () => {
+    const uids = await getActiveUids();
+    for (const uid of uids) {
+      try {
+        await runScheduledCheckCore(uid);
+      } catch (err) {
+        // uid 하나 실패가 나머지 uid 처리를 막으면 안 된다.
+        console.error(`[C단계] uid=${uid} 처리 실패:`, err);
+      }
+    }
+  }
+);
+
+// 수동 발화 테스트용 - 호출한 uid 하나만 즉시 처리한다. sendTestPush와 같은
+// 이유로 onCall + request.auth 검사(A-1 함정 1). 3시간 주기를 기다리지 않고
+// 스케줄 로직 자체를 실기기로 즉시 검증할 유일한 경로다.
+export const triggerScheduledCheckTest = onCall(
+  {region: "asia-northeast3"},
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    }
+    return await runScheduledCheckCore(request.auth.uid);
   }
 );
