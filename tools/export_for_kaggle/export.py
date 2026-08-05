@@ -157,8 +157,8 @@ def export_wardrobe(
         data = doc.to_dict() or {}
         item_id = doc.id
 
-        # isDemo 문서는 F'단계 데모 시드로 생긴 복제본이라 항상 제외한다
-        # (F'.3 지표 오염 방지 — task_demo_ready_v2.md 금지 사항). --owner-uid를
+        # isDemo 문서는 F′단계 데모 시드로 생긴 복제본이라 항상 제외한다
+        # (F′.3 지표 오염 방지 — task_demo_ready_v2.md 금지 사항). --owner-uid를
         # 주면 그 uid 소유 문서로도 한 번 더 좁힌다(멀티 계정 상태에서 표9
         # 커버리지가 남의 옷장과 섞이는 것을 막는다).
         if data.get("isDemo"):
@@ -316,7 +316,7 @@ def main() -> None:
     parser.add_argument(
         "--owner-uid",
         help="이 uid 소유 문서로만 좁힌다(생략 시 isDemo만 제외하고 전체). "
-        "F'.3 표9 재계산 전 본인 uid로 좁혀 데모/타 계정과 섞이지 않게 할 것",
+        "F′.3 표9 재계산 전 본인 uid로 좁혀 데모/타 계정과 섞이지 않게 할 것",
     )
     args = parser.parse_args()
 

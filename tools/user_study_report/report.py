@@ -1,4 +1,4 @@
-"""F'.3 지표 집계 — docs/task_demo_ready_v2.md 규약.
+"""F′.3 지표 집계 — docs/task_demo_ready_v2.md 규약.
 
 사용자가 한 명(본인)이어도 사업계획서에 넣을 수치는 산출 가능하다는 전제로,
 Firestore를 직접 읽어 다음을 계산한다:
@@ -10,7 +10,7 @@ Firestore를 직접 읽어 다음을 계산한다:
   - 백그라운드 발화 간격(agent_meta.invocationLog의 시계열)
 
 `isDemo: true`인 wardrobe 문서는 모든 집계에서 전부 제외한다 — 데모 시드가
-심사위원 자신의 옷장 수치를 오염시키면 안 되기 때문이다(F'.1.4의
+심사위원 자신의 옷장 수치를 오염시키면 안 되기 때문이다(F′.1.4의
 isDemo 플래그가 존재하는 이유 중 하나).
 
 **옷장 커버리지(표9)는 이 스크립트가 계산하지 않는다.** 그 계산은
@@ -203,7 +203,7 @@ def main() -> None:
     cred = _load_credentials(args.credentials)
     project_id = cred.project_id
 
-    print("\n=== F'.3 지표 집계 ===")
+    print("\n=== F′.3 지표 집계 ===")
     print(f"프로젝트: {project_id}")
     print(f"대상 uid: {args.owner_uid}")
     print("=======================")

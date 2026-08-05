@@ -1,6 +1,6 @@
 # demo_wardrobe 시드
 
-앱 코드(`lib/`)와 무관한 독립 도구. `docs/task_demo_ready_v2.md` F'.1.3 규약에
+앱 코드(`lib/`)와 무관한 독립 도구. `docs/task_demo_ready_v2.md` F′.1.3 규약에
 따라 본인 `wardrobe`(ownerUid 소유)를 `demo_wardrobe`(심사·시연용 공개
 읽기 전용 세트)로 복사한다.
 

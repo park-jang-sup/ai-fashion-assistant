@@ -1,5 +1,5 @@
 """wardrobe 컬렉션에서 본인(ownerUid) 소유 문서를 demo_wardrobe로 복사한다.
-docs/task_demo_ready_v2.md F'.1.3 규약.
+docs/task_demo_ready_v2.md F′.1.3 규약.
 
 demo_wardrobe는 심사·시연용 공개 읽기 전용 세트다(firestore.rules가
 allow write: if false). 이 스크립트만 채운다 — 앱 코드는 여기 쓰지 않는다.
@@ -127,7 +127,7 @@ def find_source_docs(db, owner_uid: str, excluded: set[str]) -> list:
 
 def summarize(docs: list) -> None:
     """개수·카테고리별 분포·attributes/embedding 보유 수를 출력한다.
-    이 출력이 사업계획서에 그대로 들어갈 수치다(F'.1.3)."""
+    이 출력이 사업계획서에 그대로 들어갈 수치다(F′.1.3)."""
     category_counts: Counter = Counter()
     attrs_count = 0
     embedding_count = 0
