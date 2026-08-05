@@ -48,6 +48,20 @@ String _sig(TpoMatchResult res) => res.candidates
     .map((c) => (c.items.map((i) => i.id).toList()..sort()).join(','))
     .join('|');
 
+// 순열 불변성 테스트(10번) 전용 — 사설 헬퍼, 외부 패키지 없이 4! 정도는
+// 재귀로 충분하다.
+List<List<T>> _permutationsOf<T>(List<T> items) {
+  if (items.length <= 1) return [items];
+  final result = <List<T>>[];
+  for (var i = 0; i < items.length; i++) {
+    final rest = [...items]..removeAt(i);
+    for (final perm in _permutationsOf(rest)) {
+      result.add([items[i], ...perm]);
+    }
+  }
+  return result;
+}
+
 void main() {
   group('useEmbeddingRecovery — 비활성 기본값', () {
     test('정책이 false면 recentItemIds/embedding이 있어도 결과가 현행과 동일하다', () {
@@ -340,6 +354,67 @@ void main() {
       // 직접 확인해 "C<A" 관계 자체를 못박는다.
       expect(result.candidates[0].items.map((i) => i.id), contains('c-item'));
       expect(result.candidates[1].items.map((i) => i.id), contains('a-item'));
+    });
+  });
+
+  group('useEmbeddingRecovery — 순열 불변성', () {
+    test('동일 집합의 24개 입력 순열 전부에서 정렬 결과가 같다', () {
+      // "같은 입력을 반복 정렬해도 결과가 같다"(테스트9)는 전이성을 검증하지
+      // 못한다 — Dart 정렬은 고정된 입력 순서에 대해 결정적이라, 비전이
+      // 비교자라도 반복 실행만으로는 통과한다. 비전이 비교자를 실제로 잡는
+      // 것은 입력 순서를 바꿔보는 것이다 — 삽입정렬이 결정적인 건 고정된
+      // 입력 순서에 대해서일 뿐이라, 순서가 바뀌면 결과도 달라지는 게 비전이
+      // 비교자의 특징이다.
+      //
+      // 네 아이템으로 세 블록을 모두 덮는다:
+      //   d-lo(A)  : 블록0, 유사도 0(=c-self와의 코사인)  — 가장 안 닮음, 1등
+      //   a-hi(B)  : 블록0, 유사도 0.7                     — 2등
+      //   c-self(C): 블록1 — recentItemIds에 자기 자신뿐이라 자기 제외 후
+      //              참조가 없어 유사도 값 자체가 없음     — 3등(cap에 잘림)
+      //   b-null(D): 블록2, embedding 없음                 — 4등(cap에 잘림)
+      //
+      // id를 기대 순서(d-lo, a-hi, c-self, b-null)와 알파벳 순
+      // (a-hi, b-null, c-self, d-lo)이 다르게 골랐다 — id 타이브레이크만으로
+      // 우연히 통과하는 걸 막기 위해서다.
+      //
+      // recencyPenalty는 0으로 끈다 — c-self가 recentItemIds에 있으므로
+      // 기본값(0.4)이면 rankScore 단계에서 이미 밀려나 네 아이템의 동점
+      // 전제가 깨진다(테스트 6·8·9와 같은 이유).
+      final a = _item('d-lo', '상의', '레드', '캐주얼', embedding: [0, 1, 0]);
+      final b = _item('a-hi', '상의', '블루', '캐주얼', embedding: [0.7, 0.7, 0]);
+      final c = _item('c-self', '상의', '그린', '캐주얼', embedding: [1, 0, 0]);
+      final d = _item('b-null', '상의', '옐로우', '캐주얼'); // embedding 없음
+      final bottom = _item('bt', '하의', '네이비', '캐주얼');
+
+      const policy = TpoMatchPolicy(useEmbeddingRecovery: true, recencyPenalty: 0.0);
+
+      List<String>? topTwo(List<WardrobeItem> perm) {
+        final result = OutfitMatcher.findForTpo(
+          wardrobe: [...perm, bottom],
+          formalityHint: '캐주얼',
+          policy: policy,
+          recentItemIds: {'c-self'},
+        );
+        if (result.candidates.length < 2) return null;
+        return [
+          result.candidates[0].items.firstWhere((i) => i.category == '상의').id,
+          result.candidates[1].items.firstWhere((i) => i.category == '상의').id,
+        ];
+      }
+
+      final permutations = _permutationsOf([a, b, c, d]);
+      expect(permutations.length, 24);
+
+      const expected = ['d-lo', 'a-hi'];
+      for (final perm in permutations) {
+        final actual = topTwo(perm);
+        expect(
+          actual,
+          expected,
+          reason: '입력 순열 ${perm.map((e) => e.id).toList()}에서 결과가 갈렸다 — '
+              '비교자가 전순서를 이루지 못한다(전이성 위반)',
+        );
+      }
     });
   });
 }
