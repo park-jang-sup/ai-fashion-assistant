@@ -120,6 +120,17 @@ class TpoMatchPolicy {
   // 읽는다.
   final bool useEmbeddingRecovery;
 
+  // 카테고리 단위 보충 채움(docs/task_matching_redesign_v1.md §3). true면
+  // hasCore(필수 상의·하의 격식 적합)가 성립하는 조합에서, optionalCategories
+  // 중 scored에 없는 카테고리를 relaxed 후보로 채운다 — required는 대상이
+  // 아니다(§3-2 "required 카테고리는 보충하지 않는다"). 기본 false — 켜기 전
+  // 산출물이 현행과 완전히 동일해야 한다(useEmbeddingRecovery와 같은 패턴).
+  //
+  // gateNeutralBonus와 세트로만 의미가 있다(게이팅이 꺼져 있으면 scored에서
+  // 빠지는 optionalCategories가 애초에 거의 없다) — 그래도 귀속을 분리해
+  // 보려면 이 축만 단독으로 켠 프리셋(fillOnly)이 필요하다(§3-1).
+  final bool fillOptionalFromRelaxed;
+
   const TpoMatchPolicy({
     this.gateNeutralBonus = false,
     this.requiredCategories = const {'상의', '하의'},
@@ -130,6 +141,7 @@ class TpoMatchPolicy {
     this.forceEnumerated = false,
     this.recencyPenalty = 0.4,
     this.useEmbeddingRecovery = false,
+    this.fillOptionalFromRelaxed = false,
   });
 
   // 후보 폭을 넓히거나 조합 단위 채점을 켜면 기존 "기본+한 칸 교체+미니"
@@ -184,6 +196,16 @@ class TpoMatchPolicy {
 
   // ── 임베딩 회수(7-c) A/B용 프리셋 ──
   static const embeddingRecovery = TpoMatchPolicy(useEmbeddingRecovery: true);
+
+  // ── 매칭 재설계(로드맵 2번) A/B용 프리셋 ──
+  // perCategoryFill: 게이팅 + 보충 채움을 함께 켠 결합 정책 — 실제로 켜질
+  // 후보안은 이 조합이다(§3-1). gateNeutralBonus 없이 보충만 켜면 채울
+  // 카테고리가 애초에 거의 안 생긴다.
+  static const perCategoryFill =
+      TpoMatchPolicy(gateNeutralBonus: true, fillOptionalFromRelaxed: true);
+  // fillOnly: 보충 채움 축만 단독으로 켠 귀속 분리용 프리셋(forceEnumerated/
+  // enumeratedOnly와 같은 취지) — 게이팅 없이 이 축만으로 무엇이 달라지는지 본다.
+  static const fillOnly = TpoMatchPolicy(fillOptionalFromRelaxed: true);
 }
 
 class OutfitMatcher {
@@ -603,8 +625,43 @@ class OutfitMatcher {
     final scored = topPerCategory((s) => s > 0);
     final hasCore = policy.requiredCategories.every(scored.containsKey);
     if (hasCore) {
-      final combos = buildCombos(scored);
-      final optionalMissing = optionalMissingFrom(scored);
+      // 카테고리 단위 보충 채움(§3-2) — hasCore는 이미 성립했으므로(필수는
+      // 진짜 적합) required는 건드리지 않고, optionalCategories 중 scored에
+      // 없는 카테고리만 relaxed로 채운다. 플래그 off 또는 채울 카테고리가
+      // 없으면 이 블록은 아무 것도 만들지 않고 combosSource는 scored 그대로
+      // — off 경로 비용 0(useEmbeddingRecovery의 wardrobeById 지연 생성과
+      // 같은 패턴).
+      var combosSource = scored;
+      if (policy.fillOptionalFromRelaxed) {
+        final missingOptional = policy.optionalCategories
+            .where((c) => !scored.containsKey(c) && allPerCategory.containsKey(c));
+        for (final category in missingOptional) {
+          // 보충분 내부 순서는 게이팅 안 한(ungated) 점수로 매긴다(§3-2 핵심
+          // 한 줄) — allPerCategory의 점수는 이미 policy.gateNeutralBonus가
+          // 반영돼 있으므로, 이 카테고리만 무채색 보너스를 무조건 더하는
+          // ungated 공식으로 재채점한다.
+          final rescored = <({WardrobeItem item, double score})>[];
+          for (final c in allPerCategory[category]!) {
+            final attrs = c.item.attributes!;
+            final rank = _formalityRank[attrs.formality];
+            var ungatedScore = rank == null ? 0.5 : _formalityFitScore(targetRank, rank);
+            if (isNeutralColor(attrs.color)) ungatedScore += 1;
+            rescored.add((item: c.item, score: ungatedScore));
+          }
+          final passing = rescored.where((c) => c.score > 0).toList()
+            ..sort(compareCandidates);
+          if (passing.isEmpty) continue;
+          combosSource = combosSource == scored ? Map.of(scored) : combosSource;
+          combosSource[category] =
+              passing.length > perCategory ? passing.sublist(0, perCategory) : passing;
+        }
+      }
+      final combos = buildCombos(combosSource);
+      // optionalMissingFrom은 보충 카테고리를 자연히 잡는다 — 채워 넣은
+      // 아이템은 전원 격식 미달(그래서 애초에 scored에 없었다)이므로
+      // every !isGenuineFit이 성립해, 기존 의미(순도 0)와 신규 의미(보충)가
+      // 같은 필드로 합쳐진다(§3-2, 부록).
+      final optionalMissing = optionalMissingFrom(combosSource);
       debugPrint('[PLAN] TPO($formalityHint) 매칭 성공: 후보 ${combos.length}개 (격식 적합)'
           '${optionalMissing.isEmpty ? '' : ', 선택 카테고리 순도 0=$optionalMissing'}');
       return TpoMatchResult(
