@@ -271,7 +271,10 @@ class FittingJobController extends ChangeNotifier {
     List<WardrobeItem> clothingItems,
   ) async {
     try {
-      final imageUrl = await StorageService.uploadFittingResult(bytes, cacheKey);
+      // fitting_cache의 경로는 문서 id(=cacheKey) 자체에서 결정론적으로
+      // 나온다(signed_url_policy.ts와 동일 규칙) — path 필드를 따로
+      // 저장할 필요가 없어 .url만 쓴다.
+      final imageUrl = (await StorageService.uploadFittingResult(bytes, cacheKey)).url;
       // fitting_cache의 create 규칙이 ownerUid == request.auth.uid를 요구한다.
       // uid가 없으면 캐시 문서 저장만 건너뛴다(폴백 = 아무것도 하지 않음) —
       // 방금 만든 이미지는 fittingImageUrl로는 계속 반영되어 화면·스크랩에 쓰인다.

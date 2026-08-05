@@ -34,9 +34,15 @@ class FirestoreService {
         );
   }
 
+  // imagePath/cutoutPath는 서명 URL 이행 A-3(docs/task_signed_urls_v1.md)
+  // — URL 필드와 함께 이중 기록한다(§1 "URL 필드는 건드리지 않는다").
+  // getSignedImageUrls(functions)가 이 필드를 우선 읽고, 없으면(Phase B
+  // 백필 전 기존 문서) URL에서 역산한다.
   static Future<String> addWardrobeItem({
     required String imageUrl,
+    required String imagePath,
     String? cutoutImageUrl,
+    String? cutoutPath,
     required String category,
     String? subCategory,
     ClothingSize? size,
@@ -44,7 +50,9 @@ class FirestoreService {
   }) async {
     final doc = await _db.collection(_wardrobeCol).add({
       'imageUrl': imageUrl,
+      'imagePath': imagePath,
       if (cutoutImageUrl != null) 'cutoutImageUrl': cutoutImageUrl,
+      if (cutoutPath != null) 'cutoutPath': cutoutPath,
       'category': category,
       if (subCategory != null) 'subCategory': subCategory,
       'createdAt': FieldValue.serverTimestamp(),

@@ -22,7 +22,11 @@ class StorageService {
         .join();
   }
 
-  static Future<String> uploadWardrobeImage(XFile xFile) async {
+  // 반환을 (url, path) 레코드로 바꿨다(서명 URL 이행 A-3, docs/
+  // task_signed_urls_v1.md). path는 getSignedImageUrls가 서명할 대상을
+  // 직접 알려주는 필드고, url은 그대로 폴백용으로 계속 저장한다(§1의
+  // "URL 필드는 건드리지 않는다" — 이중 기록, 기존 필드 무변).
+  static Future<({String url, String path})> uploadWardrobeImage(XFile xFile) async {
     final file = File(xFile.path);
     final fileName = '${_randomFileStem()}.jpg';
     final ref = _storage.ref().child('$_folder/$fileName');
@@ -32,16 +36,18 @@ class StorageService {
       SettableMetadata(contentType: 'image/jpeg'),
     );
 
-    return ref.getDownloadURL();
+    final url = await ref.getDownloadURL();
+    return (url: url, path: ref.fullPath);
   }
 
   // 온디바이스 배경 제거 결과(투명 PNG)를 업로드한다. 원본과 별도 경로에
   // 저장해 원본은 항상 보존되도록 한다.
-  static Future<String> uploadWardrobeCutout(Uint8List pngBytes) async {
+  static Future<({String url, String path})> uploadWardrobeCutout(Uint8List pngBytes) async {
     final fileName = '${_randomFileStem()}.png';
     final ref = _storage.ref().child('$_cutoutFolder/$fileName');
     await ref.putData(pngBytes, SettableMetadata(contentType: 'image/png'));
-    return ref.getDownloadURL();
+    final url = await ref.getDownloadURL();
+    return (url: url, path: ref.fullPath);
   }
 
   static Future<void> deleteWardrobeImage(String imageUrl) async {
@@ -55,10 +61,15 @@ class StorageService {
   }
 
   // 캐시 키(사용자 사진 + 옷 조합의 SHA-256 해시)를 파일명으로 써서
-  // 같은 조합이면 항상 같은 경로에 덮어쓰기(overwrite)되게 한다.
-  static Future<String> uploadFittingResult(Uint8List bytes, String cacheKey) async {
+  // 같은 조합이면 항상 같은 경로에 덮어쓰기(overwrite)되게 한다. path는
+  // signed_url_policy.ts가 fitting_cache에 대해 하는 것과 동일하게
+  // 문서 id(=cacheKey)로도 유도 가능하지만, 호출부가 이미 들고 있는
+  // ref.fullPath를 그대로 반환해 유도 규칙을 두 곳에 중복하지 않는다.
+  static Future<({String url, String path})> uploadFittingResult(
+      Uint8List bytes, String cacheKey) async {
     final ref = _storage.ref().child('$_fittingResultsFolder/$cacheKey.jpg');
     await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
-    return ref.getDownloadURL();
+    final url = await ref.getDownloadURL();
+    return (url: url, path: ref.fullPath);
   }
 }

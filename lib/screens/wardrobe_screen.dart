@@ -591,14 +591,21 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
       _isUploading = true;
     });
     try {
-      final imageUrl = await StorageService.uploadWardrobeImage(xFile);
+      final (:url, :path) = await StorageService.uploadWardrobeImage(xFile);
+      final imageUrl = url;
+      final imagePath = path;
       String? cutoutImageUrl;
+      String? cutoutPath;
       if (cutoutBytes != null) {
-        cutoutImageUrl = await StorageService.uploadWardrobeCutout(cutoutBytes);
+        final cutout = await StorageService.uploadWardrobeCutout(cutoutBytes);
+        cutoutImageUrl = cutout.url;
+        cutoutPath = cutout.path;
       }
       final itemId = await FirestoreService.addWardrobeItem(
         imageUrl: imageUrl,
+        imagePath: imagePath,
         cutoutImageUrl: cutoutImageUrl,
+        cutoutPath: cutoutPath,
         category: category,
         subCategory: subCategory,
         size: size,
