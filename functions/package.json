@@ -9,7 +9,8 @@
     "build": "tsc",
     "build:watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions",
-    "deploy": "firebase deploy --only functions"
+    "deploy": "firebase deploy --only functions",
+    "test": "npm run build && node lib/rate_limit.test.js"
   },
   "dependencies": {
     "firebase-admin": "^14.2.0",
