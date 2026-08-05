@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 
@@ -9,6 +10,17 @@ import 'package:flutter/foundation.dart';
 // 시 null 반환(호출부가 기존 URL 필드로 폴백, §3-3). 서명 URL은 어디에도
 // 영속화하지 않는다 — 이 캐시는 앱 프로세스가 살아있는 동안만 유효하고,
 // 콜드스타트마다 비어서 다시 채워진다.
+//
+// [2026-08-06 병합 수정] 관문 B 계측에서 옷장(120벌) 한 번 진입에
+// signCount가 9~91까지 새는 게 실측됐다 — prefetch()의 배치 콜과
+// GridView 타일마다 독립 실행되는 SignedNetworkImage.resolve()가
+// 서로 모르는 채 각자 발사했기 때문(로그로 확인: 배치 120 직후 52ms
+// 안에 개별 배치=1 콜이 여러 건 이어짐 — 배치 응답이 오기 전에 타일이
+// 먼저 빌드돼 캐시가 비어 있는 걸 보고 자기 것만 따로 요청). 그래서
+// resolve()는 더 이상 즉시 발사하지 않는다 — 짧은 창(디바운스) 동안
+// 요청을 모아 한 콜로 합치고, 이미 같은 id를 요청 중이면 그 Future를
+// 공유해 중복 발사 자체를 구조적으로 막는다. prefetch()도 이제 이
+// 병합 경로를 그대로 타는 얇은 래퍼다 — 별도 배치 로직을 안 둔다.
 class ImageUrlResolver {
   static final FirebaseFunctions _functions =
       FirebaseFunctions.instanceFor(region: 'asia-northeast3');
@@ -16,7 +28,7 @@ class ImageUrlResolver {
   static final Map<String, _CacheEntry> _cache = {};
 
   // 계측(§5) — Firestore에 영속화하지 않고 프로세스 수명 동안의 인메모리
-  // 카운터만 둔다(v1 범위). 관문 A는 이 값을 읽어 "폴백 발화 0"을 확인한다.
+  // 카운터만 둔다(v1 범위). 관문 A/B는 이 값을 읽어 "폴백 발화 0"을 확인한다.
   static int cacheHitCount = 0;
   static int cacheMissCount = 0;
   static int fallbackCount = 0;
@@ -24,40 +36,39 @@ class ImageUrlResolver {
   // 서버(1회 콜) 배치 상한과 동일 — signed_url_policy.ts의 MAX_BATCH_SIZE.
   static const int _maxBatchSize = 200;
 
+  // 병합 창 — 이 시간 안에 들어온 resolve() 요청은 전부 한 콜로 묶인다.
+  // 사람이 스크롤하며 타일이 순차로 빌드되는 속도(수~수십 ms 간격)보다
+  // 넉넉해야 하고, 화면 체감 지연으로 느껴지지 않을 만큼 짧아야 한다.
+  static const Duration _coalesceWindow = Duration(milliseconds: 40);
+
+  // key = "collection/id" — 같은 id라도 컬렉션이 다르면(이론상) 별개
+  // 요청으로 다룬다. 진행 중(아직 응답 안 옴)인 요청의 Future를 여기서
+  // 공유한다 — 새 네트워크 호출을 만들지 않는다.
+  static final Map<String, Completer<List<String>?>> _pending = {};
+  static final List<({String collection, String id})> _pendingQueue = [];
+  static Timer? _flushTimer;
+
   @visibleForTesting
   static void resetForTest() {
     _cache.clear();
+    _pending.clear();
+    _pendingQueue.clear();
+    _flushTimer?.cancel();
+    _flushTimer = null;
     cacheHitCount = 0;
     cacheMissCount = 0;
     fallbackCount = 0;
   }
 
-  // 화면 진입 시(예: 옷장 119벌) 여러 문서의 URL을 한 번에 미리 받아둔다.
-  // 이미 캐시가 살아있는(갱신 마진 이전) 항목은 요청에서 자동으로 빠진다 —
-  // 매번 전체를 다시 발급받지 않는다.
+  // 화면 진입 시(예: 옷장 120벌) 여러 문서의 URL을 한 번에 미리 받아둔다.
+  // resolve()와 같은 병합 경로를 타므로, 개별 타일이 동시에 resolve()를
+  // 불러도 여기서 이미 큐에 들어간 항목과 자연히 합쳐진다 — prefetch
+  // 전용 로직을 따로 두지 않는다.
   static Future<void> prefetch(
       List<({String collection, String id})> items) async {
-    final now = DateTime.now();
-    final needed = items
-        .where((item) {
-          final cached = _cache[item.id];
-          return cached == null || !now.isBefore(cached.refreshAt);
-        })
-        .toList();
-    if (needed.isEmpty) return;
-
-    for (var i = 0; i < needed.length; i += _maxBatchSize) {
-      final end =
-          (i + _maxBatchSize < needed.length) ? i + _maxBatchSize : needed.length;
-      try {
-        await _fetchAndCache(needed.sublist(i, end));
-      } catch (e) {
-        // 배치 하나가 실패해도 나머지 청크는 계속 시도한다 — 이미 채워진
-        // 캐시는 그대로 유효하고, 못 받은 항목은 resolve() 호출 시점에
-        // 개별 폴백으로 처리된다.
-        debugPrint('[ImageUrlResolver] prefetch 배치 실패(${needed.length}건 중 일부): $e');
-      }
-    }
+    await Future.wait(
+      items.map((item) => resolve(collection: item.collection, id: item.id)),
+    );
   }
 
   // 문서 하나의 서명 URL 목록을 반환한다. 순서는 서버(signed_url_policy.ts
@@ -67,33 +78,68 @@ class ImageUrlResolver {
   static Future<List<String>?> resolve({
     required String collection,
     required String id,
-  }) async {
+  }) {
     final now = DateTime.now();
     final cached = _cache[id];
-    if (cached != null && now.isBefore(cached.expiresAt)) {
+    // 만료 80% 시점(refreshAt)까지만 캐시 적중으로 본다(§3-3) — 실제
+    // expiresAt까지 쓰면 화면에 떠 있는 동안 URL이 만료돼버릴 수 있다.
+    // prefetch든 개별 resolve()든 이제 같은 기준을 쓴다(예전엔 이 둘이
+    // 서로 다른 기준을 써서 어느 경로가 먼저 도는지에 따라 갱신 시점이
+    // 갈렸다).
+    if (cached != null && now.isBefore(cached.refreshAt)) {
       cacheHitCount++;
-      return cached.urls;
+      return Future.value(cached.urls);
     }
+
+    final key = '$collection/$id';
+    final existing = _pending[key];
+    if (existing != null) {
+      // 이미 이번 병합 창(또는 진행 중인 콜)에 같은 항목이 요청돼 있다
+      // — 새로 발사하지 않고 그 결과를 같이 기다린다.
+      return existing.future;
+    }
+
     cacheMissCount++;
+    final completer = Completer<List<String>?>();
+    _pending[key] = completer;
+    _pendingQueue.add((collection: collection, id: id));
+    _flushTimer ??= Timer(_coalesceWindow, _flushPending);
+    return completer.future;
+  }
 
-    try {
-      await _fetchAndCache([(collection: collection, id: id)]);
-    } catch (e) {
-      debugPrint('[ImageUrlResolver] 발급 실패, 기존 URL로 폴백 collection=$collection id=$id: $e');
-      fallbackCount++;
-      return null;
-    }
+  static Future<void> _flushPending() async {
+    _flushTimer = null;
+    if (_pendingQueue.isEmpty) return;
 
-    final result = _cache[id];
-    if (result == null) {
-      // 서버 응답에 이 id가 없다 — 정책 거부(소유 불일치 등)나 경로 없음
-      // 등 개별 사유로 생략된 것(functions/src/index.ts getSignedImageUrls
-      // 참고). 서버가 왜 거부했는지는 서버 로그에만 남고 클라이언트는
-      // 그냥 폴백한다.
-      fallbackCount++;
-      return null;
+    final batch = List<({String collection, String id})>.from(_pendingQueue);
+    _pendingQueue.clear();
+
+    // 서버 배치 상한(200)을 넘으면 청크로 나눠 순차 처리한다 — 옷장
+    // 120벌 정도는 한 청크로 끝난다.
+    for (var i = 0; i < batch.length; i += _maxBatchSize) {
+      final end = (i + _maxBatchSize < batch.length) ? i + _maxBatchSize : batch.length;
+      final chunk = batch.sublist(i, end);
+      try {
+        await _fetchAndCache(chunk);
+      } catch (e) {
+        debugPrint('[ImageUrlResolver] 발급 실패(${chunk.length}건): $e');
+      }
+      for (final item in chunk) {
+        final key = '${item.collection}/${item.id}';
+        final completer = _pending.remove(key);
+        if (completer == null) continue; // 이미 처리됨(방어적)
+        final result = _cache[item.id];
+        if (result != null) {
+          completer.complete(result.urls);
+        } else {
+          // 서버 응답에 이 id가 없다(정책 거부·경로 없음 등, functions/
+          // src/index.ts getSignedImageUrls 참고) 또는 배치 콜 자체가
+          // 실패했다 — 어느 쪽이든 폴백 신호.
+          fallbackCount++;
+          completer.complete(null);
+        }
+      }
     }
-    return result.urls;
   }
 
   static Future<void> _fetchAndCache(
