@@ -4,7 +4,16 @@ import {defineSecret} from "firebase-functions/params";
 import {initializeApp} from "firebase-admin/app";
 import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
+import {getStorage} from "firebase-admin/storage";
 import {evaluateRateLimit, RateLimitConfig, RateLimitKind, RateLimitState} from "./rate_limit";
+import {
+  decideSignedUrlAccess,
+  validateBatch,
+  MAX_BATCH_SIZE,
+  DocFields,
+  SignedUrlCollection,
+  SignedUrlRequestItem,
+} from "./signed_url_policy";
 
 // firebase-admin 14.x부터 admin.firestore()/admin.messaging() 같은
 // 네임스페이스 호환 API가 최상위 export에서 빠졌다 - getFirestore()/
@@ -103,7 +112,11 @@ async function fetchUpstream(endpoint: string, body: string): Promise<Response> 
 //     플랜 등을 활발히 써도 시간당 수십 건을 넘기기 어렵다.
 //   이미지 20/시간: 가상 피팅 1건이 12.7초 안팎 걸려, 사람이 시간당
 //     20건을 연달아 누르는 것 자체가 비현실적이다(handoff 실측 근거).
-const RATE_LIMIT_CONFIG: RateLimitConfig = {textLimit: 60, imageLimit: 20};
+//   서명(sign) 30/시간: getSignedImageUrls는 배치 호출(요청 1건이 최대
+//     200개 문서를 한 번에 서명)이라 화면 전환당 1콜에 가깝다. 만료
+//     60분·클라이언트 갱신 시점 80%(A-3)라 정상 사용은 시간당 몇 콜을
+//     넘기 어렵다 — **배포 전 실제 값은 사용자 확인이 필요하다.**
+const RATE_LIMIT_CONFIG: RateLimitConfig = {textLimit: 60, imageLimit: 20, signLimit: 30};
 
 // rate_limits/{uid} 문서는 firestore.rules에 대응 match 블록이 없어
 // 기본 거부다(의도적 — firestore.rules 주석 참고). 클라이언트가 자기
@@ -130,12 +143,12 @@ async function checkAndRecordRateLimit(uid: string, kind: RateLimitKind): Promis
       return result;
     });
   } catch (err) {
-    console.error(`[callGeminiText] rate limit 판정 실패, 호출 허용(fail-open) uid=${uid}:`, err);
+    console.error(`[rateLimit] 판정 실패, 호출 허용(fail-open) uid=${uid} kind=${kind}:`, err);
     return;
   }
 
   if (!decision.allowed) {
-    console.log(`[callGeminiText] rate limit 초과 uid=${uid} kind=${kind} bucket=${decision.nextState.bucket}`);
+    console.log(`[rateLimit] 초과 uid=${uid} kind=${kind} bucket=${decision.nextState.bucket}`);
     throw new HttpsError(
       "resource-exhausted",
       "호출량이 많아 잠시 후 다시 시도해주세요."
@@ -291,6 +304,123 @@ export const callGeminiText = onCall(
     }
     // 최종 반환값은 쓰지 않는다 - 클라이언트가 청크를 누적해 직접 파싱한다.
     return {};
+  }
+);
+
+// ── 서명 URL 이행(docs/task_signed_urls_v1.md) A-2 ──────────────────
+// 서명 요청 단위는 경로가 아니라 문서 ID다(§3-2) - 클라이언트가 경로
+// 문자열을 보내면 유출 URL → 경로 추출 → 재서명이라는 재발급 루프가
+// 생긴다. 이 함수가 문서를 직접 읽고 접근 정책(signed_url_policy.ts)을
+// 검사한 뒤 그 문서에 기록된(또는 기존 URL에서 역산한) 경로에만 서명한다.
+//
+// 서명 URL은 Firestore에 저장하지 않는다(§3-3) - 응답으로만 나가고
+// 서버도 클라이언트도 영속화하지 않는다.
+const SIGNED_URL_EXPIRES_MS = 60 * 60 * 1000; // 60분(§3-3) - 클라이언트는 80% 시점에 갱신(A-3).
+const SIGNED_URL_COLLECTIONS: readonly SignedUrlCollection[] = [
+  "wardrobe",
+  "demo_wardrobe",
+  "fitting_cache",
+];
+
+function isSignedUrlCollection(value: unknown): value is SignedUrlCollection {
+  return typeof value === "string" &&
+    (SIGNED_URL_COLLECTIONS as readonly string[]).includes(value);
+}
+
+export const getSignedImageUrls = onCall(
+  {region: "asia-northeast3"},
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    }
+    const uid = request.auth.uid;
+
+    const {items} = (request.data ?? {}) as {items?: unknown};
+    if (!Array.isArray(items)) {
+      throw new HttpsError("invalid-argument", "items 배열이 필요합니다.");
+    }
+    const parsedItems: SignedUrlRequestItem[] = [];
+    for (const raw of items) {
+      const collection = (raw as {collection?: unknown} | null)?.collection;
+      const id = (raw as {id?: unknown} | null)?.id;
+      if (!isSignedUrlCollection(collection) || typeof id !== "string" || id === "") {
+        throw new HttpsError(
+          "invalid-argument",
+          "items의 각 항목은 {collection, id} 형태여야 합니다."
+        );
+      }
+      parsedItems.push({collection, id});
+    }
+
+    const batchCheck = validateBatch(parsedItems);
+    if (!batchCheck.valid) {
+      throw new HttpsError(
+        "invalid-argument",
+        batchCheck.reason === "empty" ?
+          "items가 비어 있습니다." :
+          `items는 최대 ${MAX_BATCH_SIZE}개까지입니다.`
+      );
+    }
+
+    // signCount는 textCount/imageCount와 분리된 별도 필드(rate_limit.ts) -
+    // 계수 시점은 상류(Storage 서명) 호출 전, 콜 1건당 1이다(배치 크기와
+    // 무관 - textCount/imageCount와 같은 "호출 1건" 단위를 유지한다).
+    await checkAndRecordRateLimit(uid, "sign");
+
+    const db = getFirestore();
+    const bucket = getStorage().bucket();
+    const results: Record<string, {urls: string[]; expiresAt: string}> = {};
+
+    await Promise.all(
+      parsedItems.map(async (item) => {
+        const snap = await db.collection(item.collection).doc(item.id).get();
+        const data = snap.data();
+        const docFields: DocFields = {
+          exists: snap.exists,
+          ownerUid: data?.ownerUid as string | undefined,
+          imagePath: data?.imagePath as string | undefined,
+          imageUrl: data?.imageUrl as string | undefined,
+          cutoutPath: data?.cutoutPath as string | undefined,
+          cutoutImageUrl: data?.cutoutImageUrl as string | undefined,
+        };
+        const decision = decideSignedUrlAccess(item, docFields, uid);
+        if (!decision.allowed) {
+          console.log(
+            `[getSignedImageUrls] 거부 uid=${uid} collection=${item.collection} ` +
+            `id=${item.id} reason=${decision.reason}`
+          );
+          return; // 응답에서 생략 - 클라이언트는 없는 id를 기존 URL 폴백 신호로 본다(A-3).
+        }
+
+        try {
+          const expires = Date.now() + SIGNED_URL_EXPIRES_MS;
+          const urls = await Promise.all(
+            decision.paths.map(async (path) => {
+              const [url] = await bucket.file(path).getSignedUrl({
+                version: "v4",
+                action: "read",
+                expires,
+              });
+              return url;
+            })
+          );
+          results[item.id] = {urls, expiresAt: new Date(expires).toISOString()};
+        } catch (err) {
+          // 개별 항목의 서명 실패가 배치 전체를 죽이면 안 된다 - 이 항목만
+          // 응답에서 빠지고(클라이언트 폴백), 나머지는 계속 처리한다.
+          console.error(
+            `[getSignedImageUrls] 서명 실패 uid=${uid} collection=${item.collection} id=${item.id}:`,
+            err
+          );
+        }
+      })
+    );
+
+    console.log(
+      `[getSignedImageUrls] uid=${uid} 요청 ${parsedItems.length}건 중 ` +
+      `${Object.keys(results).length}건 서명 성공`
+    );
+    return results;
   }
 );
 
