@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>7-b 라벨링 도구</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 0 20px;
+    text-align: center;
+  }
+  #setup { text-align: left; max-width: 480px; margin: 0 auto; }
+  #setup label { display: block; margin: 16px 0 4px; font-weight: bold; }
+  #setup input[type="text"] { width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box; }
+  #setupStatus { color: #666; white-space: pre-line; }
+  #progress { color: #888; margin-bottom: 8px; }
+  #prompt { font-size: 22px; font-weight: bold; margin-bottom: 24px; }
+  #images { display: flex; justify-content: center; gap: 24px; }
+  #images img {
+    max-width: 45%;
+    max-height: 60vh;
+    object-fit: contain;
+    border: 4px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    background: #f4f4f4;
+  }
+  #images img:hover { border-color: #4a90d9; }
+  #controls { margin-top: 24px; }
+  #controls button { font-size: 15px; padding: 8px 16px; margin: 0 6px; }
+  .hint { color: #999; font-size: 13px; margin-top: 16px; }
+  #startBtn, #downloadBtn { font-size: 16px; padding: 10px 24px; margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<div id="setup">
+  <h1>7-b 라벨링 도구</h1>
+  <p>pairs.json과 이미지 폴더를 선택하고 세션 ID를 입력한 뒤 시작하세요.
+     정책 정보는 이 화면 어디에도 없습니다(블라인드).</p>
+
+  <label for="sessionIdInput">세션 ID</label>
+  <input id="sessionIdInput" type="text" placeholder="session_1">
+
+  <label for="pairsFileInput">pairs.json</label>
+  <input id="pairsFileInput" type="file" accept=".json">
+
+  <label for="imagesDirInput">이미지 폴더 (tools/export_for_kaggle/output/images)</label>
+  <input id="imagesDirInput" type="file" webkitdirectory directory multiple>
+
+  <div>
+    <button id="startBtn" disabled>시작</button>
+  </div>
+  <p id="setupStatus"></p>
+</div>
+
+<div id="labeling" hidden>
+  <div id="progress"></div>
+  <div id="prompt"></div>
+  <div id="images">
+    <img id="imgLeft" alt="왼쪽">
+    <img id="imgRight" alt="오른쪽">
+  </div>
+  <div id="controls">
+    <button id="skipBtn">건너뛰기 (s)</button>
+    <button id="undoBtn">되돌리기 (u)</button>
+  </div>
+  <p class="hint">← 왼쪽 선택 · → 오른쪽 선택 · s 건너뛰기 · u 되돌리기 (또는 이미지를 클릭)</p>
+</div>
+
+<div id="done" hidden>
+  <h2>라벨링 완료</h2>
+  <p>아래 버튼으로 labels.json을 저장하세요.</p>
+  <button id="downloadBtn">labels.json 다운로드</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // 이 도구는 라벨만 모은다. 집계·검정은 넣지 않는다 — 완료 화면에도
+  // 몇 건/몇 승 같은 통계를 보여주지 않는다(§B-4).
+  // policy_map.json은 이 파일 어디에서도 읽지 않는다 — 그 파일명 자체가
+  // 이 코드에 등장하지 않는다(블라인드 원칙, §B-4).
+
+  let pairsData = null;       // 파싱된 pairs.json
+  let imageMap = new Map();   // 파일명(예: abc123.jpg) -> object URL
+  let sessionId = '';
+  let presentationOrder = []; // 이번 세션에서 섞은 pairId 순서
+  let currentIdx = 0;
+  let labels = [];            // 기록된 라벨(undo 시 pop)
+  let pairShownAt = 0;        // 현재 쌍이 화면에 뜬 시각(ms) — elapsedMs 계산용
+  let sessionStartedAt = null;
+
+  const setupEl = document.getElementById('setup');
+  const labelingEl = document.getElementById('labeling');
+  const doneEl = document.getElementById('done');
+  const sessionIdInput = document.getElementById('sessionIdInput');
+  const pairsFileInput = document.getElementById('pairsFileInput');
+  const imagesDirInput = document.getElementById('imagesDirInput');
+  const startBtn = document.getElementById('startBtn');
+  const setupStatus = document.getElementById('setupStatus');
+  const progressEl = document.getElementById('progress');
+  const promptEl = document.getElementById('prompt');
+  const imgLeft = document.getElementById('imgLeft');
+  const imgRight = document.getElementById('imgRight');
+  const skipBtn = document.getElementById('skipBtn');
+  const undoBtn = document.getElementById('undoBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  // pairs.json의 imagePath("images/xxx.jpg")에서 파일명만 뽑는다 — 사용자가
+  // webkitdirectory로 어떤 이름의 폴더를 고르든(images/든 output/images/든)
+  // 폴더 구조가 아니라 파일명으로만 매칭한다.
+  function basename(path) {
+    const parts = path.split('/');
+    return parts[parts.length - 1];
+  }
+
+  function checkReady() {
+    startBtn.disabled = !(pairsData && imageMap.size > 0 && sessionIdInput.value.trim().length > 0);
+  }
+
+  function updateStatus() {
+    const parts = [];
+    parts.push(pairsData ? ('pairs.json 로드됨 — ' + pairsData.pairs.length + '쌍') : 'pairs.json 미로드');
+    parts.push('이미지 ' + imageMap.size + '장 로드됨');
+    setupStatus.textContent = parts.join('\n');
+  }
+
+  // file://에서는 fetch가 막히므로 pairs.json은 파일 선택 입력 + FileReader로
+  // 읽는다(§B-1).
+  pairsFileInput.addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function () {
+      try {
+        pairsData = JSON.parse(reader.result);
+      } catch (err) {
+        pairsData = null;
+        alert('pairs.json 파싱 실패: ' + err.message);
+      }
+      updateStatus();
+      checkReady();
+    };
+    reader.readAsText(file);
+  });
+
+  // 이미지도 같은 이유(file:// fetch 제한)로 webkitdirectory 입력을 받아
+  // 객체 URL로 표시한다(§B-1).
+  imagesDirInput.addEventListener('change', function (e) {
+    imageMap = new Map();
+    const files = e.target.files;
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      if (!/\.(jpg|jpeg|png)$/i.test(f.name)) continue;
+      imageMap.set(f.name, URL.createObjectURL(f));
+    }
+    updateStatus();
+    checkReady();
+  });
+
+  sessionIdInput.addEventListener('input', checkReady);
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = a[i];
+      a[i] = a[j];
+      a[j] = tmp;
+    }
+    return a;
+  }
+
+  startBtn.addEventListener('click', function () {
+    sessionId = sessionIdInput.value.trim();
+    // 쌍 제시 순서를 세션마다 섞는다 — pairs.json 원순서(태그순)대로 보여주면
+    // 같은 태그가 연달아 나와 직전 판단이 다음에 번진다(§B-2). 분석에는 안
+    // 쓰므로 시드는 고정하지 않되, 나중을 위해 순서 자체는 기록한다.
+    presentationOrder = shuffle(pairsData.pairs.map(function (p) { return p.pairId; }));
+    currentIdx = 0;
+    labels = [];
+    sessionStartedAt = new Date().toISOString();
+    setupEl.hidden = true;
+    labelingEl.hidden = false;
+    showCurrentPair();
+  });
+
+  function pairById(id) {
+    return pairsData.pairs.find(function (p) { return p.pairId === id; });
+  }
+
+  function showCurrentPair() {
+    if (currentIdx >= presentationOrder.length) {
+      finishSession();
+      return;
+    }
+    const pair = pairById(presentationOrder[currentIdx]);
+    progressEl.textContent = (currentIdx + 1) + ' / ' + presentationOrder.length;
+    // 태그 한 줄 외에는 아무것도 안 보여준다 — 카테고리·그룹 크기·Δ·정책은
+    // 여기서도, 다른 어디서도 표시하지 않는다(§B-2 블라인드 원칙).
+    promptEl.textContent = '[' + pair.tag + '] 상황에 어느 쪽을 입겠습니까?';
+    imgLeft.src = imageMap.get(basename(pair.itemA.imagePath)) || '';
+    imgRight.src = imageMap.get(basename(pair.itemB.imagePath)) || '';
+    pairShownAt = Date.now();
+  }
+
+  function recordChoice(choice) {
+    if (currentIdx >= presentationOrder.length) return;
+    const pair = pairById(presentationOrder[currentIdx]);
+    const now = Date.now();
+    // choice는 itemA/itemB로만 남긴다 — current/embeddingRecovery로 기록하면
+    // 이 파일 자체가 블라인드를 깬다. 정책 결합은 분석 단계에서
+    // policy_map.json과 조인해서 한다(§B-3).
+    labels.push({
+      pairId: pair.pairId,
+      choice: choice,
+      labeledAt: new Date(now).toISOString(),
+      elapsedMs: now - pairShownAt,
+    });
+    currentIdx++;
+    showCurrentPair();
+  }
+
+  function undo() {
+    if (labels.length === 0) return;
+    labels.pop();
+    currentIdx--;
+    showCurrentPair();
+  }
+
+  imgLeft.addEventListener('click', function () { recordChoice('itemA'); });
+  imgRight.addEventListener('click', function () { recordChoice('itemB'); });
+  skipBtn.addEventListener('click', function () { recordChoice('skip'); });
+  undoBtn.addEventListener('click', undo);
+
+  document.addEventListener('keydown', function (e) {
+    if (labelingEl.hidden) return;
+    if (e.key === 'ArrowLeft') { recordChoice('itemA'); }
+    else if (e.key === 'ArrowRight') { recordChoice('itemB'); }
+    else if (e.key === 's' || e.key === 'S') { recordChoice('skip'); }
+    else if (e.key === 'u' || e.key === 'U') { undo(); }
+  });
+
+  function finishSession() {
+    labelingEl.hidden = true;
+    doneEl.hidden = false;
+
+    downloadBtn.onclick = function () {
+      // 파일 쓰기 API(File System Access 등)는 브라우저 호환 문제가 있어
+      // 쓰지 않는다 — Blob + <a download>는 어디서나 동작한다(§B-2).
+      const output = {
+        sessionId: sessionId,
+        startedAt: sessionStartedAt,
+        finishedAt: new Date().toISOString(),
+        presentationOrder: presentationOrder,
+        labels: labels,
+      };
+      const blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'labels.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+  }
+})();
+</script>
+</body>
+</html>
