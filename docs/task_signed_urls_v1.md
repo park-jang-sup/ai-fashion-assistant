@@ -196,6 +196,14 @@ demo_wardrobe 119건) 전부 `--apply` 완료. 매 실행 dry-run 예측치와
 | `demo_wardrobe` | 119 | 119/119 | 114/114 | 3 | 3 |
 | `fitting_cache`(감사만, write 없음) | 23 | — | — | 0 | — |
 
+**[처분 완료 — 2026-08-06]** 고아 참조 3건(`h5L8bP1MV13Ndprr0fvm`/
+`l0zuLPFSFI5Vp4kIqHBS`/`ygx17wBZqrMoJwP547e7`) 사용자가 앱에서 직접
+삭제(삭제 성공·재실행 후 미복귀 확인). `demo_wardrobe` 미러 3건도
+dry-run 확인 후 삭제. **삭제 후**: `wardrobe` 234건(237−3),
+`demo_wardrobe` 116건(119−3), 파일 부재 0건(두 컬렉션 다) — 고아
+참조가 데이터에서 완전히 제거됐다. 파일 자체(Storage 쪽 잔재 없음 —
+애초에 파일이 없었던 게 문제였으므로 삭제할 파일도 없다)는 해당 없음.
+
 **잔여 백필 없음** — `imagePath`/`cutoutPath`가 모두 대상 문서 100%에
 기록됐다(URL 필드 자체가 없는 문서는 애초에 대상이 아님 — 컷아웃
 미보유 등 정상 상태). 파일 부재는 wardrobe·demo_wardrobe 각 3건씩,
@@ -264,13 +272,16 @@ signCount(발급 수)·배치 크기 분포·Resolver 캐시 적중/미스·폴�
    커스터마이즈하는 방법이 있다(`cached_network_image`의
    `cacheKey` 파라미터). 시간당 재다운로드가 관측으로 문제가 되면
    그때 판단 — 지금은 미조치.
-5. **고아 참조 3건(wardrobe 상의, 파일 없는 문서)**: 관문 A 검증 중
-   발견(§4 Phase B 설계 보강 참고, `tools/audit_image_refs`로 재현
-   가능). 문서 id `h5L8bP1MV13Ndprr0fvm`/`l0zuLPFSFI5Vp4kIqHBS`/
-   `ygx17wBZqrMoJwP547e7` — Firestore 문서(imageUrl·cutoutImageUrl
-   둘 다)는 정상 URL 형태를 갖고 있으나 Storage에 파일이 없다
-   (`bucket.blob(path).exists()==False`). 원인(업로드 실패 후 문서만
-   남았는지/이관 중 유실/별도 삭제) 미규명. **서명 URL 이행과
-   무관한 기존 데이터 결함**이다(신규 코드 미호출 확인됨 — signCount
-   불변). 처분(문서 정리·사용자에게 재업로드 요청·방치) 미정 — 아무것도
-   삭제하지 않았다.
+5. **고아 참조 3건(wardrobe 상의, 파일 없는 문서)** — [처분 완료
+   2026-08-06]. 관문 A 검증 중 발견(§4 Phase B 설계 보강 참고,
+   `tools/audit_image_refs`로 재현 가능). 문서 id
+   `h5L8bP1MV13Ndprr0fvm`/`l0zuLPFSFI5Vp4kIqHBS`/`ygx17wBZqrMoJwP547e7`
+   — Firestore 문서(imageUrl·cutoutImageUrl 둘 다)는 정상 URL 형태를
+   갖고 있으나 Storage에 파일이 없었다(`bucket.blob(path).exists()
+   ==False`). 원인(업로드 실패 후 문서만 남았는지/이관 중 유실/별도
+   삭제)은 끝내 미규명. **서명 URL 이행과 무관한 기존 데이터
+   결함**이었다(신규 코드 미호출 확인됨 — signCount 불변).
+   **처분**: 사용자가 앱에서 `wardrobe` 3건을 직접 삭제(삭제 성공·
+   재실행 후 미복귀 확인), `demo_wardrobe` 미러 3건은 dry-run 확인
+   후 스크립트로 삭제. 삭제 후 `wardrobe` 234건, `demo_wardrobe`
+   116건, 파일 부재 0건(두 컬렉션 다) — 재검증 완료.
