@@ -112,11 +112,15 @@ async function fetchUpstream(endpoint: string, body: string): Promise<Response> 
 //     플랜 등을 활발히 써도 시간당 수십 건을 넘기기 어렵다.
 //   이미지 20/시간: 가상 피팅 1건이 12.7초 안팎 걸려, 사람이 시간당
 //     20건을 연달아 누르는 것 자체가 비현실적이다(handoff 실측 근거).
-//   서명(sign) 30/시간: getSignedImageUrls는 배치 호출(요청 1건이 최대
-//     200개 문서를 한 번에 서명)이라 화면 전환당 1콜에 가깝다. 만료
-//     60분·클라이언트 갱신 시점 80%(A-3)라 정상 사용은 시간당 몇 콜을
-//     넘기 어렵다 — **배포 전 실제 값은 사용자 확인이 필요하다.**
-const RATE_LIMIT_CONFIG: RateLimitConfig = {textLimit: 60, imageLimit: 20, signLimit: 30};
+//   서명(sign) 120/시간: 텍스트·이미지와 잣대가 다르다 — (1) 서명은
+//     무료 IAM 호출이라 이 상한의 목적이 비용이 아니라 스크립트 남용
+//     차단뿐이다. 정상 사용 대비 여유를 크게 둬도 목적이 훼손되지
+//     않는다. (2) ImageUrlResolver의 캐시가 메모리라(A-3, Firestore
+//     비영속) 콜드스타트마다 재발급된다 — 검증 세션(반복 설치 + 화면
+//     순회)이 낮은 상한(30 등)에는 실제로 닿을 수 있다. (3) Phase C
+//     이후에는 초과 시 레거시 URL 폴백이 없어(토큰 회수로 구 URL 자체가
+//     죽음) 이미지가 시간 단위로 깨진다 — 오발 거부의 비용이 크다.
+const RATE_LIMIT_CONFIG: RateLimitConfig = {textLimit: 60, imageLimit: 20, signLimit: 120};
 
 // rate_limits/{uid} 문서는 firestore.rules에 대응 match 블록이 없어
 // 기본 거부다(의도적 — firestore.rules 주석 참고). 클라이언트가 자기
