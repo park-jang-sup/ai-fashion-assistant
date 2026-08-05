@@ -171,11 +171,14 @@ void main() {
       // 더 먹이는 꼴). 제대로 뺐다면 a의 유사도는 r([0,1,0])과의 코사인(=0,
       // 안 닮음)만 남아, b-top(양쪽 다 0.5)보다 오히려 앞으로 와야 한다.
       //
-      // recencyPenalty는 여기서 일부러 0으로 끈다 — a가 recentItemIds에 있으면
-      // rankScore 단계에서도 a에게 감점이 붙어(정상 동작) a·b-top의 점수가
-      // 갈리므로, 이 테스트가 보려는 "동점 안에서의 자기 자신 제외" 자체를
-      // 가릴 수 있다. 두 축은 recentItemIds를 공유하되 서로 독립적이라, 각
-      // 축을 따로 검증하려면 다른 축을 꺼야 한다.
+      // 기본 프리셋(recencyPenalty 0.4)을 쓰면 자기 자신이 recentItemIds에 있다는
+      // 이유로 감점까지 함께 적용돼 rankScore 자체가 갈리고, 이 테스트가 확인하려는
+      // "동점 안에서의 자기 자신 제외"가 애초에 시험되지 않는다. 두 축이
+      // recentItemIds를 공유하기 때문이다.
+      //
+      // 따라서 이 테스트는 **출시 기본값에서는 도달하지 않는 경로**를 검증한다.
+      // 기본값에서는 자기 자신이 이미 감점으로 동점 집합 밖으로 밀려난다.
+      // 규칙 자체는 정책 값과 무관하게 성립해야 하므로 검증은 유지한다.
       final a = _item('a', '상의', '레드', '캐주얼', embedding: [1, 0, 0]);
       final b = _item('b-top', '상의', '블루', '캐주얼', embedding: [0.5, 0.5, 0]);
       final bottom = _item('bt', '하의', '네이비', '캐주얼');
@@ -240,6 +243,103 @@ void main() {
         itemPool(off),
         reason: '회수 축이 켜졌다고 keep 집합(조합 가능한 아이템 구성) 자체가 달라짐',
       );
+    });
+  });
+
+  group('useEmbeddingRecovery — 3블록: 유사도 없음 블록', () {
+    test('유사도 값이 없는 아이템(참조 집합이 자기 자신뿐)이 벡터+유사도 블록과 벡터 없음 블록 사이에 온다', () {
+      // 참조 집합이 x-self 하나뿐이고 x-self 자신도 그 참조 집합에 있다.
+      // 자기 자신을 제외하면 x-self의 참조 집합은 비어 유사도 값이 안 생긴다
+      // (블록1: 벡터는 있으나 유사도 없음). y-has-sim은 x-self를 참조해
+      // 유사도 값이 생긴다(블록0). z-no-vec은 embedding 자체가 없다(블록2).
+      //
+      // id를 일부러 알파벳 순(x<y<z)과 기대 순서(y,x,z)가 다르게 골랐다 —
+      // id 타이브레이크만 작동해도 우연히 통과하는 공허한 테스트를 피하기
+      // 위해서다.
+      //
+      // recencyPenalty는 0으로 끈다 — x-self가 recentItemIds에 있으므로
+      // 기본값(0.4)이면 rankScore 단계에서 이미 밀려나 "동점 집합 안에서의
+      // 블록 분리"를 시험하지 못한다(테스트6과 같은 이유).
+      final xSelf = _item('x-self', '상의', '레드', '캐주얼', embedding: [1, 0, 0]);
+      final yHasSim = _item('y-has-sim', '상의', '블루', '캐주얼', embedding: [0.6, 0.8, 0]);
+      final zNoVec = _item('z-no-vec', '상의', '그린', '캐주얼'); // embedding 없음
+      final bottom = _item('bt', '하의', '네이비', '캐주얼');
+
+      final result = OutfitMatcher.findForTpo(
+        wardrobe: [xSelf, yHasSim, zNoVec, bottom],
+        formalityHint: '캐주얼',
+        policy: const TpoMatchPolicy(useEmbeddingRecovery: true, recencyPenalty: 0.0),
+        recentItemIds: {'x-self'},
+      );
+
+      // candidatesPerCategory 기본 2라 상위 2개만 살아남는다. 블록 순서가
+      // 맞다면 y(블록0)와 x(블록1)가 살아남고 z(블록2)는 잘려야 한다.
+      final survivors = {for (final c in result.candidates) ...c.items.map((i) => i.id)};
+      expect(
+        survivors.contains('z-no-vec'),
+        isFalse,
+        reason: '벡터 없는 아이템이 블록1(벡터만 있음)보다 앞에 살아남음: $survivors',
+      );
+      expect(
+        result.candidates.first.items.map((i) => i.id),
+        contains('y-has-sim'),
+        reason: '유사도 값이 있는 아이템(블록0)이 1번이 아님',
+      );
+    });
+  });
+
+  group('useEmbeddingRecovery — 전이성', () {
+    test('반례(A·B·C, 참조 집합 {B}, map[A]=0.8, map[C]=0.2, map[B]=없음)가 순환을 만들지 않는다', () {
+      // 78abe0f 직후 발견된 반례를 그대로 재현한다. B 자신이 참조 집합에
+      // 있어 자기 제외 후 유사도 값이 없어진다(블록1). A·C는 B와의 유사도로
+      // 블록0에서 오름차순 비교된다(C=0.2 < A=0.8 → C가 앞).
+      //
+      // 2블록(벡터 있음/없음)뿐이었던 이전 구현이었다면: A vs C는 유사도로
+      // C<A, A vs B/B vs C는 유사도 비교를 건너뛰고 id로 A<B<C가 나와
+      // A<B, B<C, C<A가 동시에 성립하는 순환이 생겼다. 3블록 분리 후에는
+      // B가 블록1로 A·C(블록0)보다 항상 뒤이므로 순환 자체가 성립할 수
+      // 없다 — C<A<B로 완전히 일관된 순서 하나만 나와야 한다.
+      //
+      // recencyPenalty는 0으로 끈다 — b-item이 recentItemIds에 있으므로
+      // 기본값이면 rankScore 단계에서 이미 밀려나 반례의 전제(A·B·C가
+      // 동점)가 깨진다.
+      final a = _item('a-item', '상의', '레드', '캐주얼', embedding: [0.8, 0, 0]);
+      final b = _item('b-item', '상의', '블루', '캐주얼', embedding: [1, 0, 0]);
+      final c = _item('c-item', '상의', '그린', '캐주얼', embedding: [0.2, 0, 0]);
+      final bottom = _item('bt', '하의', '네이비', '캐주얼');
+
+      const policy = TpoMatchPolicy(useEmbeddingRecovery: true, recencyPenalty: 0.0);
+
+      TpoMatchResult run() => OutfitMatcher.findForTpo(
+            wardrobe: [a, b, c, bottom],
+            formalityHint: '캐주얼',
+            policy: policy,
+            recentItemIds: {'b-item'},
+          );
+
+      // 결정성 — 같은 입력을 여러 번 정렬해도 결과가 매번 같아야 한다.
+      // 전이성이 깨진 비교자는 정렬 결과가 정의되지 않아, 최소한 이 검사는
+      // 반드시 통과해야 "정렬 결과가 안정적으로 정의됐다"고 말할 수 있다.
+      final baseline = _sig(run());
+      for (var i = 0; i < 4; i++) {
+        expect(_sig(run()), baseline, reason: '동일 입력인데 실행마다 결과가 다름(전이성 위반 신호)');
+      }
+
+      // 세 쌍의 비교 결과가 서로 모순되지 않는지 — candidatesPerCategory
+      // 기본 2라 상위 2개(C, A)만 살아남고 B(블록1)는 잘려야 한다. B가
+      // 살아남으면 순환 때문에 정렬이 예측 불가능하게 동작했다는 신호다.
+      final result = run();
+      final survivors = {for (final combo in result.candidates) ...combo.items.map((i) => i.id)};
+      expect(
+        survivors.contains('b-item'),
+        isFalse,
+        reason: '블록1(유사도 없음) 아이템이 블록0보다 앞에 살아남음: $survivors',
+      );
+
+      // C(0.2, 덜 닮음)가 1번, A(0.8, 더 닮음)가 2번이어야 한다 — 순서까지
+      // 직접 확인해 "C<A" 관계 자체를 못박는다.
+      expect(result.candidates[0].items.map((i) => i.id), contains('c-item'));
+      expect(result.candidates[1].items.map((i) => i.id), contains('a-item'));
     });
   });
 }

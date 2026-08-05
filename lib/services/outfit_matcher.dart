@@ -492,38 +492,64 @@ class OutfitMatcher {
       }
     }
 
-    // 정렬 키: [rankScore 내림차순] → [벡터 보유 블록] → [최근 노출 유사도
-    // 오름차순] → [id 오름차순]. 뒤 세 단계는 rankScore가 동점일 때만 보고,
-    // recoverySimilarity가 비어 있으면(축 off 또는 참조 벡터 없음) 전부
-    // 건너뛰어 현행 비교자와 완전히 동일하게 동작한다.
+    // 정렬 키: [rankScore 내림차순] → [3블록: 벡터+유사도 / 벡터만 / 벡터 없음]
+    // → [블록 0 안에서만: 최근 노출 유사도 오름차순] → [id 오름차순]. 뒤 세
+    // 단계는 rankScore가 동점일 때만 보고, recoverySimilarity가 비어 있으면
+    // (축 off 또는 참조 벡터 없음) 전부 건너뛰어 현행 비교자와 완전히 동일하게
+    // 동작한다.
+    //
+    // 블록을 둘이 아니라 셋으로 나누는 이유(2026-08-05, 78abe0f 직후 발견) —
+    // "벡터는 있으나 유사도 값이 없는" 아이템이 있을 수 있다. 참조 집합이
+    // 자기 자신뿐이라 자기 제외 후 비었거나(1), 모든 참조 쌍에서 코사인이
+    // null이었을 때(2)다. 이 아이템을 "벡터 보유"와 같은 블록에 두고 유사도
+    // 비교만 건너뛰면(둘 다 값 있을 때만 비교) 전이성이 깨진다: 참조 집합이
+    // {B}뿐이고 map[A]=0.8, map[C]=0.2, map[B]=없음, id A<B<C인 반례에서
+    // A vs C는 유사도로 C<A, A vs B/B vs C는 유사도 비교를 건너뛰어 id로
+    // A<B<C가 나온다 — A<B이고 B<C인데 C<A가 되어 순환이 생긴다. 없는 값을
+    // 센티널(1.0/−1.0/negativeInfinity 등)로 지어내는 대안도 있지만, 어떤
+    // 값을 넣든 그 방향이 근거 없는 편향이 되고 "왜 이 아이템이 앞에 왔는가"에
+    // 답할 근거가 없다. 그래서 값을 만드는 대신 블록을 하나 더 둬 유사도
+    // 비교 단계 자체에 도달하지 못하게 막는다 — 블록 키가 유사도 비교보다
+    // 먼저 갈리므로 서로 다른 블록의 두 아이템은 3단계에 도달하지 않는다.
+    //
+    // 블록 1(벡터는 있으나 유사도 없음)을 0과 2 사이에 두는 이유: 벡터를 가진
+    // 아이템이 벡터 없는 아이템보다 뒤로 밀리면, 정보를 더 가진 쪽이 불리해
+    // 지는 역전이 생긴다.
+    //
+    // **기본값(recencyPenalty=0.4)에서 이 반례가 안전한 것은 우연이다.**
+    // 이 상황이 성립하려면 recentItemIds에 든 아이템이 감점을 받고도 다른
+    // 아이템과 동점이어야 하는데(base_B − recencyPenalty = base_A), 점수
+    // 집합 {0,0.5,1,1.5,2,3,4}의 차이가 전부 0.5의 배수라 0.4에서는 만들어
+    // 지지 않는다. 그러나 표14가 실측한 값(0.0/1.0/2.0)은 전부 도달 가능하다
+    // — recencyPenalty를 스윕하는 하네스라면 걸린다.
     int compareCandidates(
         ({WardrobeItem item, double score}) a, ({WardrobeItem item, double score}) b) {
       final byRank = rankScore(b).compareTo(rankScore(a));
       if (byRank != 0 || recoverySimilarity.isEmpty) return byRank;
 
-      // embedding == null 아이템은 별도 블록으로 뒤에 둔다. 전이성을 지키려면
-      // (한쪽이 null일 때 0을 반환하면 A=B, B=C인데 A≠C가 되어 정렬 결과가
-      // 정의되지 않는다) 블록 순서를 고정해야 하고, 어떤 총순서를 택하든
-      // 한쪽이 앞선다. 즉 **이것은 편향이 없는 선택이 아니라, 편향의 방향과
-      // 경계를 명시한 선택**이다.
-      //
-      // 뒤로 보내는 쪽을 택한 이유: 벡터가 없는 아이템은 회수 판단에 참여할
-      // 수 없어 "회전에 더 나은 선택"임을 보일 수단이 없다. 앞에 두면 축에
-      // 참여하지 못하는 아이템이 축 전체를 선점한다.
+      // 블록 0=벡터+유사도 있음, 1=벡터만 있음(유사도 없음), 2=벡터 없음.
+      // embedding==null을 가장 뒤 블록에 두는 이유: 전이성을 지키려면
+      // 총순서가 필요하고 그 안에서는 어떤 순서를 택해도 한쪽이 앞서는데,
+      // 벡터가 없는 아이템은 회수 판단에 참여할 수 없어 "회전에 더 나은
+      // 선택"임을 보일 수단이 없으므로 뒤로 보낸다.
       //
       // 영향 범위: 현재 백필 이후 등록된 아이템(2026-08 기준 119벌 중 20벌)이
       // 동점에서 뒤로 밀린다. 7-b 하네스는 items.json 87벌 커버리지 100%라
       // 측정에는 영향이 없고, 논문 7.2-5(신규 아이템 실시간 임베딩)가
       // 해결되면 이 블록 자체가 사라진다. 과도기 한정 편향으로 기록한다.
-      int hasNoVector(WardrobeItem item) => item.embedding == null ? 1 : 0;
-      final byBlock = hasNoVector(a.item).compareTo(hasNoVector(b.item));
+      int blockOf(({WardrobeItem item, double score}) c) {
+        if (c.item.embedding == null) return 2;
+        return recoverySimilarity.containsKey(c.item.id) ? 0 : 1;
+      }
+
+      final blockA = blockOf(a);
+      final byBlock = blockA.compareTo(blockOf(b));
       if (byBlock != 0) return byBlock;
 
-      final simA = recoverySimilarity[a.item.id];
-      final simB = recoverySimilarity[b.item.id];
-      if (simA != null && simB != null) {
-        final bySimilarity = simA.compareTo(simB); // 오름차순: 덜 닮은 쪽이 앞
-        if (bySimilarity != 0) return bySimilarity;
+      if (blockA == 0) {
+        final bySimilarity =
+            recoverySimilarity[a.item.id]!.compareTo(recoverySimilarity[b.item.id]!);
+        if (bySimilarity != 0) return bySimilarity; // 오름차순: 덜 닮은 쪽이 앞
       }
       return a.item.id.compareTo(b.item.id);
     }
