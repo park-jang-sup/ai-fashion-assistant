@@ -205,6 +205,12 @@ def main() -> None:
     parser.add_argument("--credentials", help="서비스 계정 키 경로(저장소 밖). 생략 시 GOOGLE_APPLICATION_CREDENTIALS 사용")
     parser.add_argument("--apply", action="store_true", help="실제로 반영한다(기본은 dry-run). fitting_cache는 --apply여도 아무것도 안 쓴다")
     parser.add_argument("--owner-uid", help="wardrobe를 이 ownerUid로 좁힌다. 주면 demo_wardrobe는 건너뛴다(ownerUid 필드 없음)")
+    parser.add_argument(
+        "--collections", nargs="+", choices=list(WRITE_TARGETS.keys()), default=None,
+        help="처리할 컬렉션을 좁힌다(기본: wardrobe+demo_wardrobe 둘 다). "
+             "예: --collections demo_wardrobe 만 주면 wardrobe는 건드리지 않는다. "
+             "--owner-uid와 함께 쓰면 두 조건 다 만족해야 한다(예: --owner-uid X --collections wardrobe).",
+    )
     parser.add_argument("--rollback", metavar="MANIFEST_PATH", help="지정한 manifest에 적힌 필드만 정확히 삭제하고 종료")
     parser.add_argument("--bucket", default=DEFAULT_BUCKET, help="Storage 버킷 이름")
     parser.add_argument("--sample-count", type=int, default=5, help="dry-run 시 각 분류별로 보여줄 샘플 수")
@@ -229,11 +235,13 @@ def main() -> None:
     print(f"owner-uid 범위: {args.owner_uid if args.owner_uid else '전체(모든 소유자)'}")
     if args.owner_uid:
         print("  -> demo_wardrobe는 ownerUid가 없는 공용 컬렉션이라 이번 실행에서 건너뜁니다.")
+    target_collections = args.collections if args.collections else list(WRITE_TARGETS.keys())
+    print(f"대상 컬렉션: {', '.join(target_collections)}")
     print("==========================\n")
 
     if args.apply:
         scope = f"owner-uid={args.owner_uid}" if args.owner_uid else "전체 소유자"
-        _confirm_project(project_id, f"wardrobe(+demo_wardrobe)에 path 필드 백필({scope})")
+        _confirm_project(project_id, f"{', '.join(target_collections)}에 path 필드 백필({scope})")
 
     app = firebase_admin.initialize_app(cred, {"storageBucket": args.bucket})
     db = firestore.client(app=app)
@@ -253,6 +261,9 @@ def main() -> None:
             pending_writes = 0
 
     for collection, field_pairs in WRITE_TARGETS.items():
+        if collection not in target_collections:
+            print(f"[{collection}] 건너뜀(--collections 범위 밖)")
+            continue
         if args.owner_uid and collection == "demo_wardrobe":
             print(f"[{collection}] 건너뜀(--owner-uid 범위, ownerUid 필드 없음)")
             continue

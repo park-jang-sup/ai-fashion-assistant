@@ -73,7 +73,42 @@ python backfill.py --credentials ~/secrets/personal-adminsdk.json --apply
 대상 프로젝트 id를 입력하면 진행된다. wardrobe/demo_wardrobe에 path
 필드를 배치로 기록한다(파일 부재 건 포함 — 제외하지 않음).
 `fitting_cache`는 `--apply`를 줘도 아무것도 쓰지 않는다(감사만 계속
-수행).
+수행). 실제로 쓴 (컬렉션, 문서id, 필드명, 값)은 `manifests/`(커밋
+대상 아님)에 JSON으로 남는다.
+
+### 3. 특정 소유자로 좁히기 — `--owner-uid`
+
+```bash
+python backfill.py --credentials ~/secrets/personal-adminsdk.json \
+  --owner-uid <uid>
+```
+
+`wardrobe`만 그 소유자로 좁혀 처리한다. `demo_wardrobe`는 `ownerUid`
+필드 자체가 없는 공용 컬렉션이라 uid로 못 거르므로, `--owner-uid`를
+쓰면 이번 실행에서 통째로 건너뛰고 그 사실을 출력에 명시한다.
+
+### 4. 특정 컬렉션으로 좁히기 — `--collections`
+
+```bash
+# demo_wardrobe만(ownerUid가 없어 --owner-uid로는 못 고른다)
+python backfill.py --credentials ~/secrets/personal-adminsdk.json \
+  --collections demo_wardrobe --apply
+```
+
+`--owner-uid`와 함께 쓰면 두 조건을 모두 만족해야 한다(예:
+`--owner-uid X --collections wardrobe`는 `--owner-uid X`만 줬을 때와
+결과가 같다 — `demo_wardrobe`가 어차피 건너뛰어지므로).
+
+### 5. 롤백 — manifest에 적힌 필드만 정확히 삭제
+
+```bash
+python backfill.py --credentials ~/secrets/personal-adminsdk.json \
+  --rollback manifests/backfill_20260806_120000.json
+```
+
+문서 전체가 아니라 manifest에 적힌 필드만 지운다 — 백필 이전부터 이미
+`imagePath`가 있던 문서(정상 업로드분)는 manifest에 없어 롤백 대상도
+아니다.
 
 ## 옵션
 
@@ -81,5 +116,8 @@ python backfill.py --credentials ~/secrets/personal-adminsdk.json --apply
 |---|---|---|
 | `--credentials` | (없으면 `GOOGLE_APPLICATION_CREDENTIALS`) | 서비스 계정 키 경로 |
 | `--apply` | off | 실제로 반영(기본은 dry-run) |
+| `--owner-uid` | (없음) | `wardrobe`를 이 소유자로 좁힌다. 주면 `demo_wardrobe`는 건너뜀 |
+| `--collections` | `wardrobe demo_wardrobe` 둘 다 | 처리할 컬렉션을 좁힌다 |
+| `--rollback` | (없음) | 지정한 manifest의 필드만 삭제하고 종료 |
 | `--bucket` | `ai-fashion-assistant-personal.firebasestorage.app` | Storage 버킷 이름 |
 | `--sample-count` | 5 | dry-run 시 분류별 샘플 수 |
