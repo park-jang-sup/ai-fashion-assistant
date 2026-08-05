@@ -731,4 +731,117 @@ void main() {
       }
     }
   });
+
+  // ── 매칭 재설계 v1 (docs/task_matching_redesign_v1.md) — 표16~19 골격 ──
+  // M1: 신규 정책 코드(fillOptionalFromRelaxed) 없이, 기존 프리셋(current,
+  // neutralGating)만으로 표 구조를 먼저 세운다. perCategoryFill 관련 열/표는
+  // M2에서 프리셋이 추가된 뒤 채운다 — 지금은 자리만 잡아둔다.
+  test('매칭 재설계 A/B 골격 (표16~19, M1 — 신규 정책 없이 기존 프리셋)', () {
+    final currentResults = <String, TpoMatchResult>{};
+    final neutralGatingResults = <String, TpoMatchResult>{};
+    for (final tag in TpoTags.all) {
+      currentResults[tag.label] = OutfitMatcher.findForTpo(
+        wardrobe: wardrobe,
+        formalityHint: tag.formalityHint,
+        policy: TpoMatchPolicy.current,
+      );
+      neutralGatingResults[tag.label] = OutfitMatcher.findForTpo(
+        wardrobe: wardrobe,
+        formalityHint: tag.formalityHint,
+        policy: TpoMatchPolicy.neutralGating,
+      );
+    }
+
+    bool hasCategory(TpoMatchResult r, String category) =>
+        r.candidates.isNotEmpty &&
+        r.candidates.first.items.any((i) => i.category == category);
+
+    // 1번 후보 아이템 중 "진짜" 격식 적합(rank!=null && ungated fit>0) 비율.
+    // §3-2가 말하는 "조합 순도" — 무채색 보너스만으로 살아남은 아이템은
+    // 분자에서 빠진다.
+    double purity(TpoMatchResult r, int targetRank) {
+      if (r.candidates.isEmpty) return double.nan;
+      final items = r.candidates.first.items;
+      final genuine = items.where((i) {
+        final rank = legacyFormalityRank[i.attributes?.formality];
+        return rank != null && legacyFormalityFitScore(targetRank, rank) > 0;
+      }).length;
+      return genuine / items.length;
+    }
+
+    String fmtBool(bool b) => b ? 'O' : '-';
+    String fmtPurity(double p) => p.isNaN ? '-' : p.toStringAsFixed(2);
+
+    // ── 표 16 — 재설계 A/B 골격 ──────────────────────────────
+    print('\n[표16] 재설계 A/B 골격 — 1번 후보 신발/아우터, isFallback, '
+        'optionalMissing, 조합 순도 (perCategoryFill 열은 M2 이후 채움)');
+    print('| 태그 | 요구격식 | 신발(current) | 신발(neutralGating) | '
+        '신발(perCategoryFill) | 아우터(current) | 아우터(neutralGating) | '
+        '아우터(perCategoryFill) | isFallback(cur/nG/pF) | '
+        'optionalMissing 건수(cur/nG/pF) | 조합순도(cur/nG/pF) |');
+    print('|---|---|---|---|---|---|---|---|---|---|---|');
+    var shoesVanishedCount = 0;
+    for (final tag in TpoTags.all) {
+      final targetRank = legacyFormalityRank[tag.formalityHint] ?? 0;
+      final cur = currentResults[tag.label]!;
+      final ng = neutralGatingResults[tag.label]!;
+      final curShoes = hasCategory(cur, '신발');
+      final ngShoes = hasCategory(ng, '신발');
+      if (curShoes && !ngShoes) shoesVanishedCount++;
+      final curOuter = hasCategory(cur, '아우터');
+      final ngOuter = hasCategory(ng, '아우터');
+      final curPurity = purity(cur, targetRank);
+      final ngPurity = purity(ng, targetRank);
+      print('| ${tag.label} | ${tag.formalityHint} | ${fmtBool(curShoes)} | '
+          '${fmtBool(ngShoes)} | (M2) | ${fmtBool(curOuter)} | '
+          '${fmtBool(ngOuter)} | (M2) | ${cur.isFallback}/${ng.isFallback}/(M2) | '
+          '${cur.optionalMissing.length}/${ng.optionalMissing.length}/(M2) | '
+          '${fmtPurity(curPurity)}/${fmtPurity(ngPurity)}/(M2) |');
+    }
+    print('\n[표16 핵심대조] neutralGating 단독에서 1번 후보 신발이 사라지는 '
+        '태그 수(현행엔 있었는데 neutralGating엔 없음): '
+        '$shoesVanishedCount/${TpoTags.all.length}');
+    print('  perCategoryFill에서 0이 되는지는 M2 이후(프리셋 추가 후) 이 표를 다시 채워 확인한다.');
+
+    // ── 표 17 — 색상 변별력 회복 (골격만, M2 이후 측정) ────────
+    print('\n[표17] 색상 변별력 회복 (perCategoryFill+pairwiseColor, 표8 대조) '
+        '— 골격만, M2 이후 측정');
+    print('| 태그 | 표8 current 1번후보 | 표8 v2 1번후보 | '
+        'perCategoryFill+pairwiseColor 1번후보 |');
+    print('|---|---|---|---|');
+    print('  perCategoryFill 프리셋 미도입 — M2에서 프리셋 추가 후 채운다.');
+
+    // ── 표 18 — 커버리지 영향 (current/neutralGating만 실측) ───
+    final poolSize = wardrobe
+        .where((i) => i.attributes != null && categories.contains(i.category))
+        .length;
+    print('\n[표18] 커버리지 영향 (모집단 $poolSize벌) — perCategoryFill 열은 M2 이후');
+    print('| 정책 | 고유 아이템 | 커버리지 |');
+    print('|---|---|---|');
+    for (final entry in {
+      'current': currentResults,
+      'neutralGating': neutralGatingResults,
+    }.entries) {
+      final all = <String>{};
+      for (final r in entry.value.values) {
+        for (final c in r.candidates) {
+          for (final item in c.items) {
+            all.add(item.id);
+          }
+        }
+      }
+      final pct = poolSize == 0 ? 0.0 : all.length / poolSize * 100;
+      print('| ${entry.key} | ${all.length} | ${pct.toStringAsFixed(1)}% |');
+    }
+    print('| perCategoryFill | (M2) | (M2) |');
+    print('  보충 채움이 relaxed에서 끌어오는 아이템이 기존 미노출군인지 분리 집계하는 것도 M2 이후.');
+
+    // ── 표 19 — recency 상호작용 (골격만, M2 이후 측정) ────────
+    print('\n[표19] recency 상호작용 (perCategoryFill × {0.0, 0.4}) '
+        '— 골격만, M2 이후 측정');
+    print('| 태그 | isFallback(pF, recency 0.0) | isFallback(pF, recency 0.4) | '
+        '1번후보 변화 |');
+    print('|---|---|---|---|');
+    print('  perCategoryFill 프리셋 미도입 — M2에서 프리셋 추가 후 채운다.');
+  });
 }
