@@ -16,6 +16,7 @@ import '../services/fitting_progress.dart';
 import '../services/outfit_matcher.dart';
 import '../widgets/full_screen_image_viewer.dart';
 import '../widgets/outfit_board.dart';
+import '../widgets/signed_network_image.dart';
 
 class FittingRoomScreen extends StatefulWidget {
   final FittingJobController jobController;
@@ -917,6 +918,7 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
   Widget _buildResultCard() {
     final fittingImage = widget.jobController.fittingImage;
     final fittingImageUrl = widget.jobController.fittingImageUrl;
+    final fittingCacheKey = widget.jobController.fittingCacheKey;
     final isFittingFromCache = widget.jobController.isFittingFromCache;
     final hasRealFittingResult = fittingImage != null || fittingImageUrl != null;
     final analysisResult = widget.jobController.analysisResult;
@@ -952,6 +954,30 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
                         width: double.infinity,
                         height: 320,
                         fit: BoxFit.cover,
+                      )
+                    else if (fittingImageUrl != null && fittingCacheKey != null)
+                      // 실제 fitting_cache 결과일 때만 Resolver를 거친다
+                      // (서명 URL 이행 A-4) — _mockFittingImageUrl은
+                      // fitting_cache 문서가 없는 사용자 사진 placeholder라
+                      // 대상이 아니다.
+                      SignedNetworkImage(
+                        collection: 'fitting_cache',
+                        id: fittingCacheKey,
+                        fallbackUrl: fittingImageUrl,
+                        width: double.infinity,
+                        height: 320,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                            height: 320,
+                            color: AppColors.background,
+                            child: const Center(
+                                child: CircularProgressIndicator(
+                                    color: AppColors.navy, strokeWidth: 2))),
+                        errorWidget: (_, __, ___) => Container(
+                            height: 220,
+                            color: AppColors.background,
+                            child: const Icon(Icons.image_outlined,
+                                color: AppColors.textDisabled, size: 40)),
                       )
                     else
                       CachedNetworkImage(

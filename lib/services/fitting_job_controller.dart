@@ -25,6 +25,10 @@ class FittingJobController extends ChangeNotifier {
 
   Uint8List? fittingImage;
   String? fittingImageUrl; // 캐시에서 가져온 결과 (Storage URL, bytes 아님)
+  // fitting_cache 문서 id(=캐시 키) — fittingImageUrl이 실제 fitting_cache
+  // 결과일 때만 채워진다. ImageUrlResolver.resolve(collection:
+  // 'fitting_cache', id: fittingCacheKey)에 쓴다(서명 URL 이행 A-4).
+  String? fittingCacheKey;
   bool isFittingFromCache = false;
   String? fittingError;
 
@@ -211,6 +215,7 @@ class FittingJobController extends ChangeNotifier {
     isGeneratingFitting = true;
     fittingImage = null;
     fittingImageUrl = null;
+    fittingCacheKey = null;
     isFittingFromCache = false;
     fittingError = null;
     notifyListeners();
@@ -222,6 +227,7 @@ class FittingJobController extends ChangeNotifier {
         final cachedUrl = await _getCachedFittingImageUrlSilently(cacheKey);
         if (cachedUrl != null) {
           fittingImageUrl = cachedUrl;
+          fittingCacheKey = cacheKey;
           isFittingFromCache = true;
           _logFittingHistorySilently(clothingItems, cachedUrl);
           return;
@@ -281,6 +287,9 @@ class FittingJobController extends ChangeNotifier {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) {
         await FirestoreService.cacheFittingResult(cacheKey, imageUrl, uid);
+        // fitting_cache 문서가 실제로 쓰였을 때만 채운다 — 아니면 서명
+        // 대상 문서가 없어 ImageUrlResolver가 매번 not-found 폴백만 반복한다.
+        fittingCacheKey = cacheKey;
       }
       fittingImageUrl = imageUrl;
       notifyListeners();

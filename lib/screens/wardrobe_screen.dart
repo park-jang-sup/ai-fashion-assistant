@@ -19,7 +19,9 @@ import '../services/embedding_service.dart';
 import '../services/fit_predictor.dart';
 import '../services/firestore_service.dart';
 import '../services/gemini_service.dart';
+import '../services/image_url_resolver.dart';
 import '../services/storage_service.dart';
+import '../widgets/signed_network_image.dart';
 
 const _uploadCategories = ['상의', '하의', '아우터', '신발', '액세서리', '전신'];
 
@@ -136,6 +138,23 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   // 있었다. static Future로 앱 수명 동안 초기화를 한 번만 수행하고,
   // 화면을 나가도 절대 dispose하지 않는 것으로 레이스 자체를 없앤다.
   static Future<void>? _bgRemoverInitFuture;
+
+  // 서명 URL 이행 A-4 — 옷장 스트림이 갱신될 때마다 매번 다시 발급받지
+  // 않도록, 마지막으로 프리페치를 건 문서 id 집합을 기억해 새 항목이
+  // 있을 때만 다시 호출한다(ImageUrlResolver.prefetch 자체도 캐시가
+  // 살아있는 항목은 걸러내지만, 이 가드가 없으면 스냅샷마다 "필요 없음"
+  // 판정을 위한 순회가 반복된다).
+  Set<String> _prefetchedWardrobeIds = {};
+
+  void _maybePrefetchWardrobeImages(List<WardrobeItem> allItems) {
+    if (!signedUrlsEnabled) return;
+    final currentIds = allItems.map((i) => i.id).toSet();
+    if (currentIds.difference(_prefetchedWardrobeIds).isEmpty) return;
+    _prefetchedWardrobeIds = currentIds;
+    unawaited(ImageUrlResolver.prefetch(
+      allItems.map((i) => (collection: 'wardrobe', id: i.id)).toList(),
+    ));
+  }
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
 
@@ -696,6 +715,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
             final allItems = snapshot.data ?? [];
             final items = _filter(allItems);
+            _maybePrefetchWardrobeImages(allItems);
 
             return Stack(
               children: [
@@ -2000,8 +2020,11 @@ class _WardrobeCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(10)),
-                  child: CachedNetworkImage(
-                    imageUrl: item.cutoutImageUrl ?? item.imageUrl,
+                  child: SignedNetworkImage(
+                    collection: 'wardrobe',
+                    id: item.id,
+                    urlIndex: item.cutoutImageUrl != null ? 1 : 0,
+                    fallbackUrl: item.cutoutImageUrl ?? item.imageUrl,
                     fit: BoxFit.cover,
                     placeholder: (_, __) => Container(color: AppColors.background),
                     errorWidget: (_, __, ___) => Container(
