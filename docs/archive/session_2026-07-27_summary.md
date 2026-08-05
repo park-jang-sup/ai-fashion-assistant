@@ -1,6 +1,6 @@
 # 작업 정리 (2026-07-27 — TPO 정책 실측 A/B, skeleton 슬롯/threshold 실측 픽스, optionalMissing, README 전면 개편)
 
-`docs/session_2026-07-26_summary.md`(선제 추천 배지/재계획 + 포멀 태그 +
+`docs/archive/session_2026-07-26_summary.md`(선제 추천 배지/재계획 + 포멀 태그 +
 임베딩 유사 옷 UI)를 이어받아 `main` 브랜치 위에서 작업. 외부 작업
 지시서(`docs/task_formality_policy_ab.md`)로 시작했지만, 지시서의 4절
 판단 기준 자체가 실측에서 빗나가 결과적으로 지시서가 예상 못 한 두 개의

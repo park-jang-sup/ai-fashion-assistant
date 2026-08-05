@@ -1,6 +1,6 @@
 # 작업 정리 (2026-07-28 — 추천 중복 게이트 수정, 실기기 검증, 조합 품질/다양성 A/B 리그 2건 반영)
 
-`docs/session_2026-07-27_summary.md`(TPO 정책 실측 A/B, skeleton 슬롯 격상,
+`docs/archive/session_2026-07-27_summary.md`(TPO 정책 실측 A/B, skeleton 슬롯 격상,
 optionalMissing)를 이어받아 `main` 브랜치 위에서 작업. 이번 세션은 전부
 커밋 완료 상태 — 미완료 워킹트리 변경 없음, `personal/main`까지 push 완료.
 

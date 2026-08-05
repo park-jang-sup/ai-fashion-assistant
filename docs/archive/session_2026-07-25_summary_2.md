@@ -1,6 +1,6 @@
 # 작업 정리 (2026-07-25 세션 2 — CLIP 임베딩 A단계 + 궁합 규칙 보강(전체) + 스파이크 정리 + Firebase 개인 프로젝트 이관(iOS 포함) + 궁합 규칙 실기기 검증)
 
-`docs/session_2026-07-25_summary.md`(세션 1, CLIP 임베딩 채택+백필)를 이어받아
+`docs/archive/session_2026-07-25_summary.md`(세션 1, CLIP 임베딩 채택+백필)를 이어받아
 브랜치 `feature/clip-embedding-spike` 위에서 계속 작업. 이번 세션은 전부
 커밋/push 완료된 상태 — 미완료 워킹트리 변경 없음. 세션 막바지에 팀
 Firebase에서 개인 Firebase로 실제 이관을 끝내고, 그 위에서 궁합 색상

@@ -68,4 +68,4 @@
 ## 참고
 
 - 배경 제거 ONNX 크래시 상세: `lib/screens/wardrobe_screen.dart:160-180`
-- CLIP 임베딩 채택 경위 전체: `docs/session_2026-07-25_summary.md`
+- CLIP 임베딩 채택 경위 전체: `docs/archive/session_2026-07-25_summary.md`
