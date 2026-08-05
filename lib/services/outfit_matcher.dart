@@ -39,13 +39,20 @@ class TpoMatchResult {
   });
 }
 
-// findForTpo의 격식 판정 파라미터. gateNeutralBonus/requiredCategories/
-// optionalCategories의 기본값은 원래 동작과 동일하다(neutralGating은 논문
-// 5.8.3/5.8.4의 수정안이며, 실측 옷장 리포트로 영향을 확인하기 전까지
-// 프로덕션 기본값이 되어서는 안 된다). maxSkeletonCategories만 실측
-// A/B 리포트(tpo_policy_report_test.dart 표6·표7 — 아우터 6/9, 신발 3/9로
+// findForTpo의 격식 판정 파라미터. requiredCategories/optionalCategories의
+// 기본값은 원래 동작과 동일하다. maxSkeletonCategories는 실측 A/B
+// 리포트(tpo_policy_report_test.dart 표6·표7 — 아우터 6/9, 신발 3/9로
 // 매번 정확히 하나가 조용히 탈락)를 근거로 2026-07에 3→4로 올렸다.
 // skeleton3은 이전 기본값과의 비교용으로 남겨둔다.
+//
+// gateNeutralBonus/fillOptionalFromRelaxed 기본값 전환(docs/
+// task_matching_redesign_v1.md §6 [판정 2026-08-06]): 5.8.3이 지목한
+// 오염 메커니즘(무채색 보너스가 격식 필터를 무력화)을 게이팅+보충 채움으로
+// 구조적으로 해소했다. 전환 근거는 산출물 불변 증명(현재 87벌·9태그
+// 옷장에서 current↔perCategoryFill 1번 후보 시그니처 diff 0/18) +
+// 결함 메커니즘 해소 두 가지뿐이며, 가시적 개선은 이 옷장에서 관측되지
+// 않았다(§6 판정 블록 참고) — "검증됐다"가 아니라 "안전하고 구조적으로
+// 우월하다"는 판단이다. legacyUngated가 전환 이전 현행의 재현체다.
 class TpoMatchPolicy {
   // true면 무채색 보너스를 "이미 격식을 충족한 후보"에게만 적용한다(동점 처리용).
   final bool gateNeutralBonus;
@@ -132,7 +139,7 @@ class TpoMatchPolicy {
   final bool fillOptionalFromRelaxed;
 
   const TpoMatchPolicy({
-    this.gateNeutralBonus = false,
+    this.gateNeutralBonus = true,
     this.requiredCategories = const {'상의', '하의'},
     this.optionalCategories = const {'아우터', '신발'},
     this.maxSkeletonCategories = 4,
@@ -141,7 +148,7 @@ class TpoMatchPolicy {
     this.forceEnumerated = false,
     this.recencyPenalty = 0.4,
     this.useEmbeddingRecovery = false,
-    this.fillOptionalFromRelaxed = false,
+    this.fillOptionalFromRelaxed = true,
   });
 
   // 후보 폭을 넓히거나 조합 단위 채점을 켜면 기존 "기본+한 칸 교체+미니"
@@ -159,11 +166,25 @@ class TpoMatchPolicy {
       : (candidatesPerCategory > 6 ? 6 : candidatesPerCategory);
 
   static const current = TpoMatchPolicy();
-  // 무채색 보너스를 격식 충족 후보에만 적용하는 A/B 프리셋.
+  // 전환 이전(~2026-08-06) 현행의 재현체 — gateNeutralBonus/
+  // fillOptionalFromRelaxed 둘 다 명시적으로 꺼서, 생성자 기본값이 앞으로
+  // 다시 바뀌어도 이 프리셋의 의미(무채색 보너스 무조건 적용, 보충 채움
+  // 없음)는 고정된다. tpo_policy_report_test.dart 표16~19의 "cur" 열이
+  // 가리키는 대상이 current에서 이걸로 바뀌었다 — current는 이제
+  // perCategoryFill과 같은 의미라 자기 자신과 비교하면 항상 diff 0인
+  // 공허한 비교가 되기 때문이다.
+  static const legacyUngated =
+      TpoMatchPolicy(gateNeutralBonus: false, fillOptionalFromRelaxed: false);
+  // 게이팅 단독(보충 채움 없이)의 신발 소멸을 재현하는 결함 재현용
+  // 프리셋 — 생성자 기본값이 gateNeutralBonus:true/fillOptionalFromRelaxed:
+  // true로 바뀐 뒤에도 fillOptionalFromRelaxed는 반드시 false로 고정해야
+  // 한다. 안 고치면 이 프리셋이 새 기본값을 그대로 상속해 perCategoryFill과
+  // 동일해지고, 표16이 재현하려는 결함(신발 소멸)을 더 이상 못 만든다.
   // 이전 이름은 `proposed`였으나, 문서에서 "제안 정책"이 임베딩 정보 회수를
   // 가리키게 되면서 코드와 문서가 같은 말로 다른 축을 가리키는 상태가 됐다.
   // 축이 무엇인지를 이름에 담아 충돌을 없앤다.
-  static const neutralGating = TpoMatchPolicy(gateNeutralBonus: true);
+  static const neutralGating =
+      TpoMatchPolicy(gateNeutralBonus: true, fillOptionalFromRelaxed: false);
   static const skeleton4 = TpoMatchPolicy(maxSkeletonCategories: 4);
   static const skeleton3 = TpoMatchPolicy(maxSkeletonCategories: 3);
 
@@ -198,14 +219,21 @@ class TpoMatchPolicy {
   static const embeddingRecovery = TpoMatchPolicy(useEmbeddingRecovery: true);
 
   // ── 매칭 재설계(로드맵 2번) A/B용 프리셋 ──
-  // perCategoryFill: 게이팅 + 보충 채움을 함께 켠 결합 정책 — 실제로 켜질
-  // 후보안은 이 조합이다(§3-1). gateNeutralBonus 없이 보충만 켜면 채울
-  // 카테고리가 애초에 거의 안 생긴다.
+  // perCategoryFill: 게이팅 + 보충 채움을 함께 켠 결합 정책. §6
+  // [판정 2026-08-06]로 이 조합이 그대로 current(생성자 기본값)가 됐다 —
+  // 즉 이제 perCategoryFill == current다. 명시적 이름으로 남겨두는 이유는
+  // A/B 코드에서 "이 축 조합을 의도적으로 쓴다"는 걸 드러내기 위함이고,
+  // current의 기본값이 다시 바뀌어도(예: 다음 로드맵 항목) 이 프리셋의
+  // 의미는 흔들리지 않는다.
   static const perCategoryFill =
       TpoMatchPolicy(gateNeutralBonus: true, fillOptionalFromRelaxed: true);
   // fillOnly: 보충 채움 축만 단독으로 켠 귀속 분리용 프리셋(forceEnumerated/
-  // enumeratedOnly와 같은 취지) — 게이팅 없이 이 축만으로 무엇이 달라지는지 본다.
-  static const fillOnly = TpoMatchPolicy(fillOptionalFromRelaxed: true);
+  // enumeratedOnly와 같은 취지) — 게이팅 없이 이 축만으로 무엇이 달라지는지
+  // 본다. gateNeutralBonus를 반드시 false로 고정해야 한다 — 안 고치면
+  // 새 기본값(true)을 상속해 perCategoryFill과 같아지고, 귀속 분리라는
+  // 존재 이유가 사라진다.
+  static const fillOnly =
+      TpoMatchPolicy(gateNeutralBonus: false, fillOptionalFromRelaxed: true);
 }
 
 class OutfitMatcher {

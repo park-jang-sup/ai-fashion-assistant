@@ -744,7 +744,9 @@ void main() {
     const perCategoryFillNoRecency =
         TpoMatchPolicy(gateNeutralBonus: true, fillOptionalFromRelaxed: true, recencyPenalty: 0.0);
 
-    // 독립 호출(표1~8과 같은 방식, recentItemIds 없음).
+    // 독립 호출(표1~8과 같은 방식, recentItemIds 없음). "cur" 열은
+    // legacyUngated를 가리킨다 — current는 이제 perCategoryFill과 같은
+    // 값이라 자기 자신과 비교하면 공허하다(§6 [판정 2026-08-06]).
     final currentResults = <String, TpoMatchResult>{};
     final neutralGatingResults = <String, TpoMatchResult>{};
     final perCategoryFillResults = <String, TpoMatchResult>{};
@@ -752,7 +754,7 @@ void main() {
       currentResults[tag.label] = OutfitMatcher.findForTpo(
         wardrobe: wardrobe,
         formalityHint: tag.formalityHint,
-        policy: TpoMatchPolicy.current,
+        policy: TpoMatchPolicy.legacyUngated,
       );
       neutralGatingResults[tag.label] = OutfitMatcher.findForTpo(
         wardrobe: wardrobe,
@@ -858,7 +860,7 @@ void main() {
     var colorEffectOnFill = 0;
     for (final tag in TpoTags.all) {
       final refCur = OutfitMatcher.findForTpo(
-          wardrobe: wardrobe, formalityHint: tag.formalityHint, policy: TpoMatchPolicy.current);
+          wardrobe: wardrobe, formalityHint: tag.formalityHint, policy: TpoMatchPolicy.legacyUngated);
       final refV2 = OutfitMatcher.findForTpo(
           wardrobe: wardrobe, formalityHint: tag.formalityHint, policy: TpoMatchPolicy.qualityV2);
       final pf = perCategoryFillResults[tag.label]!;
@@ -921,7 +923,7 @@ void main() {
       final rc = OutfitMatcher.findForTpo(
         wardrobe: wardrobe,
         formalityHint: tag.formalityHint,
-        policy: TpoMatchPolicy.current,
+        policy: TpoMatchPolicy.legacyUngated,
         recentItemIds: recentCur,
       );
       final rp = OutfitMatcher.findForTpo(
