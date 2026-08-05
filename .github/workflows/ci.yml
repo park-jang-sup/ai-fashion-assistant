@@ -20,3 +20,20 @@ jobs:
       # skip:으로 빠지므로, CI의 통과 수가 로컬(140)보다 적게 나오는 것이
       # 정상이다 — 실패가 아니다.
       - run: flutter test
+
+  functions-typecheck:
+    # A-2·B·C 내내 미뤄온 항목 — 서버 배포 전 컴파일 오류를 로컬 firebase
+    # deploy에서야 발견하던 걸 PR 단계로 당긴다. 배포(firebase deploy)는
+    # 여전히 사용자 승인 후 수동으로만 한다 — 이 job은 컴파일 검증만 한다.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+        working-directory: functions
+      - run: npx tsc --noEmit
+        working-directory: functions
+      - run: npm test
+        working-directory: functions
