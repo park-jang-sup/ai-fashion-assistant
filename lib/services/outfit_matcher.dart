@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/clothing_attributes.dart';
 import '../models/wardrobe_item.dart';
 import 'color_taxonomy.dart';
+import 'embedding_service.dart';
 
 // 새로 등록된 옷과 기존 옷장만으로 어울리는 조합 후보들을 고른다.
 // FitPredictor와 동일하게 Gemini 호출 없이 순수 로컬 계산만 수행한다.
@@ -103,6 +104,22 @@ class TpoMatchPolicy {
   // 격식 등급까지 넘어설 수 있어 실측 없이는 기본값으로 쓰지 않는다.
   final double recencyPenalty;
 
+  // 동점 집합 안에서 임베딩 코사인으로 순서를 회수할지. 기본 false —
+  // 켜기 전 산출물이 현행과 완전히 동일해야 한다(933f322·35820db와 같은 패턴).
+  //
+  // 점수 가중치(double)가 아니라 **2차 정렬 키**인 이유:
+  //  (1) 동점 집합 안에서는 기본 점수가 모두 같아, w×코사인을 더해도 w의 크기와
+  //      무관하게 순서가 동일하다. w가 결과를 바꾸는 유일한 경우는 동점 경계를
+  //      넘을 때이고 그건 금지 대상이다 — 강도를 실측할 자리가 애초에 없다.
+  //  (2) recencyPenalty(0.4)가 이미 격식 간격 0.5를 0.1까지 좁혀놓았다. 여기에
+  //      w≥0.1이 붙으면 격식 등급이 다른 아이템의 순서가 뒤집힌다. 99-103행의
+  //      논증은 감점 축이 하나일 때만 성립하므로, 축을 더하면 깨진다.
+  //
+  // 이름에 'tiebreak'를 쓰지 않은 이유: 논문 5.14.4가 근거를 "무작위의 대체"에서
+  // "정보의 회수"로 재정식화했다. 이름이 옛 근거를 붙들면 다음 사람이 그 근거로
+  // 읽는다.
+  final bool useEmbeddingRecovery;
+
   const TpoMatchPolicy({
     this.gateNeutralBonus = false,
     this.requiredCategories = const {'상의', '하의'},
@@ -112,6 +129,7 @@ class TpoMatchPolicy {
     this.usePairwiseColorScore = false,
     this.forceEnumerated = false,
     this.recencyPenalty = 0.4,
+    this.useEmbeddingRecovery = false,
   });
 
   // 후보 폭을 넓히거나 조합 단위 채점을 켜면 기존 "기본+한 칸 교체+미니"
@@ -163,6 +181,9 @@ class TpoMatchPolicy {
   static const diversityTieBreak = TpoMatchPolicy(recencyPenalty: 0.4);
   static const diversityModerate = TpoMatchPolicy(recencyPenalty: 1.0);
   static const diversityStrong = TpoMatchPolicy(recencyPenalty: 2.0);
+
+  // ── 임베딩 회수(7-c) A/B용 프리셋 ──
+  static const embeddingRecovery = TpoMatchPolicy(useEmbeddingRecovery: true);
 }
 
 class OutfitMatcher {
@@ -435,12 +456,84 @@ class OutfitMatcher {
             ? c.score - policy.recencyPenalty
             : c.score;
 
+    // 회수 축(§3-1) — recentItemIds 각각의 WardrobeItem을 조회할 인덱스.
+    // wardrobe를 id마다 O(n) 스캔하지 않도록 한 번만 만든다. 축이 꺼져 있거나
+    // recentItemIds가 비면 이 블록 자체를 건너뛰어 기존 호출부에는 비용이
+    // 전혀 늘지 않는다.
+    final wardrobeById = policy.useEmbeddingRecovery && recentItemIds.isNotEmpty
+        ? {for (final w in wardrobe) w.id: w}
+        : const <String, WardrobeItem>{};
+    // embedding이 없는 최근 아이템은 코사인을 낼 수 없으니 참조 집합에서 제외.
+    final referenceIds =
+        recentItemIds.where((id) => wardrobeById[id]?.embedding != null).toList();
+
+    // 회수 축(§3-1-b) — "아이템별 최근 노출분과의 최대 코사인"을 정렬 전에
+    // 한 번 계산해 맵에 담는다. 비교자 안에서 계산하지 않는 이유: sort는
+    // 비교자를 O(n log n)번 부르므로 안에 계산이 있으면 같은 아이템의 유사도를
+    // 수십 번 다시 구하게 되고(참조 집합 크기까지 곱해져 더 늘어난다), 비교자
+    // 안에서 던져진 예외는 스택이 정렬 내부라 원인 추적이 어렵다 — 계산을 밖으로
+    // 빼면 실패가 정렬 이전에, 진단 가능한 위치에서 난다.
+    final recoverySimilarity = <String, double>{};
+    if (referenceIds.isNotEmpty) {
+      for (final item in wardrobe) {
+        final vec = item.embedding;
+        if (vec == null) continue;
+        double? best;
+        for (final refId in referenceIds) {
+          // 자기 자신이 최근 노출 목록에 있어도 그 코사인(1.0)을 자기 순위에
+          // 반영하지 않는다 — 반영하면 recencyPenalty를 한 번 더 적용하는
+          // 꼴이 되어, 이 축의 목적(id로는 안 잡히는 "닮은 다른 옷"의 회수)과
+          // 어긋난다.
+          if (refId == item.id) continue;
+          final sim = EmbeddingService.cosineSimilarity(vec, wardrobeById[refId]!.embedding);
+          if (sim != null && (best == null || sim > best)) best = sim;
+        }
+        if (best != null) recoverySimilarity[item.id] = best;
+      }
+    }
+
+    // 정렬 키: [rankScore 내림차순] → [벡터 보유 블록] → [최근 노출 유사도
+    // 오름차순] → [id 오름차순]. 뒤 세 단계는 rankScore가 동점일 때만 보고,
+    // recoverySimilarity가 비어 있으면(축 off 또는 참조 벡터 없음) 전부
+    // 건너뛰어 현행 비교자와 완전히 동일하게 동작한다.
+    int compareCandidates(
+        ({WardrobeItem item, double score}) a, ({WardrobeItem item, double score}) b) {
+      final byRank = rankScore(b).compareTo(rankScore(a));
+      if (byRank != 0 || recoverySimilarity.isEmpty) return byRank;
+
+      // embedding == null 아이템은 별도 블록으로 뒤에 둔다. 전이성을 지키려면
+      // (한쪽이 null일 때 0을 반환하면 A=B, B=C인데 A≠C가 되어 정렬 결과가
+      // 정의되지 않는다) 블록 순서를 고정해야 하고, 어떤 총순서를 택하든
+      // 한쪽이 앞선다. 즉 **이것은 편향이 없는 선택이 아니라, 편향의 방향과
+      // 경계를 명시한 선택**이다.
+      //
+      // 뒤로 보내는 쪽을 택한 이유: 벡터가 없는 아이템은 회수 판단에 참여할
+      // 수 없어 "회전에 더 나은 선택"임을 보일 수단이 없다. 앞에 두면 축에
+      // 참여하지 못하는 아이템이 축 전체를 선점한다.
+      //
+      // 영향 범위: 현재 백필 이후 등록된 아이템(2026-08 기준 119벌 중 20벌)이
+      // 동점에서 뒤로 밀린다. 7-b 하네스는 items.json 87벌 커버리지 100%라
+      // 측정에는 영향이 없고, 논문 7.2-5(신규 아이템 실시간 임베딩)가
+      // 해결되면 이 블록 자체가 사라진다. 과도기 한정 편향으로 기록한다.
+      int hasNoVector(WardrobeItem item) => item.embedding == null ? 1 : 0;
+      final byBlock = hasNoVector(a.item).compareTo(hasNoVector(b.item));
+      if (byBlock != 0) return byBlock;
+
+      final simA = recoverySimilarity[a.item.id];
+      final simB = recoverySimilarity[b.item.id];
+      if (simA != null && simB != null) {
+        final bySimilarity = simA.compareTo(simB); // 오름차순: 덜 닮은 쪽이 앞
+        if (bySimilarity != 0) return bySimilarity;
+      }
+      return a.item.id.compareTo(b.item.id);
+    }
+
     Map<String, List<({WardrobeItem item, double score})>> topPerCategory(
         bool Function(double) keep) {
       final out = <String, List<({WardrobeItem item, double score})>>{};
       for (final e in allPerCategory.entries) {
         final list = e.value.where((c) => keep(c.score)).toList()
-          ..sort((a, b) => rankScore(b).compareTo(rankScore(a)));
+          ..sort(compareCandidates);
         if (list.isEmpty) continue;
         out[e.key] =
             list.length > perCategory ? list.sublist(0, perCategory) : list;
