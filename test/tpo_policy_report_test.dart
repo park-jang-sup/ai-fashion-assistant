@@ -732,13 +732,22 @@ void main() {
     }
   });
 
-  // ── 매칭 재설계 v1 (docs/task_matching_redesign_v1.md) — 표16~19 골격 ──
-  // M1: 신규 정책 코드(fillOptionalFromRelaxed) 없이, 기존 프리셋(current,
-  // neutralGating)만으로 표 구조를 먼저 세운다. perCategoryFill 관련 열/표는
-  // M2에서 프리셋이 추가된 뒤 채운다 — 지금은 자리만 잡아둔다.
-  test('매칭 재설계 A/B 골격 (표16~19, M1 — 신규 정책 없이 기존 프리셋)', () {
+  // ── 매칭 재설계 v1 (docs/task_matching_redesign_v1.md) — 표16~19 정식 (M3) ──
+  // §5-1[갱신 2026-08-06] 5개 조건을 이 표들로 실측한다. M1(골격)·M2(플래그
+  // off diff 0)는 이미 커밋됐다 — 여기서는 perCategoryFill을 실제로 켜서
+  // 채운다.
+  test('매칭 재설계 A/B 정식 리포트 (표16~19, M3)', () {
+    // 색상·recency 축을 결합한 국지적 정책 — 표17/19 전용, 프리셋으로 뺄
+    // 정도는 아니라서(표14의 diversityXxx처럼 재사용되지 않음) 지역 상수로 둔다.
+    const perCategoryFillColor = TpoMatchPolicy(
+        gateNeutralBonus: true, fillOptionalFromRelaxed: true, usePairwiseColorScore: true);
+    const perCategoryFillNoRecency =
+        TpoMatchPolicy(gateNeutralBonus: true, fillOptionalFromRelaxed: true, recencyPenalty: 0.0);
+
+    // 독립 호출(표1~8과 같은 방식, recentItemIds 없음).
     final currentResults = <String, TpoMatchResult>{};
     final neutralGatingResults = <String, TpoMatchResult>{};
+    final perCategoryFillResults = <String, TpoMatchResult>{};
     for (final tag in TpoTags.all) {
       currentResults[tag.label] = OutfitMatcher.findForTpo(
         wardrobe: wardrobe,
@@ -749,6 +758,11 @@ void main() {
         wardrobe: wardrobe,
         formalityHint: tag.formalityHint,
         policy: TpoMatchPolicy.neutralGating,
+      );
+      perCategoryFillResults[tag.label] = OutfitMatcher.findForTpo(
+        wardrobe: wardrobe,
+        formalityHint: tag.formalityHint,
+        policy: TpoMatchPolicy.perCategoryFill,
       );
     }
 
@@ -769,79 +783,218 @@ void main() {
       return genuine / items.length;
     }
 
+    // optionalMissing 카테고리 하나가 "기존 순도0"(게이팅해도 scored에 남는데
+    // 순도만 0)인지 "신규 보충"(게이팅하면 scored에서 통째로 소멸)인지 구분.
+    // gateNeutralBonus=true 기준 _scoredTopTwo가 비면 소멸 케이스다.
+    String fillOrigin(int targetRank, String category) {
+      final items = wardrobe.where((i) => i.category == category && i.attributes != null);
+      final gatedTop = _scoredTopTwo(categoryItems: items, targetRank: targetRank, gateNeutralBonus: true);
+      return gatedTop.isEmpty ? '신규보충' : '기존순도0';
+    }
+
     String fmtBool(bool b) => b ? 'O' : '-';
     String fmtPurity(double p) => p.isNaN ? '-' : p.toStringAsFixed(2);
 
-    // ── 표 16 — 재설계 A/B 골격 ──────────────────────────────
-    print('\n[표16] 재설계 A/B 골격 — 1번 후보 신발/아우터, isFallback, '
-        'optionalMissing, 조합 순도 (perCategoryFill 열은 M2 이후 채움)');
-    print('| 태그 | 요구격식 | 신발(current) | 신발(neutralGating) | '
-        '신발(perCategoryFill) | 아우터(current) | 아우터(neutralGating) | '
-        '아우터(perCategoryFill) | isFallback(cur/nG/pF) | '
-        'optionalMissing 건수(cur/nG/pF) | 조합순도(cur/nG/pF) |');
-    print('|---|---|---|---|---|---|---|---|---|---|---|');
-    var shoesVanishedCount = 0;
+    // ── 표 16 — 재설계 A/B 정식 (독립 호출) ────────────────────
+    print('\n[표16] 재설계 A/B 정식 — 1번 후보 신발/아우터, isFallback, '
+        'optionalMissing(경로별), 조합 순도, 시그니처 변화 (독립 호출)');
+    print('| 태그 | 요구격식 | 신발(cur/nG/pF) | 아우터(cur/nG/pF) | '
+        'isFallback(cur/nG/pF) | optionalMissing 건수(cur/nG/pF) | '
+        'pF 경로(기존순도0/신규보충) | 조합순도(cur/nG/pF) | 시그니처변화(cur→pF) |');
+    print('|---|---|---|---|---|---|---|---|---|');
+    var shoesVanishedCount = 0; // neutralGating 단독 소멸
+    var shoesRestoredCount = 0; // 그중 perCategoryFill이 되돌린 수
+    var sigDiffIndependent = 0; // 조건5 — 독립 호출 시그니처 diff
     for (final tag in TpoTags.all) {
       final targetRank = legacyFormalityRank[tag.formalityHint] ?? 0;
       final cur = currentResults[tag.label]!;
       final ng = neutralGatingResults[tag.label]!;
+      final pf = perCategoryFillResults[tag.label]!;
       final curShoes = hasCategory(cur, '신발');
       final ngShoes = hasCategory(ng, '신발');
-      if (curShoes && !ngShoes) shoesVanishedCount++;
+      final pfShoes = hasCategory(pf, '신발');
+      if (curShoes && !ngShoes) {
+        shoesVanishedCount++;
+        if (pfShoes) shoesRestoredCount++;
+      }
       final curOuter = hasCategory(cur, '아우터');
       final ngOuter = hasCategory(ng, '아우터');
+      final pfOuter = hasCategory(pf, '아우터');
       final curPurity = purity(cur, targetRank);
       final ngPurity = purity(ng, targetRank);
-      print('| ${tag.label} | ${tag.formalityHint} | ${fmtBool(curShoes)} | '
-          '${fmtBool(ngShoes)} | (M2) | ${fmtBool(curOuter)} | '
-          '${fmtBool(ngOuter)} | (M2) | ${cur.isFallback}/${ng.isFallback}/(M2) | '
-          '${cur.optionalMissing.length}/${ng.optionalMissing.length}/(M2) | '
-          '${fmtPurity(curPurity)}/${fmtPurity(ngPurity)}/(M2) |');
+      final pfPurity = purity(pf, targetRank);
+      final origins = pf.optionalMissing.map((c) => '$c:${fillOrigin(targetRank, c)}').join(', ');
+      final existingCount =
+          pf.optionalMissing.where((c) => fillOrigin(targetRank, c) == '기존순도0').length;
+      final newCount =
+          pf.optionalMissing.where((c) => fillOrigin(targetRank, c) == '신규보충').length;
+      final curSig = cur.candidates.isEmpty ? '' : _sig(cur.candidates.first.items);
+      final pfSig = pf.candidates.isEmpty ? '' : _sig(pf.candidates.first.items);
+      final sigChanged = curSig != pfSig;
+      if (sigChanged) sigDiffIndependent++;
+      print('| ${tag.label} | ${tag.formalityHint} | '
+          '${fmtBool(curShoes)}/${fmtBool(ngShoes)}/${fmtBool(pfShoes)} | '
+          '${fmtBool(curOuter)}/${fmtBool(ngOuter)}/${fmtBool(pfOuter)} | '
+          '${cur.isFallback}/${ng.isFallback}/${pf.isFallback} | '
+          '${cur.optionalMissing.length}/${ng.optionalMissing.length}/${pf.optionalMissing.length} | '
+          '$existingCount/$newCount${origins.isEmpty ? '' : ' ($origins)'} | '
+          '${fmtPurity(curPurity)}/${fmtPurity(ngPurity)}/${fmtPurity(pfPurity)} | '
+          '${sigChanged ? 'O' : '-'} |');
     }
     print('\n[표16 핵심대조] neutralGating 단독에서 1번 후보 신발이 사라지는 '
-        '태그 수(현행엔 있었는데 neutralGating엔 없음): '
-        '$shoesVanishedCount/${TpoTags.all.length}');
-    print('  perCategoryFill에서 0이 되는지는 M2 이후(프리셋 추가 후) 이 표를 다시 채워 확인한다.');
+        '태그 수: $shoesVanishedCount/${TpoTags.all.length}');
+    print('  그중 perCategoryFill이 되돌린 태그 수: '
+        '$shoesRestoredCount/$shoesVanishedCount');
+    print('[조건5-a] 독립 호출에서 current↔perCategoryFill 1번 후보 시그니처 '
+        'diff: $sigDiffIndependent/${TpoTags.all.length}');
 
-    // ── 표 17 — 색상 변별력 회복 (골격만, M2 이후 측정) ────────
-    print('\n[표17] 색상 변별력 회복 (perCategoryFill+pairwiseColor, 표8 대조) '
-        '— 골격만, M2 이후 측정');
+    // ── 표 17 — 색상 변별력 회복 ─────────────────────────────
+    // 표8 기준선(current/v2)을 이 표 안에서 재현해 대조한다(표8은 다른
+    // test() 블록이라 결과를 공유하지 않는다).
+    print('\n[표17] 색상 변별력 회복 (perCategoryFill+pairwiseColor, 표8 대조)');
     print('| 태그 | 표8 current 1번후보 | 표8 v2 1번후보 | '
-        'perCategoryFill+pairwiseColor 1번후보 |');
-    print('|---|---|---|---|');
-    print('  perCategoryFill 프리셋 미도입 — M2에서 프리셋 추가 후 채운다.');
+        'perCategoryFill 1번후보 | perCategoryFill+color 1번후보 | pF 내 색상 효과 |');
+    print('|---|---|---|---|---|---|');
+    var colorEffectOnFill = 0;
+    for (final tag in TpoTags.all) {
+      final refCur = OutfitMatcher.findForTpo(
+          wardrobe: wardrobe, formalityHint: tag.formalityHint, policy: TpoMatchPolicy.current);
+      final refV2 = OutfitMatcher.findForTpo(
+          wardrobe: wardrobe, formalityHint: tag.formalityHint, policy: TpoMatchPolicy.qualityV2);
+      final pf = perCategoryFillResults[tag.label]!;
+      final pfColor = OutfitMatcher.findForTpo(
+          wardrobe: wardrobe, formalityHint: tag.formalityHint, policy: perCategoryFillColor);
+      final pfSig = pf.candidates.isEmpty ? '' : _sig(pf.candidates.first.items);
+      final pfColorSig = pfColor.candidates.isEmpty ? '' : _sig(pfColor.candidates.first.items);
+      final changed = pfSig != pfColorSig;
+      if (changed) colorEffectOnFill++;
+      print('| ${tag.label} | ${refCur.candidates.isEmpty ? '-' : _categoriesOf(refCur.candidates.first.items)} | '
+          '${refV2.candidates.isEmpty ? '-' : _categoriesOf(refV2.candidates.first.items)} | '
+          '${pf.candidates.isEmpty ? '-' : _categoriesOf(pf.candidates.first.items)} | '
+          '${pfColor.candidates.isEmpty ? '-' : _categoriesOf(pfColor.candidates.first.items)} | '
+          '${changed ? 'O' : '-'} |');
+    }
+    print('  perCategoryFill 위에 pairwiseColor를 얹었을 때 1번 후보가 바뀐 태그 수: '
+        '$colorEffectOnFill/${TpoTags.all.length} (표8 색상축 단독 효과는 0/9였다)');
 
-    // ── 표 18 — 커버리지 영향 (current/neutralGating만 실측) ───
+    // ── 표 18 — 커버리지 영향 ────────────────────────────────
     final poolSize = wardrobe
         .where((i) => i.attributes != null && categories.contains(i.category))
         .length;
-    print('\n[표18] 커버리지 영향 (모집단 $poolSize벌) — perCategoryFill 열은 M2 이후');
-    print('| 정책 | 고유 아이템 | 커버리지 |');
-    print('|---|---|---|');
-    for (final entry in {
-      'current': currentResults,
-      'neutralGating': neutralGatingResults,
-    }.entries) {
+    print('\n[표18] 커버리지 영향 (모집단 $poolSize벌)');
+    print('| 정책 | 방식 | 고유 아이템 | 커버리지 | current 대비 신규 노출 |');
+    print('|---|---|---|---|---|');
+
+    Set<String> uniqueItems(Map<String, TpoMatchResult> results) {
       final all = <String>{};
-      for (final r in entry.value.values) {
+      for (final r in results.values) {
         for (final c in r.candidates) {
           for (final item in c.items) {
             all.add(item.id);
           }
         }
       }
-      final pct = poolSize == 0 ? 0.0 : all.length / poolSize * 100;
-      print('| ${entry.key} | ${all.length} | ${pct.toStringAsFixed(1)}% |');
+      return all;
     }
-    print('| perCategoryFill | (M2) | (M2) |');
-    print('  보충 채움이 relaxed에서 끌어오는 아이템이 기존 미노출군인지 분리 집계하는 것도 M2 이후.');
 
-    // ── 표 19 — recency 상호작용 (골격만, M2 이후 측정) ────────
-    print('\n[표19] recency 상호작용 (perCategoryFill × {0.0, 0.4}) '
-        '— 골격만, M2 이후 측정');
-    print('| 태그 | isFallback(pF, recency 0.0) | isFallback(pF, recency 0.4) | '
-        '1번후보 변화 |');
+    final curIndependent = uniqueItems(currentResults);
+    final pfIndependent = uniqueItems(perCategoryFillResults);
+    void printCoverageRow(String label, String mode, Set<String> items, Set<String> baseline) {
+      final pct = poolSize == 0 ? 0.0 : items.length / poolSize * 100;
+      final newlyExposed = baseline.isEmpty ? 0 : items.difference(baseline).length;
+      print('| $label | $mode | ${items.length} | ${pct.toStringAsFixed(1)}% | '
+          '${baseline.isEmpty ? '-' : newlyExposed} |');
+    }
+    printCoverageRow('current', '독립', curIndependent, const {});
+    printCoverageRow('neutralGating', '독립', uniqueItems(neutralGatingResults), const {});
+    printCoverageRow('perCategoryFill', '독립', pfIndependent, curIndependent);
+
+    // §5-1 조건4[갱신]: 표14와 같은 순차 누적 방식(9태그를 정해진 순서로
+    // 처리하며 앞선 태그의 1번 후보를 recentItemIds에 누적)으로 33.3%와
+    // 비교한다. current/perCategoryFill 각자의 recency 궤적을 따로 추적.
+    final recentCur = <String>{};
+    final recentPf = <String>{};
+    final curSequentialResults = <String, TpoMatchResult>{};
+    final pfSequentialResults = <String, TpoMatchResult>{};
+    var sigDiffSequential = 0;
+    for (final tag in TpoTags.all) {
+      final rc = OutfitMatcher.findForTpo(
+        wardrobe: wardrobe,
+        formalityHint: tag.formalityHint,
+        policy: TpoMatchPolicy.current,
+        recentItemIds: recentCur,
+      );
+      final rp = OutfitMatcher.findForTpo(
+        wardrobe: wardrobe,
+        formalityHint: tag.formalityHint,
+        policy: TpoMatchPolicy.perCategoryFill,
+        recentItemIds: recentPf,
+      );
+      curSequentialResults[tag.label] = rc;
+      pfSequentialResults[tag.label] = rp;
+      if (rc.candidates.isNotEmpty) recentCur.addAll(rc.candidates.first.items.map((i) => i.id));
+      if (rp.candidates.isNotEmpty) recentPf.addAll(rp.candidates.first.items.map((i) => i.id));
+      final rcSig = rc.candidates.isEmpty ? '' : _sig(rc.candidates.first.items);
+      final rpSig = rp.candidates.isEmpty ? '' : _sig(rp.candidates.first.items);
+      if (rcSig != rpSig) sigDiffSequential++;
+    }
+    final curSequential = uniqueItems(curSequentialResults);
+    final pfSequential = uniqueItems(pfSequentialResults);
+    printCoverageRow('current', '순차누적', curSequential, const {});
+    printCoverageRow('perCategoryFill', '순차누적', pfSequential, curSequential);
+    print('  33.3% 대조는 순차누적 행(표14와 같은 방식) 기준 — 독립 행은 참고용(다른 산식, 표9와 같은 방식).');
+    print('[조건5-b] 순차 누적에서 current↔perCategoryFill 1번 후보 시그니처 '
+        'diff: $sigDiffSequential/${TpoTags.all.length}');
+    print('[조건5 합계] 독립 $sigDiffIndependent + 순차 $sigDiffSequential = '
+        '${sigDiffIndependent + sigDiffSequential}/18칸');
+
+    // ── 표 19 — recency 상호작용 (perCategoryFill × {0.0, 0.4}) ──
+    // "자격은 격식이, 순서는 최근도가" — isFallback/optionalMissing이 감점
+    // 강도에 따라 달라지면 회귀다. 표14와 같은 순차 시뮬레이션으로 recentItemIds를
+    // 채워야 recencyPenalty가 실제로 개입할 여지가 생긴다.
+    print('\n[표19] recency 상호작용 (perCategoryFill × {0.0, 0.4}, 순차 누적)');
+    print('| 태그 | isFallback(0.0/0.4) | optionalMissing건수(0.0/0.4) | 1번후보 변화 |');
     print('|---|---|---|---|');
-    print('  perCategoryFill 프리셋 미도입 — M2에서 프리셋 추가 후 채운다.');
+    final recent0 = <String>{};
+    final recent04 = <String>{};
+    var fallbackMismatch = 0;
+    var optionalMismatch = 0;
+    var top1Changed = 0;
+    for (final tag in TpoTags.all) {
+      final r0 = OutfitMatcher.findForTpo(
+        wardrobe: wardrobe,
+        formalityHint: tag.formalityHint,
+        policy: perCategoryFillNoRecency,
+        recentItemIds: recent0,
+      );
+      final r04 = OutfitMatcher.findForTpo(
+        wardrobe: wardrobe,
+        formalityHint: tag.formalityHint,
+        policy: TpoMatchPolicy.perCategoryFill, // recencyPenalty 기본 0.4
+        recentItemIds: recent04,
+      );
+      if (r0.candidates.isNotEmpty) recent0.addAll(r0.candidates.first.items.map((i) => i.id));
+      if (r04.candidates.isNotEmpty) recent04.addAll(r04.candidates.first.items.map((i) => i.id));
+      final fallbackDiffers = r0.isFallback != r04.isFallback;
+      final optionalDiffers = r0.optionalMissing.length != r04.optionalMissing.length;
+      if (fallbackDiffers) fallbackMismatch++;
+      if (optionalDiffers) optionalMismatch++;
+      final sig0 = r0.candidates.isEmpty ? '' : _sig(r0.candidates.first.items);
+      final sig04 = r04.candidates.isEmpty ? '' : _sig(r04.candidates.first.items);
+      final top1Diff = sig0 != sig04;
+      if (top1Diff) top1Changed++;
+      print('| ${tag.label} | ${r0.isFallback}/${r04.isFallback}${fallbackDiffers ? ' ← 불일치' : ''} | '
+          '${r0.optionalMissing.length}/${r04.optionalMissing.length}${optionalDiffers ? ' ← 불일치' : ''} | '
+          '${top1Diff ? 'O' : '-'} |');
+    }
+    print('  isFallback 불일치: $fallbackMismatch/${TpoTags.all.length}, '
+        'optionalMissing 건수 불일치: $optionalMismatch/${TpoTags.all.length}, '
+        '1번후보 변화(회전, 정상): $top1Changed/${TpoTags.all.length}');
+    // 자격(isFallback)과 optionalMissing 발화는 recency와 무관해야 한다 —
+    // 1번 후보 구성(회전)은 바뀌어도 되지만 이 둘은 절대 안 된다.
+    expect(fallbackMismatch, 0,
+        reason: 'recencyPenalty가 isFallback을 바꿨다 — 자격은 격식이 정해야 한다');
+    expect(optionalMismatch, 0,
+        reason: 'recencyPenalty가 optionalMissing 발화 여부를 바꿨다 — 자격은 격식이 정해야 한다');
   });
 }
