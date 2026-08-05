@@ -4,6 +4,7 @@ import {defineSecret} from "firebase-functions/params";
 import {initializeApp} from "firebase-admin/app";
 import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
+import {evaluateRateLimit, RateLimitConfig, RateLimitKind, RateLimitState} from "./rate_limit";
 
 // firebase-admin 14.x부터 admin.firestore()/admin.messaging() 같은
 // 네임스페이스 호환 API가 최상위 export에서 빠졌다 - getFirestore()/
@@ -95,6 +96,53 @@ async function fetchUpstream(endpoint: string, body: string): Promise<Response> 
   }
 }
 
+// 프록시 호출량 상한(논문 5.13.5/7.1 "프록시의 호출량 무제한") — 값은
+// 사람이 정상 사용하는 패턴으로는 도달 불가능하고 스크립트 남용만
+// 차단하는 수준으로 잡았다. **배포 전 실제 값은 사용자 확인이 필요하다.**
+//   텍스트 60/시간: 옷 등록 시 속성 추출(옷 1벌당 1회) + 추천/분석/주간
+//     플랜 등을 활발히 써도 시간당 수십 건을 넘기기 어렵다.
+//   이미지 20/시간: 가상 피팅 1건이 12.7초 안팎 걸려, 사람이 시간당
+//     20건을 연달아 누르는 것 자체가 비현실적이다(handoff 실측 근거).
+const RATE_LIMIT_CONFIG: RateLimitConfig = {textLimit: 60, imageLimit: 20};
+
+// rate_limits/{uid} 문서는 firestore.rules에 대응 match 블록이 없어
+// 기본 거부다(의도적 — firestore.rules 주석 참고). 클라이언트가 자기
+// 카운터를 읽거나 지워 상한을 우회할 수 없다.
+//
+// 실패 방향은 열림(fail-open) — 카운터 읽기/쓰기가 실패하면 호출을
+// 허용하고 console.error만 남긴다. recordServerInvocation과 같은 결:
+// 계측/제어 장치의 고장이 서비스 전체 중단으로 번지면 안 된다.
+//
+// 트랜잭션으로 감싸는 이유는 recordServerInvocation과 동일 — RMW
+// 경합(같은 uid가 짧은 간격으로 여러 번 호출) 없이 카운트가 정확해야
+// 상한이 의미가 있다.
+async function checkAndRecordRateLimit(uid: string, kind: RateLimitKind): Promise<void> {
+  const db = getFirestore();
+  const docRef = db.collection("rate_limits").doc(uid);
+
+  let decision;
+  try {
+    decision = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      const current = snap.exists ? (snap.data() as RateLimitState) : undefined;
+      const result = evaluateRateLimit(current, new Date(), kind, RATE_LIMIT_CONFIG);
+      tx.set(docRef, result.nextState);
+      return result;
+    });
+  } catch (err) {
+    console.error(`[callGeminiText] rate limit 판정 실패, 호출 허용(fail-open) uid=${uid}:`, err);
+    return;
+  }
+
+  if (!decision.allowed) {
+    console.log(`[callGeminiText] rate limit 초과 uid=${uid} kind=${kind} bucket=${decision.nextState.bucket}`);
+    throw new HttpsError(
+      "resource-exhausted",
+      "호출량이 많아 잠시 후 다시 시도해주세요."
+    );
+  }
+}
+
 // 텍스트 계열 Gemini 호출을 그대로 중계하는 단순 프록시. 클라이언트가 만든
 // requestBody를 가공 없이 그대로 넘기고, 응답도 원본 JSON을 그대로 돌려준다.
 // 여기서 텍스트를 뽑아버리면 클라이언트의 _extractTextFromResponse류 파싱이
@@ -127,6 +175,12 @@ export const callGeminiText = onCall(
     console.log(
       `[callGeminiText] model=${model} requestBytes=${Buffer.byteLength(requestBodyJson, "utf8")}`
     );
+
+    // 계수 시점은 상류 호출 전 — 실패할 요청도 셈한다(실패를 반복 때리는
+    // 것도 남용이다). resource-exhausted를 던지면 여기서 함수가 끝나
+    // fetchUpstream은 아예 호출되지 않는다.
+    const kind: RateLimitKind = model === "gemini-3.1-flash-image" ? "image" : "text";
+    await checkAndRecordRateLimit(request.auth.uid, kind);
 
     const key = geminiApiKey.value();
     const endpoint = request.acceptsStreaming ?

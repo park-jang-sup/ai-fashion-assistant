@@ -118,6 +118,12 @@ class GeminiService {
   //   on TimeoutException에 안 걸려 폴백 없이 그냥 실패한다.
   // - unauthenticated: 모델을 바꿔도 인증이 생기는 게 아니므로 폴백 왕복이
   //   무의미하다. GeminiApiException으로 재구성하지 않고 그대로 전파한다.
+  // - resource-exhausted: 서버 프록시 호출량 상한 초과(2026-08-06, 논문
+  //   5.13.5/7.1). GeminiApiException(429, ...)로 만들면 isRetryable이
+  //   true가 돼 대체 모델로 즉시 재시도하고, 그 재시도가 다시 카운트를
+  //   써서 상한 소진을 가속한다 — RateLimitExceededException으로 재구성해
+  //   재시도 경로 세 군데(withTextModelFallback, fitting_job_controller의
+  //   _withRetry) 어디에도 안 걸리게 한다.
   // - data-loss: 서버가 업스트림 응답 본문을 다 읽지 못했을 때(연결 끊김)
   //   던지는 코드. 실제로 Gemini가 503을 준 것은 아니지만, 성격이 "지금은
   //   실패해도 다시 시도하면 될 수 있는 일시적 문제"로 동일하므로 기존
@@ -132,6 +138,9 @@ class GeminiService {
   static Object _mapProxyException(FirebaseFunctionsException e) {
     if (e.code == 'deadline-exceeded') return TimeoutException(e.message);
     if (e.code == 'unauthenticated') return e;
+    if (e.code == 'resource-exhausted') {
+      return RateLimitExceededException(e.message ?? '호출량이 많아 잠시 후 다시 시도해주세요.');
+    }
     if (e.code == 'data-loss') {
       return GeminiApiException(503, e.message ?? '연결이 끊겼습니다.');
     }

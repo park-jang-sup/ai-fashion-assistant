@@ -112,5 +112,13 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
+
+    // rate_limits/{uid} — 서버 프록시(callGeminiText) 호출량 상한 카운터
+    // (2026-08-06, 논문 5.13.5/7.1). **의도적으로 match 블록이 없다.**
+    // users/{uid}처럼 본인 read/write를 열면 사용자가 자기 카운터를 지워
+    // 상한을 우회할 수 있으므로, 대응 규칙을 아예 안 둬 기본 거부로
+    // 막는다 — 클라이언트는 절대 접근 못 하고 functions/의 Admin SDK만
+    // 읽고 쓴다. 다음 사람이 "왜 이 컬렉션만 규칙이 없지"라고 묻지 않게
+    // 남긴다.
   }
 }
