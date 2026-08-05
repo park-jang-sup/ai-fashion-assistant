@@ -189,6 +189,102 @@ bool _idsEqual(List<WardrobeItem> a, List<WardrobeItem> b) {
   return true;
 }
 
+// ── §A: 라벨링 대상 내보내기 ──────────────────────────────────────
+// EXPORT_LABELING=1일 때만 호출된다(main() 안에서 게이트). 기본 실행(CI
+// 포함)에서는 이 함수 자체가 안 불려 아무 파일도 안 쓴다 — 테스트가 파일을
+// 쓰기 시작하면 CI 환경을 오염시킨다.
+const _evalHarnessDir = 'tools/eval_harness';
+const _evalHarnessImagesRelDir = 'images'; // pairs.json 안 imagePath는 이 기준 상대경로
+const _labelingSeed = 20260805; // Δ 베이스라인 시드(_randomSeed)와 값은 같지만 별개 Random 인스턴스
+
+void _exportLabelingPairs(
+  List<(String tag, String cat, String curId, String embId, int groupSize, double? delta)>
+      rows,
+) {
+  final dir = Directory(_evalHarnessDir);
+  if (!dir.existsSync()) dir.createSync(recursive: true);
+
+  // git 조회 실패(git 미설치, worktree 밖 실행 등)는 폴백 방향이 "아무것도
+  // 하지 않음"이므로 예외를 던지지 않고 null로 남긴다.
+  String? sourceCommit;
+  try {
+    final result = Process.runSync('git', ['rev-parse', 'HEAD']);
+    if (result.exitCode == 0) {
+      sourceCommit = (result.stdout as String).trim();
+    }
+  } catch (_) {
+    sourceCommit = null;
+  }
+
+  // 좌우 배치 전용 Random — Δ 베이스라인에 쓰는 random(순차 소비, 태그×카테고리
+  // 루프 순서에 의존)과 섞으면 "몇 번째 그룹의 좌우가 몇 번째 배치 시도인가"가
+  // Δ 계산 진행 상황에 얽혀버린다. 라벨링 대상 21건만 놓고 독립적으로 셔플해야
+  // 재현 가능하다.
+  final leftRightRandom = Random(_labelingSeed);
+  final pairs = <Map<String, dynamic>>[];
+  final policyMap = <String, dynamic>{};
+  var missingImageCount = 0;
+
+  for (var i = 0; i < rows.length; i++) {
+    final row = rows[i];
+    final pairId = 'p${(i + 1).toString().padLeft(3, '0')}';
+    final isShoes = row.$2 == '신발';
+
+    Map<String, dynamic> itemPayload(String id) {
+      final relPath = '$_evalHarnessImagesRelDir/$id.jpg';
+      final exists = File(
+              'tools/export_for_kaggle/output/$_evalHarnessImagesRelDir/$id.jpg')
+          .existsSync();
+      if (!exists) missingImageCount++;
+      return {
+        'id': id,
+        'imagePath': relPath,
+        if (!exists) 'imageMissing': true,
+      };
+    }
+
+    final currentPayload = itemPayload(row.$3);
+    final recoveryPayload = itemPayload(row.$4);
+
+    // current/embeddingRecovery 중 어느 쪽이 A에 오는지를 쌍마다 무작위로
+    // 정한다 — itemA/itemB 자체에는 정책 정보를 싣지 않는다(블라인드).
+    final currentIsA = leftRightRandom.nextBool();
+    final itemA = currentIsA ? currentPayload : recoveryPayload;
+    final itemB = currentIsA ? recoveryPayload : currentPayload;
+
+    pairs.add({
+      'pairId': pairId,
+      'tag': row.$1,
+      'category': row.$2,
+      'isShoes': isShoes,
+      'itemA': itemA,
+      'itemB': itemB,
+      'groupSize': row.$5,
+    });
+
+    policyMap[pairId] = {
+      'itemA': currentIsA ? 'current' : 'embeddingRecovery',
+      'itemB': currentIsA ? 'embeddingRecovery' : 'current',
+    };
+  }
+
+  final exportData = {
+    'generatedAt': DateTime.now().toUtc().toIso8601String(),
+    'sourceCommit': sourceCommit ?? '(git 조회 실패)',
+    'seed': _labelingSeed,
+    'traversalOrder': TpoTags.all.map((t) => t.label).toList(),
+    'pairs': pairs,
+  };
+
+  const encoder = JsonEncoder.withIndent('  ');
+  File('$_evalHarnessDir/pairs.json').writeAsStringSync(encoder.convert(exportData));
+  File('$_evalHarnessDir/policy_map.json').writeAsStringSync(encoder.convert(policyMap));
+
+  print('[내보내기] $_evalHarnessDir/pairs.json(${pairs.length}쌍) · '
+      'policy_map.json 작성 완료. 이미지 누락: $missingImageCount건'
+      '${sourceCommit == null ? ' (경고: git rev-parse 실패로 sourceCommit 비어 있음)' : ''}');
+}
+
 void main() {
   // items.json/embeddings.json이 로컬에 없으면 스킵한다(CI에는 두 파일이
   // 없다) — tpo_policy_report_test.dart/embedding_service_test.dart와 같은
@@ -647,6 +743,12 @@ void main() {
     print('');
     print('[라벨링 입력] 총 ${labelingRows.length}건 (= discordant 수와 같아야 함: '
         '${labelingRows.length == newDiscordant ? "일치" : "불일치"})');
+
+    // EXPORT_LABELING=1일 때만 tools/eval_harness/{pairs,policy_map}.json을
+    // 쓴다. 기본 실행에서는 이 블록 자체가 안 돈다.
+    if (Platform.environment['EXPORT_LABELING'] == '1') {
+      _exportLabelingPairs(labelingRows);
+    }
 
     expect(newDiscordant, greaterThanOrEqualTo(0));
   });
