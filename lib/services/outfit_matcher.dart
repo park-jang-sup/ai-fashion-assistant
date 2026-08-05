@@ -39,7 +39,7 @@ class TpoMatchResult {
 }
 
 // findForTpo의 격식 판정 파라미터. gateNeutralBonus/requiredCategories/
-// optionalCategories의 기본값은 원래 동작과 동일하다(proposed는 논문
+// optionalCategories의 기본값은 원래 동작과 동일하다(neutralGating은 논문
 // 5.8.3/5.8.4의 수정안이며, 실측 옷장 리포트로 영향을 확인하기 전까지
 // 프로덕션 기본값이 되어서는 안 된다). maxSkeletonCategories만 실측
 // A/B 리포트(tpo_policy_report_test.dart 표6·표7 — 아우터 6/9, 신발 3/9로
@@ -129,7 +129,11 @@ class TpoMatchPolicy {
       : (candidatesPerCategory > 6 ? 6 : candidatesPerCategory);
 
   static const current = TpoMatchPolicy();
-  static const proposed = TpoMatchPolicy(gateNeutralBonus: true);
+  // 무채색 보너스를 격식 충족 후보에만 적용하는 A/B 프리셋.
+  // 이전 이름은 `proposed`였으나, 문서에서 "제안 정책"이 임베딩 정보 회수를
+  // 가리키게 되면서 코드와 문서가 같은 말로 다른 축을 가리키는 상태가 됐다.
+  // 축이 무엇인지를 이름에 담아 충돌을 없앤다.
+  static const neutralGating = TpoMatchPolicy(gateNeutralBonus: true);
   static const skeleton4 = TpoMatchPolicy(maxSkeletonCategories: 4);
   static const skeleton3 = TpoMatchPolicy(maxSkeletonCategories: 3);
 

@@ -145,7 +145,7 @@ void main() {
       proposedResults[tag.label] = OutfitMatcher.findForTpo(
         wardrobe: wardrobe,
         formalityHint: tag.formalityHint,
-        policy: TpoMatchPolicy.proposed,
+        policy: TpoMatchPolicy.neutralGating,
       );
       skeleton4Results[tag.label] = OutfitMatcher.findForTpo(
         wardrobe: wardrobe,
@@ -354,7 +354,7 @@ void main() {
     final currentFallbackCount = currentResults.values.where((r) => r.isFallback).length;
     final proposedFallbackCount = proposedResults.values.where((r) => r.isFallback).length;
     print('\ncurrent fallback 발화율: $currentFallbackCount/${TpoTags.all.length}  →  '
-        'proposed: $proposedFallbackCount/${TpoTags.all.length}');
+        'neutralGating: $proposedFallbackCount/${TpoTags.all.length}');
 
     // proposed 정책에서 어떤 태그든 candidates가 완전히 비면(=조합 자체 불가)
     // 그건 과도한 필터링이므로 즉시 눈에 띄어야 한다.
