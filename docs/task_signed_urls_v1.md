@@ -966,25 +966,200 @@ UTC 버킷이 07→08로 넘어가 절대 비교는 무의미하나(새 버킷 7
 판단에서 났다. `#6`(`fitting_room_screen.dart:1030`, uid-null
 엣지케이스)만 알려진 예외이고, 그 외 실패는 전부 중단 사유다.
 
-### C-4 (회수 완료 후)
+### C-4a — 기본값 전환 [완료 — 2026-08-06]
 
-- `SIGNED_URLS` 기본값 `true`로 전환.
-- **신규 업로드 토큰 처리 설계(제안, 미구현)** — 회수는 과거 파일만
-  청소하므로 새로 올라가는 파일은 여전히 토큰을 갖고 태어난다
-  (2026-08-06 전신 사진 신규 등록 때 실측 확인 — `wardrobe_images/`
-  110건 중 신규 1건도 토큰 보유). 이대로 두면 시간이 지날수록 구멍이
-  다시 벌어진다. 제안: `StorageService.uploadWardrobeImage/
-  uploadWardrobeCutout/uploadFittingResult`가 `ref.getDownloadURL()`
-  로 `imageUrl`을 얻는 순간 Firebase Storage가 토큰을 자동 생성하는
-  게 근본 원인 — 그 직후 `ref.updateMetadata()`로 커스텀 메타데이터
-  (`firebaseStorageDownloadTokens` 포함)를 비워 토큰을 즉시 제거하는
-  방안. `imageUrl` 필드 자체는 그대로 저장한다(킬 스위치 off 시
-  폴백 표시용) — 다만 그 순간부터 이미 죽은 URL이라는 점만 다르다.
-  **구현 전 확인 필요**: `firebase_storage` 패키지의
-  `updateMetadata(SettableMetadata(customMetadata: {}))`가 실제로
-  기존 커스텀 메타데이터 키를 지우는지(스펙만 보고 단정하지 말 것 —
-  A-1 IAM 스파이크처럼 실측으로 확인), 이 추가 호출이 업로드 지연에
-  주는 영향.
-- 폴백 발화 계측의 의미 변경(Phase A~B "전환 누락 탐지" → Phase C
-  이후 "이상 신호") — §5에 이미 있는 원칙을 회수 완료 시점에
-  다시 명시.
+1. **완료.** `lib/services/image_url_resolver.dart`의
+   `signedUrlsEnabled` 기본값을 `bool.fromEnvironment('SIGNED_URLS',
+   defaultValue: false)` → `defaultValue: true`로 전환. `--dart-define`
+   없이 빌드해도 서명 경로를 탄다.
+2. **완료.** 킬 스위치는 남겼다 — `SIGNED_URLS=false`를 명시하면
+   여전히 코드는 레거시 URL(`fallbackUrl`)로 폴백을 시도한다. 다만
+   해당 코드 바로 위 주석에 다음을 명시했다: 이 스위치는 더 이상
+   **안전한 롤백 경로가 아니다** — 토큰이 이미 250건 전부 회수됐으므로
+   `false`로 되돌려도 레거시 URL 자체가 죽어있어 이미지는 뜨지 않는다.
+   지금 이 플래그가 하는 일은 "서명 경로를 쓸지 말지"라는 **코드 경로
+   전환 수단**일 뿐이고, 회수 이전 상태로 되돌리는 진짜 롤백은
+   `tools/revoke_storage_tokens/revoke.py --rollback <manifest>`로만
+   가능하다는 구분을 명문화했다.
+3. **완료.** 폴백 발화 의미 변경 기록 — §5에 있던 원칙("Phase A~B에서는
+   전환 누락 탐지, Phase C 후에는 이상 신호")을 여기서 시점 확정:
+   **2026-08-06, C-1' 전체 완료(250건 회수) + C-4a 기본값 true 전환
+   시점부터 폴백 발화는 이상 신호로 해석한다.** 폴백이 발화했다는 건
+   `resolveFittingImageTarget()`이 대상을 특정하지 못했거나(고아
+   참조·`fittingCacheKey` 누락 등) 서명 발급 자체가 실패했다는
+   뜻이고, 폴백된 레거시 URL은 이미 죽어있으므로 화면에는 어차피
+   에러로 나타난다 — 즉 폴백 발화 자체가 곧 "사용자에게 보이는 실패"의
+   선행 신호가 됐다.
+4. **완료.** `flutter analyze`(대상 2개 파일) 이슈 0, `flutter test`
+   163개 전체 통과. `--dart-define` 없이 릴리스 APK 빌드 → `adb
+   install -r` 설치 → 21항목 전수 재확인 — **전부 정상**. 판정 기준은
+   이전 세 회차(회수 영향 확인)와 달랐다: "dart-define 없이도 서명
+   경로를 타는가"가 전부/전무로 갈리는 이진 신호이므로, 정상 표시
+   자체가 곧 기본값 전환 성공의 증거다. `rate_limits/
+   BDDOIl08EhXnHu6oz6Zro47EtMw1` 대조: 확인 전 `bucket 2026080609,
+   signCount 6, rejectedCount 0` → 확인 후 `signCount 20`(Δ+14),
+   `rejectedCount` 여전히 0 — 서명 요청이 실제로 발급되고 전부
+   수락됐음을 뒷받침한다.
+
+**C-4a 완료.** 기본값 `SIGNED_URLS=true`, 킬 스위치는 코드에 남되
+"코드 경로 전환 수단"일 뿐 안전한 롤백이 아니라는 구분을 주석·문서에
+명시(항목 2), 폴백 발화의 해석이 "전환 누락 탐지"에서 "이상 신호"로
+바뀌는 시점을 2026-08-06으로 확정(항목 3). 다음은 C-4b.
+
+### Phase C 수용 기준 최종 판정 (지시서 §4, 5.13.2 해소)
+
+지시서 §4에 등록된 Phase C 수용 기준 3종을 이번 재착수 트랙의
+증거로 최종 판정한다:
+
+1. **구 URL 실패** — `phase_c_restart_evidence_pre.json`에 9건
+   (프리픽스별 3건) 전부 `statusBefore: 200` → 회수 후
+   `statusAfter: 403` 기록. 증거 파일로 확정.
+2. **서명 URL 성공** — C-0'(기준선 21항목) → C-1' 1·2·3차(각 단계
+   회수 후 21항목) → C-4a(기본값 true 빌드 21항목), 총 5회의 21항목
+   전수 확인 전부 통과. 화면 단위 실사용 증거로 확정.
+3. **만료 후 실패** — A-1 IAM 스파이크(서명 URL의 만료 파라미터가
+   실제로 강제됨을 실측 확인, 시스템 시각 조작 없이) 결과를 그대로
+   인용. 이미 실측 완료된 결과라 재확인하지 않는다.
+
+3종 전부 충족 — **논문 5.13.2("Storage 다운로드 URL이 인증 없이도
+평문 노출되는 문제") 해소 완료.**
+
+### C-4b — 신규 업로드 토큰 처리 (실측 완료 — 2026-08-06, 구현 승인 대기)
+
+회수는 과거 파일만 청소하므로 새로 올라가는 파일은 여전히 토큰을 갖고
+태어난다(2026-08-06 전신 사진 신규 등록 때 실측 확인 —
+`wardrobe_images/` 110건 중 신규 1건도 토큰 보유). 이대로 두면 시간이
+지날수록 구멍이 다시 벌어진다.
+
+**(A)·(B) 실측 방법**: Admin SDK로 테스트 전용 uid(`c4b_spike_test_uid`,
+실제 사용자와 무관)의 커스텀 토큰을 발급받아 Identity Toolkit REST로
+진짜 클라이언트 ID 토큰으로 교환한 뒤, `storage.rules`를 실제로
+통과하는 그 ID 토큰만으로 Firebase Storage REST(`v0/b/{bucket}/o`,
+Flutter `firebase_storage` SDK가 내부적으로 호출하는 것과 동일한
+엔드포인트)를 직접 호출했다 — Admin SDK로 직접 조작한 게 아니라
+클라이언트 권한 경로 자체를 재현했다. 업로드는 **resumable
+프로토콜**(`X-Goog-Upload-Protocol: resumable`)로 했다 — 이게
+`putFile`/`putData`가 실제로 쓰는 프로토콜이다(simple/multipart로는
+서명 오류만 재현돼 폐기, resumable로 바꾸자 정상 동작 확인). 테스트
+객체는 전부 실측 직후 삭제, 잔존 0건 확인.
+
+- **(A) 업로드 시 토큰 미생성 — 불가능(실측 확정).** resumable
+  업로드의 init 단계에서 `metadata: {firebaseStorageDownloadTokens:
+  ''}`로 토큰 생성을 억제 시도 → **400
+  `"Not allowed to set custom metadata for firebaseStorageDownloadTokens"`**.
+  같은 요청에서 `firebaseStorageDownloadTokens` 필드를 아예 안 보낸
+  베이스라인은 정상 업로드되고 토큰이 자동 생성됨. 즉 이 키는
+  클라이언트가 생성 시점에도 전혀 손댈 수 없는 서버 전용 필드다 —
+  SDK 옵션이 없는 게 아니라 백엔드가 프로토콜 차원에서 막는다.
+- **(B) 업로드 직후 클라이언트에서 메타데이터 제거 — 불가능(실측
+  확정), 이유는 (A)와 동일한 서버 가드.** 세 가지 시도 전부 실패:
+  1) `updateMetadata(customMetadata: {})`(빈 맵) → 200 응답이지만
+     `downloadTokens` 불변 — 빈 맵은 "변경 없음"으로 해석돼 애초에
+     반영 자체가 안 됨(구 토큰으로 재다운로드 200 그대로, 403 안 됨).
+  2) `firebaseStorageDownloadTokens: null` 명시 → **400 동일 오류**.
+  3) `firebaseStorageDownloadTokens: ''` 명시 → **400 동일 오류**.
+     즉 (A)에서 나온 것과 정확히 같은 서버 가드가 업데이트 경로에도
+     걸려있다 — Admin SDK(`revoke.py`, 원시 GCS JSON API 경유)만
+     이 키를 건드릴 수 있고, Firebase Storage REST(`v0`, 모든
+     클라이언트 SDK가 쓰는 계층)는 이 키를 원천 차단한다. `storage.rules`의
+     `allow write: if request.auth != null`(소유자 검사 없음)는
+     관련이 아예 없었다 — 규칙을 통과하기 전에 REST 계층에서 이미
+     거부된다.
+  **결론: (A)·(B) 둘 다 SDK/권한 문제가 아니라 Firebase Storage의
+  아키텍처 자체가 클라이언트발 토큰 조작을 봉쇄한다. 두 안 모두
+  폐기.**
+- **(C) 서버 트리거(`onFinalize`)로 업로드 감지 후 서버가 제거 —
+  실현 가능(확인됨), 유일하게 남는 정공법.** 설치된
+  `firebase-functions` 7.3.2에 2세대 `onObjectFinalized`가 실제로
+  존재함을 `node_modules`에서 확인(`functions/src/index.ts`의 기존
+  콜러블 함수들과 같은 `region: "asia-northeast3"` 배선 재사용
+  가능). Admin SDK는 (A)/(B)를 막은 그 REST 계층을 우회하므로(원시
+  GCS API) `revoke.py`가 이미 매번 성공한 것과 같은 경로로 토큰
+  제거가 가능하다 — **구현 난이도상 새로운 미지수는 없다.** 남는
+  변수는 트리거 지연(보통 수백 ms~수 초, Eventarc 실측은 아직 안
+  함) 동안 업로드 직후 화면이 그 짧은 창에서 레거시 URL(토큰 살아있는
+  상태)로 뜨는지, 아니면 애초에 화면이 `imageUrl` 필드 저장 전에는
+  안 그려서 문제가 안 되는지 — 이건 구현 승인 후 화면 코드 확인으로
+  실측한다.
+- **(D) 주기 스윕** — 기존 `revoke.py`를 정기 실행(예: 이미
+  `functions/src/index.ts`에 있는 3시간 주기 스케줄 함수 패턴 재사용
+  가능, `{schedule: "every 3 hours", ...}`). 가장 단순하고 이미
+  검증된 스크립트를 재사용하나, 최대 스윕 주기만큼 구멍이 열려있다
+  (예: 3시간 주기면 업로드 직후 최대 3시간은 레거시 URL이 여전히
+  유효).
+
+**권고**: (A)·(B)는 실측으로 완전히 배제됐다. (C)를 기본으로 하고,
+Eventarc 지연이 실사용에 문제가 되는 예외 케이스(트리거 실패·지연
+과다)에 대한 안전망으로 (D)를 낮은 빈도(예: 매일 1회)로 병행하는
+조합을 제안한다 — (C) 단독은 트리거가 놓치는 극단적 케이스(함수
+장애 등)를 커버 못 하고, (D) 단독은 상시 구멍이 너무 오래 열린다.
+**(C)+(D) 승인됨 — 2026-08-06.**
+
+### C-4b 부속 판정 — URL 필드 기록 유지 여부 (2026-08-06)
+
+(C)+(D) 구현 전 확인: 업로드 직후 트리거 발화 전까지, Firestore에
+기록된 `imageUrl`/`cutoutImageUrl`/`fittingImageUrl`(및
+`fitting_cache.imageUrl`)의 토큰이 아직 살아있는 좁은 창이 있다 —
+이 URL 기록을 계속할지 판단 필요했다.
+
+**조사 결과(1a)**: 업로드 경로 4곳 전부(`wardrobe_screen.dart:612-631`
+→ `addWardrobeItem`의 `imageUrl`/`cutoutImageUrl`,
+`fitting_job_controller.dart:288-299` → `history` 로그의
+`fittingImageUrl`, 같은 곳 294행 → `FirestoreService.
+cacheFittingResult`의 `fitting_cache.imageUrl`) 코드가 여전히 URL
+필드를 기록하고 있음을 확인.
+
+**조사 결과(1c)**: 이 URL 필드를 "유효한 경로"로 가정하고 직접
+fetch하는 코드가 있는지 전수 확인 — 없음. 직접 fetch가 있는 곳은
+`gemini_service.dart:539-545`(`_downloadImageBytes`)뿐인데 이건
+resolver 자체의 폴백 기전이라 기존 설계 범위 안(C-4a 3번의 "폴백
+발화 = 이상 신호" 해석과 일관). `item_detail_screen.dart:110`의
+`CachedNetworkImage`는 주석 처리된 죽은 코드(외부 Unsplash URL)라
+무관. 그 외 전부 `SignedNetworkImage`/`ImageUrlResolver` 경유 —
+URL을 최후 폴백으로만 다루도록 이미 설계돼 있음(A-5/A-6).
+
+**판정(1b, 사용자)**: **URL 필드 기록은 유지한다.**
+- 업로드~트리거 발화 사이 좁은 창에서 유일한 폴백이 되고, 그 창이
+  사용자가 방금 등록한 옷을 보는 시점과 겹친다.
+- 유지 비용이 0이고, 이 트랙의 교훈이 "안전망을 미리 없애지 말자"다
+  (§9 사고 — 21곳 중 1곳만 배선 확인하고 전체 회수, 롤백 manifest가
+  복구를 가능케 한 사례와 같은 결).
+
+**단, 필드 의미 변경을 명시했다** — 코드 주석(`storage_service.dart`
+의 `uploadWardrobeImage` 위, `firestore_service.dart`의
+`addWardrobeItem`/`cacheFittingResult` 위, `fitting_job_controller.dart`
+의 `_cacheFittingResultSilently` 위, 전부 `[C-4b]` 표기로 통일)과
+이 문서 양쪽에: **`imageUrl`/`cutoutImageUrl`/`fittingImageUrl`은
+서버 트리거(`revokeTokenOnUpload`) 발화 전까지만 유효한 잔여물이며,
+정식 접근 경로는 `path` + `getSignedImageUrls`다. 새 코드에서 이
+URL 필드를 직접 fetch하거나 유효한 이미지 주소로 가정하지 말 것.**
+다음 사람이 이 필드를 정식 경로로 오인하는 건 5.13.2/5.13.3 계열의
+재발이다.
+
+### C-4b 구현 완료 — 2026-08-06
+
+`functions/src/index.ts`에 추가:
+
+- **`revokeTokenOnUpload`**(`onObjectFinalized`, `asia-northeast3`) —
+  업로드 완료 즉시 발화. `TOKEN_REVOKE_PREFIXES`(`wardrobe_images/`,
+  `wardrobe_cutouts/`, `fitting_results/`)로 대상을 명시 제한 —
+  프리픽스 밖 객체는 건드리지 않는다(§9 사고 재발 방지). Admin SDK로
+  `firebaseStorageDownloadTokens` 커스텀 메타데이터 키만 제거
+  (`revoke.py`와 동일 로직 — 파일은 절대 안 지운다). 실패해도 업로드
+  자체를 막지 않는다 — catch로 로그만 남기고 정상 종료(재시도 없음,
+  `opts.retry` 기본값 false) — 업로드는 이미 finalize된 뒤에만
+  트리거가 발화하므로 실패 시 할 수 있는 건 로그뿐이다.
+- **`sweepStorageTokens`**(`onSchedule`, 24시간 주기,
+  `asia-northeast3`) — 3개 프리픽스 전체를 스캔해 잔여 토큰을 회수하고
+  `scanned`/`revoked` 건수를 로그로 남긴다. `revoked`가 계속 0이면
+  트리거가 정상 동작 중이라는 뜻이고, 0이 아닌 값이 반복되면 트리거가
+  놓치는 경로가 있다는 신호 — 이 숫자가 (C)의 건강 지표다.
+
+두 함수가 공유하는 `revokeTokenIfPresent()` 헬퍼가 `revoke.py`와
+동일하게 "메타데이터에서 키 하나만 지우고 나머지는 그대로 patch"
+방식을 쓴다.
+
+검증: `npx tsc --noEmit` 통과, `npm run build` 통과, 기존
+`rate_limit.test.js`/`signed_url_policy.test.js`(총 27개 assertion)
+전부 통과 — 이번 변경으로 깨진 것 없음. **배포는 아직 안 함 — 사용자
+승인 대기.**

@@ -1,5 +1,6 @@
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {onSchedule} from "firebase-functions/v2/scheduler";
+import {onObjectFinalized} from "firebase-functions/v2/storage";
 import {defineSecret} from "firebase-functions/params";
 import {initializeApp} from "firebase-admin/app";
 import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
@@ -732,5 +733,96 @@ export const triggerScheduledCheckTest = onCall(
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
     }
     return await runScheduledCheckCore(request.auth.uid);
+  }
+);
+
+// ── C-4b — 신규 업로드 토큰 처리(docs/task_signed_urls_v1.md §12) ──────
+// A안(업로드 시 토큰 미생성)·B안(클라이언트 updateMetadata로 제거)은 실측으로
+// 폐기됐다 - Firebase Storage REST(v0, 모든 클라이언트 SDK가 쓰는 계층)가
+// firebaseStorageDownloadTokens 커스텀 메타데이터 키를 클라이언트 권한으로
+// 건드리는 시도를 생성·수정 양쪽 다 400 "Not allowed to set custom metadata
+// for firebaseStorageDownloadTokens"로 원천 차단한다(storage.rules의
+// allow write와 무관 - REST 계층에서 이미 막힌다). 이 키를 지울 수 있는 건
+// Admin SDK(원시 GCS JSON API 경유, revoke.py가 이미 이 경로로 성공)뿐이라
+// C(서버 트리거)·D(주기 스윕) 조합으로만 구현 가능하다.
+//
+// revoke.py와 동일한 대상 프리픽스로 명시 제한한다 - 프리픽스 밖 객체까지
+// 건드리면 이번 트랙의 원인이었던 사고(1곳만 배선 확인하고 전체 회수)와
+// 같은 성격의 "범위 밖까지 건드림" 재발이다.
+const TOKEN_REVOKE_PREFIXES = ["wardrobe_images/", "wardrobe_cutouts/", "fitting_results/"];
+const TOKEN_KEY = "firebaseStorageDownloadTokens";
+
+function isTokenRevocablePath(path: string): boolean {
+  return TOKEN_REVOKE_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+// revoke.py의 "메타데이터 dict에서 키 하나만 지우고 patch"와 동일한 로직 -
+// Admin SDK(@google-cloud/storage)는 raw GCS JSON API를 거치므로 REST(v0)의
+// 클라이언트 차단 가드에 걸리지 않는다. 반환값은 (D) 스윕이 "몇 건 남아있었는지"
+// 로그로 남기기 위한 것 - 이 숫자가 (C)의 건강 지표다(0이면 트리거가 잘 도는
+// 것, 0이 아니면 트리거가 놓치는 경로가 있다는 신호).
+async function revokeTokenIfPresent(
+  bucket: ReturnType<ReturnType<typeof getStorage>["bucket"]>,
+  path: string
+): Promise<"revoked" | "already_clean"> {
+  const file = bucket.file(path);
+  const [metadata] = await file.getMetadata();
+  const custom = (metadata.metadata ?? {}) as Record<string, string>;
+  if (!(TOKEN_KEY in custom)) return "already_clean";
+
+  const nextCustom = {...custom};
+  delete nextCustom[TOKEN_KEY];
+  await file.setMetadata({metadata: nextCustom});
+  return "revoked";
+}
+
+// (C) 업로드 감지 즉시 토큰 회수. 업로드 자체(putFile/putData)는 이미
+// finalize된 뒤에만 이 트리거가 발화하므로 실패해도 업로드를 막을 방법도
+// 필요도 없다 - catch로 로그만 남기고 함수를 정상 종료한다(재시도 안 함,
+// opts.retry 기본값 false).
+export const revokeTokenOnUpload = onObjectFinalized(
+  {region: "asia-northeast3"},
+  async (event) => {
+    const path = event.data.name;
+    if (!isTokenRevocablePath(path)) return;
+
+    try {
+      const bucket = getStorage().bucket(event.data.bucket);
+      const result = await revokeTokenIfPresent(bucket, path);
+      console.log(`[revokeTokenOnUpload] path=${path} result=${result}`);
+    } catch (err) {
+      // 업로드 자체는 이미 끝난 뒤라 여기서 실패해도 사용자에게 영향 없음 -
+      // (D) 일 1회 스윕이 놓친 건을 회수한다. 로그만 남긴다.
+      console.error(`[revokeTokenOnUpload] 회수 실패 path=${path}:`, err);
+    }
+  }
+);
+
+// (D) 일 1회 스윕 - (C)가 놓친 건(함수 장애·배포 공백 등)의 안전망.
+// 잔여 토큰 건수를 로그로 남긴다 - 0이 계속 나오면 (C)가 정상 작동 중이라는
+// 뜻이고, 0이 아닌 값이 반복되면 (C)가 놓치는 경로가 있다는 신호다.
+export const sweepStorageTokens = onSchedule(
+  {schedule: "every 24 hours", region: "asia-northeast3"},
+  async () => {
+    const bucket = getStorage().bucket();
+    let revoked = 0;
+    let scanned = 0;
+
+    for (const prefix of TOKEN_REVOKE_PREFIXES) {
+      const [files] = await bucket.getFiles({prefix});
+      for (const file of files) {
+        scanned++;
+        try {
+          const result = await revokeTokenIfPresent(bucket, file.name);
+          if (result === "revoked") revoked++;
+        } catch (err) {
+          console.error(`[sweepStorageTokens] 회수 실패 path=${file.name}:`, err);
+        }
+      }
+    }
+
+    // C-4b 설계(§12)의 "(C)의 건강 지표" - revoked가 계속 0이면 트리거가
+    // 놓치는 게 없다는 뜻, 0이 아니면 트리거 지연/실패 경로가 있다는 신호.
+    console.log(`[sweepStorageTokens] scanned=${scanned} revoked=${revoked}`);
   }
 );

@@ -38,6 +38,10 @@ class FirestoreService {
   // — URL 필드와 함께 이중 기록한다(§1 "URL 필드는 건드리지 않는다").
   // getSignedImageUrls(functions)가 이 필드를 우선 읽고, 없으면(Phase B
   // 백필 전 기존 문서) URL에서 역산한다.
+  // imageUrl/cutoutImageUrl 필드의 유효성 범위는 storage_service.dart의
+  // uploadWardrobeImage 주석([C-4b] 표기) 참고 — 업로드 직후 서버 트리거가
+  // 토큰을 회수하기 전까지만 유효한 잔여물이다. 정식 경로는 imagePath/
+  // cutoutPath + getSignedImageUrls.
   static Future<String> addWardrobeItem({
     required String imageUrl,
     required String imagePath,
@@ -193,6 +197,10 @@ class FirestoreService {
     return doc.data()?['imageUrl'] as String?;
   }
 
+  // imageUrl 필드의 유효성 범위는 storage_service.dart의
+  // uploadWardrobeImage 주석([C-4b] 표기)과 동일 — 업로드 직후 서버
+  // 트리거가 토큰을 회수하기 전까지만 유효하다. 정식 경로는 문서 id
+  // (=cacheKey) + getSignedImageUrls.
   static Future<void> cacheFittingResult(
       String cacheKey, String imageUrl, String ownerUid) async {
     await _db.collection(_fittingCacheCol).doc(cacheKey).set({

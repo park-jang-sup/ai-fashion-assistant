@@ -276,6 +276,8 @@ class FittingJobController extends ChangeNotifier {
   // 인스턴스 메서드다(static 아님) — 업로드가 끝나야만 알 수 있는 URL을
   // fittingImageUrl에 반영하고 리스너에게 알려야 스크랩 등 URL이 필요한
   // 기능이 신규 생성 결과에도 동작한다(기존엔 캐시 히트 때만 채워졌었다).
+  // [C-4b] 이 URL의 유효 범위는 storage_service.dart 주석 참고 — 업로드
+  // 직후 서버 트리거가 토큰을 회수하기 전까지만 유효한 잔여물이다.
   Future<void> _cacheFittingResultSilently(
     String cacheKey,
     Uint8List bytes,

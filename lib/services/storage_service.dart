@@ -26,6 +26,16 @@ class StorageService {
   // task_signed_urls_v1.md). path는 getSignedImageUrls가 서명할 대상을
   // 직접 알려주는 필드고, url은 그대로 폴백용으로 계속 저장한다(§1의
   // "URL 필드는 건드리지 않는다" — 이중 기록, 기존 필드 무변).
+  //
+  // [C-4b, 2026-08-06] url(→ imageUrl/cutoutImageUrl/fittingImageUrl로
+  // Firestore에 저장됨)은 **업로드 직후 서버 트리거(functions/src/index.ts의
+  // revokeTokenOnUpload)가 발화하기 전까지만 유효한 잔여물이다.** 트리거가
+  // 돌면 이 URL의 다운로드 토큰이 곧 사라져 죽은 링크가 된다(§12 C-4b
+  // 참고). 정식 접근 경로는 path + getSignedImageUrls(서명 URL)이고, url은
+  // 그 좁은 창(업로드~트리거 발화 사이) 동안의 최후 폴백일 뿐이다 — 새
+  // 코드에서 이 URL 필드를 직접 fetch하거나 "유효한 이미지 주소"로
+  // 가정하지 말 것. 다음 사람이 이 필드를 정식 경로로 오인하는 건
+  // 5.13.2/5.13.3 계열의 재발이다.
   static Future<({String url, String path})> uploadWardrobeImage(XFile xFile) async {
     final file = File(xFile.path);
     final fileName = '${_randomFileStem()}.jpg';
