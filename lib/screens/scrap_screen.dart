@@ -7,6 +7,7 @@ import '../models/scrap_entry.dart';
 import '../services/firestore_service.dart';
 import '../widgets/calendar_record_sheet.dart';
 import '../widgets/full_screen_image_viewer.dart';
+import '../widgets/signed_network_image.dart';
 
 // 설정 화면 "내 스크랩"에서 진입 — 피팅룸에서 북마크한 가상 피팅 결과를
 // 전체 목록으로 모아본다.
@@ -182,6 +183,8 @@ class _ScrapCard extends StatelessWidget {
         pageBuilder: (_, __, ___) => FullScreenImageViewer(
           imageUrl: entry.fittingImageUrl,
           label: '스크랩한 착장',
+          signedCollection: entry.fittingCacheKey != null ? 'fitting_cache' : null,
+          signedId: entry.fittingCacheKey,
         ),
       ),
     );
@@ -212,15 +215,27 @@ class _ScrapCard extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-                    child: CachedNetworkImage(
-                      imageUrl: entry.fittingImageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(color: AppColors.background),
-                      errorWidget: (_, __, ___) => Container(
-                        color: AppColors.background,
-                        child: const Icon(Icons.image_outlined, color: AppColors.textDisabled),
-                      ),
-                    ),
+                    child: entry.fittingCacheKey != null
+                        ? SignedNetworkImage(
+                            collection: 'fitting_cache',
+                            id: entry.fittingCacheKey!,
+                            fallbackUrl: entry.fittingImageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(color: AppColors.background),
+                            errorWidget: (_, __, ___) => Container(
+                              color: AppColors.background,
+                              child: const Icon(Icons.image_outlined, color: AppColors.textDisabled),
+                            ),
+                          )
+                        : CachedNetworkImage(
+                            imageUrl: entry.fittingImageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(color: AppColors.background),
+                            errorWidget: (_, __, ___) => Container(
+                              color: AppColors.background,
+                              child: const Icon(Icons.image_outlined, color: AppColors.textDisabled),
+                            ),
+                          ),
                   ),
                   Positioned(
                     top: 8,

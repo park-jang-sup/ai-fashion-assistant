@@ -20,6 +20,9 @@ class OutfitCalendarEntry {
   final DateTime date; // 자정 정규화된 날짜
   final String tpoTag; // '출근'|'데이트'|'여행'|'운동'|'모임'|'일상' 등
   final String? fittingImageUrl; // 가상 피팅 이미지 (있으면)
+  // fitting_cache 문서 id — 서명 URL 이행 A-5(§10-1). fittingImageUrl이
+  // OutfitHistoryEntry(_selectedFitting)에서 온 경우에만 채워진다.
+  final String? fittingCacheKey;
   final List<String> itemIds;
   final List<String> itemSummaries; // "카테고리: 색상" 스냅샷 (기존 패턴)
   final String source; // sourceManual | sourceAgent
@@ -32,6 +35,7 @@ class OutfitCalendarEntry {
     required this.date,
     required this.tpoTag,
     this.fittingImageUrl,
+    this.fittingCacheKey,
     this.itemIds = const [],
     this.itemSummaries = const [],
     this.source = sourceManual,
@@ -53,6 +57,7 @@ class OutfitCalendarEntry {
       date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       tpoTag: data['tpoTag'] as String? ?? '일상',
       fittingImageUrl: data['fittingImageUrl'] as String?,
+      fittingCacheKey: data['fittingCacheKey'] as String?,
       itemIds: (data['itemIds'] as List?)?.map((e) => e.toString()).toList() ?? const [],
       itemSummaries:
           (data['itemSummaries'] as List?)?.map((e) => e.toString()).toList() ?? const [],
@@ -70,6 +75,7 @@ class OutfitCalendarEntry {
         'date': Timestamp.fromDate(normalizeDate(date)),
         'tpoTag': tpoTag,
         if (fittingImageUrl != null) 'fittingImageUrl': fittingImageUrl,
+        if (fittingCacheKey != null) 'fittingCacheKey': fittingCacheKey,
         'itemIds': itemIds,
         'itemSummaries': itemSummaries,
         'source': source,

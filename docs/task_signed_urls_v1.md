@@ -138,9 +138,19 @@ A-3. 클라이언트: 업로드가 path 필드를 **URL 필드와 함께** 기�
 A-4. 화면 배선: 이미지 로드를 Resolver 경유로 교체하되 **킬 스위치
      (dart-define SIGNED_URLS, 기본 false)** — 기본 off에서 기존 경로
      그대로임을 확인하고 커밋.
+     **[범위 정정 2026-08-06, §9 참고]** "이미지 로드를 Resolver
+     경유로 교체"라고 썼지만 실제로 배선된 곳은 옷장 그리드
+     (`_WardrobeCard`) **한 곳뿐**이었다. 표시 18곳 + 다운로드
+     (`GeminiService._downloadImageBytes*`) 6곳, 합쳐서 24곳 중
+     1곳만 이행하고 나머지 23곳은 레거시 URL 필드를 여전히 직접
+     썼다 — 이 범위 착오가 아래 §9 사고의 직접 원인이다.
 
 관문 A: off 상태 실기기 무변 확인 → on 상태(디버그)에서 옷장·데모·
 가상 피팅 화면 로드 + Resolver 폴백 발화 0 확인.
+**[판정 무효화 2026-08-06, §9 참고]** 이 확인은 옷장 그리드만 봤다
+— "가상 피팅 화면 로드"라고 적었지만 피팅룸의 나머지 하위 뷰(사용자
+사진 선택, 결과 큰 이미지, 옷 선택 미리보기 등)와 다운로드 경로는
+검증 범위에 없었다. 통과 판정 자체가 범위 착오였다.
 
 ### Phase B — 백필 (기존 문서에 path 추가)
 
@@ -179,6 +189,9 @@ audit_image_refs`로 확인, `exists()==False`). 역산 성공 여부만 보면
 정상 동작대로 폴백한다(이건 Resolver 결함이 아니라 원본 데이터
 결함이 폴백을 정확히 발화시키는 경우다). 관문 B 통과 판정 시 이
 3건의 폴백은 "설명 가능한 예외"로 별도 기록하고 카운트에서 분리한다.
+**[판정 무효화 2026-08-06, §9 참고]** "전 화면 정상"이라고 적었으나
+실제 확인은 옷장 그리드뿐이었다 — 나머지 20곳(§9 표)은 관문 B
+시점에도 여전히 레거시 URL을 직접 썼고, 그 상태로 통과 처리됐다.
 
 **[Phase B 완료 — 2026-08-06, Phase C 착수 전 기준 스냅샷]**
 
@@ -214,6 +227,13 @@ Phase C 착수 조건(§8-1: 배포된 모든 활성 클라이언트가 신 APK)
 아직 별도 — 이 스냅샷은 그 판단이 내려진 뒤 Phase C가 되돌리기 어려운
 단계(토큰 회수)로 넘어가기 직전의 기준선이다.
 
+**[갱신 2026-08-06 — 위 스냅샷 이후 추가 변동]** §8 판단 대기 3번의
+"버킷 루트 잔재 9건" 처분 오류·정정 경위로 문서 12건이 추가 삭제됐다
+(전신 사진, cutout 없어 이미지 완전 소실). 이 표의 `wardrobe 234`/
+`demo_wardrobe 116`은 더 이상 최신 건수가 아니다 — 현재는 `wardrobe`
+226건, `demo_wardrobe` 112건(§8-3 참고). Phase C-1 dry-run/재대조는
+이 갱신된 건수를 기준으로 한다.
+
 ### Phase C — 토큰 회수 (구멍이 실제로 닫히는 단계, §8-1 판단 후)
 
 - 전제: 관문 B 통과 + 배포된 모든 활성 클라이언트가 신 APK(§8-1).
@@ -227,6 +247,62 @@ Phase C 착수 조건(§8-1: 배포된 모든 활성 클라이언트가 신 APK)
 만료 전 서명 URL은 성공, 만료 후 서명 URL은 실패. 구멍을 발견한
 도구가 수리를 증명한다. 이 3종 확인이 rev 논문의 해소 서술 근거가
 된다.
+
+**[증거 공백 기록 — 2026-08-06]** C-0에서 "회수 전 200 확인·저장
+완료"로 보고됐던 `phase_c_acceptance_urls.json`(대표 구 URL 3건)이
+실제로는 저장소 어디에도 남아있지 않았다 — 대화 중에만 보고되고
+파일로 영속화되지 않은 것으로 추정된다. `wardrobe_images/` C-1 검증은
+이 파일 없이 **Firestore에서 구 URL을 재조립해 403을 확인하는
+대체 경로**로 성립시켰다(회수 후 상태만 실측, 회수 전 200이었다는
+대조군 자체는 재현 가능한 산출물로 남지 않음 — 이번엔 리허설의
+사전/사후 curl 기록이 그 역할을 대신했다). **규칙**: C-3
+(`fitting_results/`) 착수 전에는 회수 대상 구 URL 표본과 그 상태
+코드를 `tools/revoke_storage_tokens/manifests/`와 같은 규약(JSON,
+영속 경로, 커밋 제외)으로 저장한 뒤에만 회수를 진행한다 — "저장
+완료"라는 보고 자체가 아니라 디스크상의 파일 존재로 확인한다.
+
+**[Phase C-1/C-3 실행 후 전체 롤백 — 2026-08-06, §9로 대체]** 아래
+"Phase C-1 완료" 판정과 그 하위의 수용 기준 3종 통과 판정은
+**무효다.** C-1(`wardrobe_images/`+`wardrobe_cutouts/` 220건)과
+이어진 C-3(`fitting_results/` 24건)까지 실행한 뒤, 표시·다운로드
+경로 24곳 중 옷장 그리드 1곳만 서명 URL로 이행돼 있었다는 게
+드러나 앱 대부분이 기능 정지됐다. `tools/revoke_storage_tokens`의
+manifest 5개(`revoke_20260806_033913/034021/034049/043840/044449`)
+전량을 `--rollback`으로 되돌려 244개 객체의 토큰을 원상 복구했다.
+경위·재설계는 §9에 있다. 원래 이 자리에 있던 "완료" 서술은 그 시점의
+판단 오류를 그대로 보여주는 기록으로서 아래에 취소선 없이 보존한다
+(무엇을 몰랐는지 지우지 않는다).
+
+~~**[Phase C-1 완료 — 2026-08-06]** `wardrobe_images/` 109건 +
+`wardrobe_cutouts/` 111건 = 220건, `firebaseStorageDownloadTokens`
+메타데이터 전량 회수(파일 자체는 무변, `tools/revoke_storage_tokens`).
+리허설(단일 파일, `--only`)로 200→403→롤백 200→재회수 403을 먼저
+실증한 뒤 전량 적용 — 두 라운드 모두 동일 절차. 증거 파일
+(`tools/revoke_storage_tokens/manifests/acceptance_evidence_wardrobe_cutouts_pre.json`
+— 회수 전 `statusBefore:200`과 회수 후 `statusAfter:403`이 같은
+파일에 함께 기록됨)로 대조군 유실 재발을 막았다.
+
+수용 기준(§4) 3종 중 진행 현황:
+- **구 URL 실패**: 충족(위 증거 파일 + `wardrobe_images/` 별도 curl
+  3건 전부 403).
+- **만료 전 서명 URL 성공**: 충족 — 앱 전 화면(옷장·데모 옷장)이
+  토큰 메타데이터가 없는 상태에서 서명 URL 경로만으로 정상 표시됨을
+  사용자가 실기기에서 확인(재빌드 없이 기존 `SIGNED_URLS=true`
+  설치본으로 검증). `rejectedCount`는 두 라운드 다 0, signCount는
+  한 자릿수 유지.
+- **만료 후 서명 URL 실패**: A-1 IAM 스파이크에서 이미 확인된 항목
+  (짧은 만료로 자연 재현, 시스템 시각 조작 없음) — Phase C에서
+  재확인하지 않음, 스파이크 결과를 그대로 인용.
+
+남은 것은 C-2(레거시 `fitting_cache` 처리 판단, §8-2)와 C-3
+(`fitting_results/` 토큰 회수), 이후 C-4(SIGNED_URLS 기본값 true 전환).~~
+
+**이 판정이 놓친 것**: "앱 전 화면"을 확인했다고 적었지만 실제로는
+옷장 그리드(`_WardrobeCard`)만 봤다. 그 시점에 이미 홈·캘린더·
+스크랩·주간계획·코디보드·피팅룸 대부분이 레거시 URL을 직접 참조하고
+있었고, C-3(`fitting_results/`)까지 실행되자 가상 피팅 생성 자체
+(다운로드 경로)도 막혀 사용자가 "긴급 — 앱에서 모든 옷 이미지가
+오류"로 발견했다. §9에 전체 경위와 재설계를 기록한다.
 
 ## 5. 계측 (도입과 동시에)
 
@@ -255,17 +331,53 @@ signCount(발급 수)·배치 크기 분포·Resolver 캐시 적중/미스·폴�
 1. **Phase C 시점과 심사 일정**: 회수는 구 APK의 이미지 로드를 죽인다.
    심사위원 APK가 관문 B 이후 빌드라면 심사 전 회수 가능, 아니면 심사
    후로. 어느 쪽인지 결정 필요 — Phase A·B는 어느 경우든 지금 안전.
-2. **레거시 fitting_cache**(ownerUid 없는 문서): 인증만으로 서명
-   허용(현행 get 규칙과 동치) vs 서명 거부(레거시 캐시 사실상 폐기).
-   전자 권장 — 후자는 기능 회귀.
-3. **버킷 루트 잔재 9건** — [처분 완료 2026-08-06]. 목록(경로·크기·
-   생성일 2026-07-25 이관 시점 몰림, webp 2건은 사진 추정·나머지
-   7건은 스크린샷)을 사용자가 공개 URL로 직접 열람 확인 후 삭제
-   승인. Admin SDK로 9건 전량 삭제(`bucket.file().delete()`, 파일
-   자체 제거 — "실데이터 삭제 금지" 원칙(§12)의 대상은 옷장·추천
-   이력이고, 이 9건은 어떤 Firestore 문서도 참조하지 않는 고아
-   파일이라 원칙 대상이 아니라고 판단됨). 삭제 후 버킷 루트 잔여
-   객체 0건 확인. Phase C 토큰 회수(C-1)와는 별도 커밋으로 기록.
+2. **레거시 fitting_cache(ownerUid 없는 문서) — [확정 2026-08-06]**:
+   **인증만으로 서명 허용.** 근거: 현행 Firestore 규칙이 인증만으로
+   읽기를 허용하므로, 서명 정책을 이보다 엄격히 하면(예: 소유자
+   대조 강제) 기존에 되던 레거시 캐시 열람이 깨지는 기능 회귀가
+   된다. 서명 URL 이행의 목표는 접근 **경로**를 영구 다운로드 URL에서
+   서명 URL로 바꾸는 것이지, 그 과정에서 소유권 모델을 새로 만드는
+   것이 아니다 — 이관 과정에서 정책을 더 조이지 않는다는 원칙.
+   **A-2 구현 대조**: `functions/src/signed_url_policy.ts`의
+   `decideSignedUrlAccess`(74~78행)가 이미 이 판정과 정확히 일치—
+   `fitting_cache`는 `doc.ownerUid !== undefined && doc.ownerUid !==
+   callerUid`일 때만 거부하므로, `ownerUid`가 없는 레거시 문서는
+   조건이 거짓이 되어 통과한다(인증된 caller면 누구나 서명 발급).
+   A-2 작성 시점에 이미 이 결정을 선반영해뒀던 것으로, 코드 변경
+   없이 §8-2를 확정으로 갱신한다.
+3. **버킷 루트 잔재 9건 — [정정 2026-08-06, 오판 및 사고 경위]**.
+   목록(경로·크기·생성일 2026-07-25 이관 시점 몰림, webp 2건은 사진
+   추정·나머지 7건은 스크린샷)을 사용자가 공개 URL로 직접 열람 확인
+   후 삭제 승인받아 Admin SDK로 9건 전량 삭제했다. **이때 "어떤
+   Firestore 문서도 참조하지 않는 고아 파일"이라는 판단이 틀렸다.**
+   삭제 후 진행한 Phase C-1 사전 대조(§0 참고, 문서 참조 고유 경로
+   수와 회수 대상 경로 수 대조)에서 `wardrobe` 18건 + `demo_wardrobe`
+   9건 = 27개 문서의 `imagePath`가 정확히 이 9개 파일명을 가리키고
+   있었다는 게 드러났다 — Phase B 백필이 `imageUrl`에서 경로를
+   역산할 때, 이 9건은 `wardrobe_images/` 폴더 규약이 생기기 전
+   (2026-05-28~06-04 등록분)이라 버킷 루트에 있었고, 그 사실이
+   "버킷 루트 잔재 = 미참조"라는 판단에서 누락됐다. 버킷 버전관리가
+   꺼져 있어(`bucket.getMetadata().versioning === undefined`) 서버
+   쪽 복구는 불가능했다.
+
+   **재대조 후 처분(2026-08-06)**: 27개 문서 중 cutout이 없어 원본이
+   유일한 이미지였던 전신(全身) 사진 12건(`wardrobe` 8 +
+   `demo_wardrobe` 4)은 이미지가 완전히 소실되어 문서를 삭제했다
+   (직전 재확인으로 원본 파일 부재 재검증 → 문서 전문을
+   `tools/delete_orphaned_docs/manifests/`에 백업 후 삭제, 커밋
+   제외 — 파일은 못 살려도 문서 메타데이터는 영속 경로에 남긴다).
+   cutout이 남아있는 15건(`wardrobe` 10 + `demo_wardrobe` 5, 상의/
+   아우터)은 문서와 `imagePath`를 그대로 유지 — 대체 사진 재업로드로
+   원본 자리를 채울 예정이라 참조 자리를 남긴다. 단 이 15건은 가상
+   피팅이 `imageUrl`(원본)만 사용하므로 **대체 사진 업로드 전까지
+   피팅에 실패한다**(`docs/handoff_2026-08-04.md` §9 "가상 피팅 불가
+   15건" 참고). 삭제 후 `wardrobe` 226건(234−8), `demo_wardrobe`
+   112건(116−4). Phase C 토큰 회수(C-1)와는 별도 커밋으로 기록.
+
+   **재발 방지**: "경로가 회수/삭제 대상 프리픽스 밖"이라는 사실
+   자체를 위험 신호로 취급한다 — 파일 삭제 전에는 반드시 관련
+   Firestore 컬렉션 전수에서 그 경로를 참조하는 문서가 있는지
+   대조한다(`docs/handoff_2026-08-04.md` §2 절대 금지 9번에 규칙화).
 4. **cached_network_image 재다운로드 완화 여부**: [정정 2026-08-06]
    §3-3 원문이 "새 의존성이라 별도 판단"이라 적었는데 사실과 다르다
    — `cached_network_image`는 이미 pubspec.yaml(3.4.1)에 있고
@@ -289,3 +401,355 @@ signCount(발급 수)·배치 크기 분포·Resolver 캐시 적중/미스·폴�
    재실행 후 미복귀 확인), `demo_wardrobe` 미러 3건은 dry-run 확인
    후 스크립트로 삭제. 삭제 후 `wardrobe` 234건, `demo_wardrobe`
    116건, 파일 부재 0건(두 컬렉션 다) — 재검증 완료.
+
+## 9. Phase C 사고 — 실행 후 전체 롤백 (2026-08-06)
+
+### 경위
+
+C-1(`wardrobe_images/`+`wardrobe_cutouts/` 220건)을 실행하고 §4
+수용 기준 3종을 "충족"으로 판정, 이어 §8-2를 확정하고 C-3
+(`fitting_results/` 24건)까지 실행했다. 직후 사용자가 전신 사진을
+신규 등록하며 "앱에서 모든 옷 이미지가 오류"를 보고했다.
+
+1차 진단(상한 도달·logcat·서버 함수 직접 호출)에서 rate limit·
+서명 발급·서명 URL 접근 3개 층 전부 정상으로 확인됐으나 앱은
+계속 깨져 있었다. 사용자가 제시한 가설(`GeminiService.
+_downloadImageBytes` 경로가 Resolver를 안 거치고 레거시 `imageUrl`을
+직접 다운로드한다)을 코드로 확인하는 과정에서, 문제가 그 가설보다
+훨씬 컸다는 게 드러났다: **A-4가 "화면 배선"이라고 적어둔 범위는
+실제로 옷장 그리드 한 곳뿐이었고, 표시·다운로드를 합쳐 24곳 중
+23곳이 여전히 레거시 URL 필드(`imageUrl`/`cutoutImageUrl`/
+`fittingImageUrl`)를 직접 참조하고 있었다.** 관문 A·B가 "전 화면
+정상"으로 통과시킨 확인도 사실은 그 한 곳만 봤다.
+
+즉시 조치: `tools/revoke_storage_tokens`의 manifest 5개
+(`revoke_20260806_033913.json`/`034021.json`/`034049.json`/
+`043840.json`/`044449.json`, 리허설 2건 + 108건 + 111건 + 24건 =
+244개 객체 상당) 전량을 `--rollback`으로 되돌려 토큰 복원. 증거 파일
+(`acceptance_evidence_wardrobe_cutouts_pre.json`,
+`acceptance_evidence_fitting_results_pre.json`)의 표본 6건 + 별도
+`wardrobe_images/` 3건, 총 9건 curl 재확인으로 전부 200 복귀 확인.
+`revoke.py` 전량 재-dry-run으로 대상 245건(신규 업로드 1건 포함)
+전부 토큰 보유 상태 확인. 사용자가 실기기에서 홈·옷장·캘린더·
+피팅룸을 직접 확인 — **이미지 합성(가상 피팅 생성)까지 정상 동작,
+롤백 완료.**
+
+**Phase B(경로 백필)는 롤백 대상이 아니다.** 이번에 되돌린 건
+Storage 객체의 `firebaseStorageDownloadTokens` 메타데이터뿐이고,
+Phase B가 Firestore 문서에 써넣은 `imagePath`/`cutoutPath` 필드는
+전혀 건드리지 않았다 — 그대로 유효하다. A-5는 이 필드를 그대로
+재사용한다(다시 백필할 필요 없음).
+
+### 판정 무효화
+
+§4(관문 A·B의 "전 화면 정상"), §4 말미("Phase C-1 완료"와 수용
+기준 3종 충족 판정)는 전부 **무효**다 — 검증 범위가 옷장 그리드
+1곳에 한정됐던 것을 "전 화면"으로 잘못 기술했다. 원문은 삭제하지
+않고 취소선으로 보존한다(§4 참고).
+
+### 직접 원인
+
+A-4 항목의 문구("이미지 로드를 Resolver 경유로 교체")가 실제
+작업 범위(그리드 1곳)보다 넓게 쓰였고, 관문 A·B 통과 확인이 그
+문구를 그대로 믿고 "전 화면"을 실제로 훑지 않았다. **범위를
+코드로 확인하지 않고 관문을 통과시킨 것이 이번 사고의 직접
+원인이다.**
+
+### 24개 지점 전수 목록 (재설계 대상)
+
+**[집계 정정 2026-08-06]** 사고 직후 보고·기록에 "표시 15곳"으로
+적었으나 실제 표(아래)는 처음부터 18행이었다 — 프로즈 집계만
+잘못됐다(15+6=21이 아니라 18+6=24). 아래는 정정된 수치.
+
+#### 표시 경로 18곳 — `CachedNetworkImage` 직접 사용, `SignedNetworkImage` 미배선
+
+| 파일:행 | 위치 | 컬렉션/문서 id 확보 | URL 필드 |
+|---|---|---|---|
+| `wardrobe_screen.dart:1893` | 카드 액션시트 "비슷한 옷" 썸네일 | `wardrobe`, `item.id` 있음 | `cutoutImageUrl??imageUrl` |
+| `home_screen.dart:541` | 홈 대표 아이템 | `wardrobe`, `item.id` 있음 | `cutoutImageUrl??imageUrl` |
+| `home_screen.dart:899` | 홈 대표 아이템(2) | 위와 동일 | `cutoutImageUrl??imageUrl` |
+| `home_screen.dart:886` | 홈 피팅 카드 | `fitting_cache` — **캐시 키 확보 여부 미확인** | `fittingImageUrl` |
+| `calendar_screen.dart:528` | 캘린더 대표 아이템 | `wardrobe`, `item.id` 있음 | `cutoutImageUrl??imageUrl` |
+| `calendar_screen.dart:515` | 캘린더 피팅 이미지 | `fitting_cache` — **캐시 키 확보 여부 미확인** | `fittingImageUrl` |
+| `calendar_record_sheet.dart:482` | 기록 시트 아이템 | `wardrobe`, `item.id` 있음 | `cutoutImageUrl??imageUrl` |
+| `calendar_record_sheet.dart:407` | 기록 시트 피팅 | `fitting_cache` — **캐시 키 확보 여부 미확인** | `imageUrl`(피팅 결과) |
+| `outfit_board.dart:399` | 코디보드 아이템 | `wardrobe`, `item.id` 있음 | `cutoutImageUrl??imageUrl` |
+| `outfit_board.dart:661` | 코디보드 아이템(2) | 위와 동일 | `cutoutImageUrl??imageUrl` |
+| `scrap_screen.dart:215` | 스크랩 피팅 이미지 | `fitting_cache` — **캐시 키 확보 여부 미확인** | `fittingImageUrl` |
+| `weekly_plan_sheet.dart:150` | 주간계획 아이템 | `wardrobe`, `item.id` 있음 | `cutoutImageUrl??imageUrl` |
+| `fitting_room_screen.dart:623` | 사용자 사진 선택 목록 | `wardrobe`, `photo.id` 있음 | `photo.imageUrl` |
+| `fitting_room_screen.dart:983` | 피팅 결과 큰 이미지 | `fitting_cache` — `fittingCacheKey` 있음(캐시 히트 시만, `FittingJobController.fittingCacheKey` 참고) | `fittingImageUrl ?? _mockFittingImageUrl` |
+| `fitting_room_screen.dart:1651` | 옷 선택 슬라이드 | `wardrobe`, `slide.item.id` 있음 | `cutoutImageUrl??imageUrl` |
+| `fitting_room_screen.dart:1785` | 옷 선택 미리보기 | `wardrobe`, `item.id` 있음 | `cutoutImageUrl??imageUrl` |
+| `fitting_room_screen.dart:1992` | 옷 선택 미리보기(2) | `wardrobe`, `item.id` 있음 | `cutoutImageUrl??imageUrl` |
+| `full_screen_image_viewer.dart:32` | 전체화면 뷰어 | 호출부가 넘긴 `imageUrl` 파라미터 — **호출부별로 collection/id 재확보 필요** | 파라미터 |
+
+(`item_detail_screen.dart:110`은 하드코딩 unsplash placeholder라 제외.)
+
+**막힌 지점**: `fittingImageUrl` 계열(홈·캘린더·기록시트·스크랩)은
+현재 화면 모델이 `OutfitHistoryEntry.fittingImageUrl`(URL 문자열)만
+들고 `fitting_cache` 문서 id(캐시 키)를 안 들고 다닌다. `fitting_room_
+screen.dart:983`만 `FittingJobController.fittingCacheKey`로 캐시
+키를 이미 들고 있어 즉시 배선 가능하다 — **나머지는 캐시 키를
+저장/전달하도록 데이터 흐름을 넓히는 선행 작업이 필요**하다(예:
+`OutfitHistoryEntry`에 `fittingCacheKey` 필드 추가 + 기록 시점에
+같이 저장). 이게 안 되면 이 4곳은 서명 URL로 못 옮기고 레거시
+URL을 계속 쓰거나(회수 대상에서 영구 제외) 별도 설계가 필요하다.
+
+#### 다운로드 경로 6곳 — `GeminiService._downloadImageBytes*`, Resolver 미경유
+
+| 파일:행 | 트리거 | URL 출처 |
+|---|---|---|
+| `fitting_job_controller.dart:83` (`analyze` 스트리밍) | 코디 분석(전신 사진+프로필 없음) | `userPhoto?.imageUrl` |
+| `fitting_job_controller.dart:109` (`analyze` 폴백) | 스트리밍 실패 폴백 | `userPhoto?.imageUrl` |
+| `fitting_job_controller.dart:183` (`_resolveAttributes`) | 속성 캐시 없는 레거시 옷 | `item.imageUrl` |
+| `fitting_job_controller.dart:239-240` (`generateFitting`) | 가상 피팅 생성 | `userPhoto.imageUrl` + `clothingItems[].imageUrl` |
+| `wardrobe_screen.dart:46` → `agent_planner.dart:781` | 신규 등록 직후 속성 추출 | 등록 시 `imageUrl` |
+| `agent_sweeper.dart:95-98` → `agent_planner.dart:781` | 미완료 속성추출 재개 | `item.imageUrl` |
+
+이 6곳은 `item.id`/`collection`을 이미 호출부가 들고 있어(옷장
+아이템·사용자 사진 전부 `wardrobe` 문서) 캐시 키 문제 없이 Resolver
+경유로 바꿀 수 있다 — 표시 경로보다 설계가 단순하다.
+
+## 10. A-5 설계 초안 (구현 전 — 이 문서는 설계만, 착수는 별도 승인)
+
+Phase B(`imagePath`/`cutoutPath` 백필)는 롤백 대상이 아니었으므로
+그대로 유효하다 — A-5는 이 필드를 재백필 없이 그대로 쓴다.
+
+### 3군 분류 (24곳)
+
+**군 (a) — 문서 id를 화면에서 바로 얻는 곳 (19곳)**: `collection`은
+전부 고정 문자열(`wardrobe` 또는 `fitting_cache`)이고 `id`는 이미
+그 자리의 지역 변수(`item.id`/`photo.id`/`userPhoto.id`)로 존재한다
+— 인자 추가나 데이터 흐름 변경 없이 위젯/호출만 바꾸면 된다.
+
+- 다운로드 6곳(전부): `fitting_job_controller.dart:83,109,183,
+  239-240`, `wardrobe_screen.dart:46`, `agent_sweeper.dart:95-98`.
+- 표시 13곳: `wardrobe_screen.dart:1893`, `home_screen.dart:541,899`,
+  `calendar_screen.dart:528`, `calendar_record_sheet.dart:482`,
+  `outfit_board.dart:399,661`, `weekly_plan_sheet.dart:150`,
+  `fitting_room_screen.dart:623,983,1651,1785,1992`.
+  (`983`은 `fitting_cache`지만 `FittingJobController.fittingCacheKey`가
+  이미 그 화면 상태에 있어 (a)로 분류 — 인자 전달 불필요.)
+
+**작업량**: 표시 13곳은 그리드(`_WardrobeCard`)와 완전히 동일한
+패턴 — `CachedNetworkImage(imageUrl: X)`를
+`SignedNetworkImage(collection:'wardrobe', id:item.id,
+urlIndex:cutout유무, fallbackUrl:X)`로 기계적 치환. 다운로드 6곳은
+`GeminiService.*` 함수들이 URL 대신 `(collection, id)`를 받도록
+시그니처를 바꾸고, 함수 내부에서 `ImageUrlResolver.resolve()` →
+성공 시 서명 URL 다운로드, 실패(null) 시 기존 URL 필드로 폴백
+다운로드 — 표시 위젯의 폴백 패턴과 대칭으로 통일. 총 19곳, 반나절
+내외로 추정(패턴이 이미 검증돼 있어 설계 리스크 낮음).
+
+**검증**: 각 지점을 실기기에서 개별적으로 로드해보고 signCount
+증가(개별 발화가 아니라 코얼레싱된 배치인지)와 폴백 발화 0을
+Resolver 계측으로 확인. 사람이 "화면이 뜬다"만 보고 넘어가지 않고,
+아래 §10 관문 체크리스트의 해당 행에 확인 시각을 남긴다.
+
+**군 (b) — id는 구할 수 있으나 인자 전달이 필요한 곳 (1곳)**:
+`full_screen_image_viewer.dart:32`의 **`fitting_room_screen.dart:893`
+호출부만** — 이 화면은 `FittingJobController.fittingCacheKey`를
+이미 들고 있지만, `FullScreenImageViewer` 위젯 자체가 `imageUrl`
+파라미터만 받고 `collection`/`id`를 안 받는다. 위젯에 선택적
+`collection`/`id` 파라미터를 추가하고, 이 호출부에서만
+`collection:'fitting_cache', id: fittingCacheKey`를 전달하도록
+바꾼다(`fittingCacheKey`가 null이면— 방금 생성한 결과라 아직
+캐시 문서가 없는 경우—기존처럼 `imageBytes`를 직접 쓰거나
+`fallbackUrl`로 넘어간다, 캐시 미기록 상태이므로 서명 대상 문서
+자체가 없어 당연한 폴백).
+
+**작업량**: 위젯 파라미터 1개 추가 + 호출부 1곳 수정, 매우 작음.
+
+**군 (c) — `OutfitHistoryEntry`에 캐시 키가 없어 선행 작업 필요 (4곳
++ 아래 파생 1곳)**: `home_screen.dart:886`,
+`calendar_screen.dart:515`, `calendar_record_sheet.dart:407`,
+`scrap_screen.dart:215`, 그리고 `full_screen_image_viewer.dart:32`의
+**`scrap_screen.dart:182` 호출부**(군 (b)와 반대로 캐시 키 자체가
+없어 인자 전달로 해결이 안 됨).
+
+**[정정 2026-08-06]** 아래 원래 서술("소급 backfill 불가능")은
+**틀렸다** — 조사 결과는 §10-1에 있다. 원문은 무엇을 놓쳤는지
+보존을 위해 지우지 않고 아래 그대로 두되, 결론은 §10-1을 따른다.
+또한 "레거시 폴백으로 남는다"는 서술도 부정확하다 — Phase C가
+`fitting_results/`까지 회수하면 레거시 URL 자체가 죽으므로, 백필이
+안 되는 경우의 정확한 결과는 "폴백 유지"가 아니라 **"과거 피팅
+이력 이미지 소실"**이다(2026-08-06 사고에서 실제로 관측된 것과
+같은 메커니즘).
+
+**마이그레이션 필요 여부(원래 결론, 정정 대상)**:
+`_buildFittingCacheKey`(`fitting_job_controller.dart:262-269`)는
+`sha256('${userPhoto.id}:${정렬된 옷 id들}')`로 캐시 키를 만드는데,
+`OutfitHistoryEntry`(`models/outfit_history_entry.dart`)는 옷
+아이템 스냅샷(`items`)과 `fittingImageUrl`만 저장하고
+**`userPhoto.id`를 저장하지 않는다**(`_logFittingHistorySilently`,
+`fitting_job_controller.dart:318-331` 확인). 즉 기존에 이미 저장된
+이력 문서로는 캐시 키를 절대 재계산할 수 없다 — 애초에 필요한
+입력값(사용자 사진 id)이 기록에 없다.
+
+**권장안(원래 결론, 정정 대상)**: `OutfitHistoryEntry`에
+`fittingCacheKey`(String?) 필드를 추가하고, `_logFittingHistorySilently`
+호출 시점에 이미 알고 있는 `cacheKey` 값을 같이 저장 — 이후 생성분만
+커버되고 과거 이력은 영구 소실 처리한다는 전제였다.
+
+**작업량**: 모델 필드 추가(1) + 호출부 배선(1, `cacheKey`를
+`_logFittingHistorySilently`로 전달) + 화면 4곳+파생 1곳의
+표시/뷰어 로직에서 "필드 있으면 서명, 없으면 레거시 폴백" 분기
+추가. 군 (a)/(b)보다 설계 작업이 더 필요 — 별도 커밋으로 분리.
+
+**검증**: 신규 피팅 생성 → 이력에 `fittingCacheKey` 기록 확인 →
+그 이력을 홈/캘린더/스크랩 화면에서 열어 서명 경로로 표시되는지
+확인. 과거(필드 없는) 이력은 레거시 폴백으로 여전히 뜨는지(즉
+"깨지지 않는지"만) 별도 확인 — 이 쪽은 폴백 발화가 정상이므로
+Resolver 계측의 "폴백 0" 기준에서 제외하고 §4의 "설명 가능한 예외"
+패턴을 그대로 따른다.
+
+### 10-1. (c)군 처분 — 세 선택지 조사 (2026-08-06, 결정 대기)
+
+착수 전 판단이 하나 남았다. 위 원안의 "과거 이력은 레거시 폴백으로
+남는다"는 틀렸다 — Phase C가 `fitting_results/`까지 회수하면 레거시
+URL도 죽으므로, 백필이 안 되면 정확한 결과는 **과거 피팅 이력
+이미지의 영구 소실**이다. 아래 세 선택지를 조사만 하고 결정은
+보류한다.
+
+**실측 데이터** (2026-08-06 조사, `users/*/history` 전수 + `fitting_cache` 전수 대조):
+
+- `type=='fitting'` 이력: 전 사용자 합계 **28건**(uid별 —
+  `BDDOIl08...` 8건, `JmllppO9t9NcU0NiaDWrbOnP4ae2` 4건, `yPyw4...`
+  16건 — 세 번째 uid는 이전까지 조사에 등장하지 않았던 사용자다).
+- `fitting_cache` 총 문서 수: 25건.
+- **`fitting_cache` 문서 자체에는 구성 정보(사용자 사진 id·옷 id)가
+  없다** — 스키마는 `{imageUrl, ownerUid?, createdAt}`뿐(실측
+  확인, `cacheFittingResult` 참고). 즉 "B: 캐시 문서로 매칭"은
+  캐시 문서 안의 필드로는 불가능하다.
+- **그런데 `fittingImageUrl`(이력에 이미 저장돼 있는 필드) 자체가
+  캐시 키를 인코딩하고 있다.** `StorageService.uploadFittingResult`
+  가 파일을 `fitting_results/{cacheKey}.jpg`에 올리므로
+  (`storage_service.dart:70`), 이 URL의 경로에서 파일명만 떼면
+  (`.jpg` 제거) 그게 곧 `fitting_cache` 문서 id다 —
+  `signed_url_policy.ts`의 `pathFromDownloadUrl`과 완전히 같은
+  역산 방식. **guess가 아니라 구조적으로 보장된 관계다.**
+- 28건 전수에 대해 이 역산을 실제로 돌린 결과: **28/28 역산
+  성공, 28/28이 실존하는 `fitting_cache` 문서와 일치.** 매칭
+  실패·모호성 0건.
+
+**(A) 수용 — 과거 이력 이미지 소실**
+
+| 항목 | 내용 |
+|---|---|
+| 영향 범위 | 28건(사용자 3명) 전부 — 홈 "최근 착장"·캘린더·스크랩·기록시트에서 열람 불가로 전환 |
+| 작업량 | 없음(§10 원안의 필드 추가만, 과거분 손실 감수) |
+| 리스크 | 사용자가 이미 본 적 있는 과거 결과물이 조용히 깨짐 — 사전 고지 없으면 "버그처럼" 보일 수 있음 |
+
+**(B) 일회성 백필 — `fittingImageUrl`에서 `fittingCacheKey` 역산**
+
+| 항목 | 내용 |
+|---|---|
+| 실현 가능성 | **가능, 실측 100%(28/28) 성공** — §10의 "화면에서 유도 불가" 결론은 틀렸다(그 결론은 `userPhoto.id` 저장 여부만 보고 `fittingImageUrl` 자체가 키를 인코딩한다는 걸 놓쳤다) |
+| 매칭 정확도 | 추측이 아니라 업로드 시점부터 결정론적으로 고정된 경로 규칙이므로 오매칭 가능성 자체가 없다(다른 이력의 키를 잘못 붙일 수가 없는 구조) |
+| 작업량 | `tools/backfill_image_paths`와 같은 규약의 1회성 스크립트 — 전 사용자 `history` 순회 → `fittingImageUrl` 있고 `type=='fitting'`인 문서에 `pathFromDownloadUrl` 역산 → `fitting_cache` 존재 확인(방금 한 실측과 동일) → `fittingCacheKey` 필드 기록. dry-run/manifest/rollback 관례 재사용 가능 |
+| 남는 위험 | 지금은 28/28이지만, 스크립트를 실제로 돌리는 시점까지 사이에 생성되는 신규 이력은 별도로 커버해야 함(§10 권장안의 필드가 A-5 구현에 포함되면 자동 해결) |
+
+**[결정 2026-08-06 — (B) 채택, 실행 완료]** `tools/
+backfill_fitting_cache_key --apply`로 28건 전량 백필(manifest:
+`backfill_20260806_053429.json`). 사용자별 BDDOIl 8 / `JmllppO9...`
+(유령 계정) 4 / yPyw4 16 — 실측이 정확히 재확인됨. 쓰기 후 28건
+전수 재검증(값이 URL 역산과 일치 + `fitting_cache` 문서 실존)
+28/28 통과.
+
+**유령 계정(`JmllppO9t9NcU0NiaDWrbOnP4ae2`) 4건 포함 판단 근거**:
+앱에서 조회되지 않는 고아 이력일 가능성이 높지만(wardrobe 0건 —
+2026-07-29 uid 전환 사고의 잔재, `docs/session_2026-07-29_summary_2.md`
+참고), 이 백필은 필드를 **추가만** 하고 기존 값을 절대 덮어쓰지
+않는 순수 추가 작업이라 무해하며, 나중에 이 계정을 정리·병합할
+때 이미 `fittingCacheKey`가 채워진 상태로 두는 편이 유리해 굳이
+제외하지 않았다.
+
+**(C) `fitting_results/` 를 Phase C 대상에서 제외**
+
+| 항목 | 내용 |
+|---|---|
+| 효과 | (c)군 4곳+파생 1곳의 마이그레이션·백필 문제 자체가 사라짐 — 이번 Phase C 재착수 범위를 `wardrobe_images/`+`wardrobe_cutouts/`(군 (a)/(b) 20곳)로만 좁힐 수 있음 |
+| 노출 위험 | `fitting_results/`의 다운로드 토큰을 영구히 회수하지 않는다는 뜻 — 이 이미지들은 **사용자의 실제 사진(얼굴·체형)이 옷과 합성된 결과물**로, 원본 "전신" 사진과 같거나 그 이상으로 개인식별성이 높다. 이 프리픽스만 예외로 남기면, 이 이니셔티브가 애초에 풀려던 문제(rev 논문 5.13.2/7.1 "발급된 URL은 영구히 유효, 회수 불가")가 **가장 민감한 이미지 카테고리에서만 그대로 재현**된다 — 목표와 정면으로 배치되는 절충 |
+| 되돌리기 | 나중에 (c)군 설계가 끝나면 `--prefixes fitting_results/`로 별도 회수 가능(이미 도구가 지원) — 영구 결정은 아님, 다만 그 사이 구간은 노출 상태 |
+
+조사는 여기까지다 — 결정 후 A-5 구현에 반영한다.
+
+### 관문 체크리스트 초안 (Phase C 재착수 전 필수, (c)군 처분 결정 후 확정)
+
+"전 화면 정상"처럼 추상적으로 쓰지 않는다 — 아래 24행을 실기기에서
+하나씩 확인하고, 통과 보고에 이 표 자체를 확인 시각과 함께 첨부한다.
+(c)군 행의 통과 기준은 위 10-1 결정에 따라 달라진다((A) 선택 시
+"과거 이력은 소실 고지 후 제거", (B) 선택 시 "서명 경로로 로드",
+(C) 선택 시 이 4행+파생 1행은 이번 Phase C 재착수 범위에서 제외).
+
+| # | 파일:행 | 군 | 통과 기준 |
+|---|---|---|---|
+| 1 | `fitting_job_controller.dart:83` | a | 서명 URL로 다운로드 성공 |
+| 2 | `fitting_job_controller.dart:109` | a | 서명 URL로 다운로드 성공 |
+| 3 | `fitting_job_controller.dart:183` | a | 서명 URL로 다운로드 성공 |
+| 4 | `fitting_job_controller.dart:239-240` | a | 서명 URL로 다운로드 성공 |
+| 5 | `wardrobe_screen.dart:46` | a | 서명 URL로 다운로드 성공 |
+| 6 | `agent_sweeper.dart:95-98` | a | 서명 URL로 다운로드 성공 |
+| 7 | `wardrobe_screen.dart:1893` | a | 서명 URL로 표시 |
+| 8 | `home_screen.dart:541` | a | 서명 URL로 표시 |
+| 9 | `home_screen.dart:899` | a | 서명 URL로 표시 |
+| 10 | `calendar_screen.dart:528` | a | 서명 URL로 표시 |
+| 11 | `calendar_record_sheet.dart:482` | a | 서명 URL로 표시 |
+| 12 | `outfit_board.dart:399` | a | 서명 URL로 표시 |
+| 13 | `outfit_board.dart:661` | a | 서명 URL로 표시 |
+| 14 | `weekly_plan_sheet.dart:150` | a | 서명 URL로 표시 |
+| 15 | `fitting_room_screen.dart:623` | a | 서명 URL로 표시 |
+| 16 | `fitting_room_screen.dart:983` | a | 서명 URL로 표시 |
+| 17 | `fitting_room_screen.dart:1651` | a | 서명 URL로 표시 |
+| 18 | `fitting_room_screen.dart:1785` | a | 서명 URL로 표시 |
+| 19 | `fitting_room_screen.dart:1992` | a | 서명 URL로 표시 |
+| 20 | `full_screen_image_viewer.dart:32`(fitting_room_screen 호출부) | b | 서명 URL로 표시 |
+| 21 | `home_screen.dart:886` | c | 서명 URL로 표시(§10-1 (B) 백필 완료 — 28/28 `fittingCacheKey` 보유) |
+| 22 | `calendar_screen.dart:515` | c | 서명 URL로 표시 |
+| 23 | `calendar_record_sheet.dart:407` | c | 서명 URL로 표시 |
+| 24 | `scrap_screen.dart:215` + `full_screen_image_viewer.dart:32`(scrap_screen 호출부) | c | 서명 URL로 표시 |
+
+**[갱신 2026-08-06]** §10-1에서 (B)를 채택해 28건 전량 백필 완료 —
+(c)군도 "신규만 서명"이 아니라 **전부 서명 경로**가 통과 기준이다.
+단, 백필 스크립트 실행 이후 생성되는 신규 피팅은 A-5 구현이
+`_logFittingHistorySilently`에 `fittingCacheKey`를 같이 쓰도록
+고쳐야 계속 커버된다(§10 권장안).
+
+**[범위 정정 2026-08-06 — (c)군 실제 구현 착수 중 발견]** 위 24번
+표는 21/22/24행이 전부 `OutfitHistoryEntry`에서 값을 읽는 것처럼
+적었으나 틀렸다. 실제로는 서로 다른 **3개의 독립 Firestore
+컬렉션**이 각자 `fittingImageUrl`을 저장한다:
+- `users/{uid}/history`(`OutfitHistoryEntry`) — §10-1에서 조사·
+  백필한 바로 그것(28건).
+- `users/{uid}/calendar`(`OutfitCalendarEntry`) — `home_screen.dart:886`,
+  `calendar_screen.dart:515`가 실제로 읽는 컬렉션. `history`와
+  완전히 별개라 28건 백필이 이쪽엔 전혀 영향을 안 준다.
+- `users/{uid}/scraps`(`ScrapEntry`) — `scrap_screen.dart:215` +
+  `full_screen_image_viewer.dart`의 scrap_screen 호출부가 읽는
+  컬렉션. 역시 별개.
+
+(`calendar_record_sheet.dart:407`만 실제로 `OutfitHistoryEntry`를
+읽는다 — "최근 가상 피팅 결과에서 고르는" 목록이라 원래 표가 맞았다.)
+
+재조사 결과: `calendar`는 32건 중 `fittingImageUrl` 보유 1건,
+`scraps`는 1건 — 둘 다 `fitting_results/{cacheKey}.jpg` 경로에서
+역산 가능하고 대응 `fitting_cache` 문서도 실존(2/2 성공). 세 가지
+전부 조치 완료:
+1. `OutfitCalendarEntry`/`ScrapEntry` 모델에도 `fittingCacheKey`
+   필드 추가(읽기/쓰기).
+2. 쓰기 경로 갱신 — `calendar_record_sheet.dart`(`_selectedFitting.
+   fittingCacheKey`를 그대로 복사), `fitting_room_screen.dart`
+   스크랩 생성(`FittingJobController.fittingCacheKey` 직접 전달).
+   둘 다 캐시 키를 다시 계산하지 않고 이미 알고 있는 값을 그대로
+   흘려보낼 뿐이다.
+3. `tools/backfill_fitting_cache_key`를 `history`뿐 아니라
+   `calendar`/`scraps`까지 순회하도록 일반화 — 2건 추가 백필
+   완료(manifest: `backfill_20260806_060257.json`).
+
+교훈: "OutfitHistoryEntry에 캐시 키가 없다"는 원래 조사가 모델
+하나만 보고 결론 낸 것과 같은 종류의 실수다(관문을 코드로 재확인
+안 하고 넘어가면 반복된다) — 이번엔 구현 중 실제 호출부를 따라가며
+발견해 즉시 수정했다.
+
+Phase C(토큰 회수) 재착수는 위 24행이 전부 체크된 뒤에만 한다.

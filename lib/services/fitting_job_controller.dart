@@ -232,7 +232,7 @@ class FittingJobController extends ChangeNotifier {
           fittingImageUrl = cachedUrl;
           fittingCacheKey = cacheKey;
           isFittingFromCache = true;
-          _logFittingHistorySilently(clothingItems, cachedUrl);
+          _logFittingHistorySilently(clothingItems, cachedUrl, cacheKey);
           return;
         }
       }
@@ -298,7 +298,10 @@ class FittingJobController extends ChangeNotifier {
       }
       fittingImageUrl = imageUrl;
       notifyListeners();
-      _logFittingHistorySilently(clothingItems, imageUrl);
+      // fittingCacheKey(인스턴스 필드)는 방금 위에서 uid != null일 때만
+      // 채워졌다 — fitting_cache 문서가 실제로 쓰였을 때만 이력에도
+      // 같이 남긴다(그래야 나중에 서명 대상 문서가 확실히 존재한다).
+      _logFittingHistorySilently(clothingItems, imageUrl, fittingCacheKey);
     } catch (e) {
       // 캐시 저장 실패는 무시 — 사용자에게는 이미 방금 생성된 이미지가 표시된 상태다.
       debugPrint('[피팅캐시저장] 실패: $e');
@@ -323,6 +326,7 @@ class FittingJobController extends ChangeNotifier {
   static void _logFittingHistorySilently(
     List<WardrobeItem> clothingItems,
     String fittingImageUrl,
+    String? fittingCacheKey,
   ) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -332,6 +336,7 @@ class FittingJobController extends ChangeNotifier {
         type: OutfitHistoryEntry.typeFitting,
         items: clothingItems.map(HistoryItemSnapshot.fromWardrobeItem).toList(),
         fittingImageUrl: fittingImageUrl,
+        fittingCacheKey: fittingCacheKey,
       ),
     ));
     unawaited(FirestoreService.addAgentLogSilently(

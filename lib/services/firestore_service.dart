@@ -700,6 +700,7 @@ class FirestoreService {
     String id, {
     required String status,
     String? fittingImageUrl,
+    String? fittingCacheKey,
     required List<String> itemIds,
     required List<String> itemSummaries,
     required String source,
@@ -708,6 +709,7 @@ class FirestoreService {
     await _db.collection(_usersCol).doc(uid).collection(_calendarCol).doc(id).update({
       'status': status,
       if (fittingImageUrl != null) 'fittingImageUrl': fittingImageUrl,
+      if (fittingCacheKey != null) 'fittingCacheKey': fittingCacheKey,
       'itemIds': itemIds,
       'itemSummaries': itemSummaries,
       'source': source,

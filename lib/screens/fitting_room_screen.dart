@@ -151,6 +151,7 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
         final entry = ScrapEntry(
           id: '',
           fittingImageUrl: url,
+          fittingCacheKey: widget.jobController.fittingCacheKey,
           itemIds: selectedList.map((i) => i.id).toList(),
           itemSummaries: selectedList
               .map((i) => '${i.category}: ${i.attributes?.toPromptLine() ?? ""}')

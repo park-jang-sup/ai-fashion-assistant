@@ -58,6 +58,13 @@ class OutfitHistoryEntry {
   final int? score; // 코디 분석 시 파싱된 점수. 그 외 타입은 null.
   final DateTime? createdAt; // 읽을 때만 채워짐(쓸 때는 서버 타임스탬프 사용)
   final String? fittingImageUrl; // type == typeFitting일 때만 채워지는 결과 이미지 URL.
+  // fitting_cache 문서 id(서명 URL 이행 A-5, docs/task_signed_urls_v1.md
+  // §10-1) — fittingImageUrl과 같이 있을 때만 의미가 있다. 2026-08-06
+  // 이전 이력은 tools/backfill_fitting_cache_key로 소급 채워졌고, 그
+  // 이후 생성분은 _logFittingHistorySilently가 매번 같이 쓴다. 없으면
+  // (극히 드물게 uid 없어 캐시 문서 저장을 건너뛴 경우) 화면은
+  // fittingImageUrl로 폴백한다.
+  final String? fittingCacheKey;
 
   const OutfitHistoryEntry({
     required this.type,
@@ -65,6 +72,7 @@ class OutfitHistoryEntry {
     this.score,
     this.createdAt,
     this.fittingImageUrl,
+    this.fittingCacheKey,
   });
 
   List<String> get itemIds => items.map((e) => e.id).toList()..sort();
@@ -79,6 +87,7 @@ class OutfitHistoryEntry {
       score: data['score'] as int?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       fittingImageUrl: data['fittingImageUrl'] as String?,
+      fittingCacheKey: data['fittingCacheKey'] as String?,
     );
   }
 
@@ -88,6 +97,7 @@ class OutfitHistoryEntry {
         'items': items.map((e) => e.toFirestore()).toList(),
         if (score != null) 'score': score,
         if (fittingImageUrl != null) 'fittingImageUrl': fittingImageUrl,
+        if (fittingCacheKey != null) 'fittingCacheKey': fittingCacheKey,
         'createdAt': FieldValue.serverTimestamp(),
       };
 

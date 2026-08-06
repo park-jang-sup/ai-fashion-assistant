@@ -513,15 +513,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
               width: 60,
               height: 76,
               child: entry.fittingImageUrl != null
-                  ? CachedNetworkImage(
-                      imageUrl: entry.fittingImageUrl!,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(color: AppColors.background),
-                      errorWidget: (_, __, ___) => Container(
-                        color: AppColors.background,
-                        child: const Icon(Icons.image_outlined, color: AppColors.textDisabled),
-                      ),
-                    )
+                  ? entry.fittingCacheKey != null
+                      ? SignedNetworkImage(
+                          collection: 'fitting_cache',
+                          id: entry.fittingCacheKey!,
+                          fallbackUrl: entry.fittingImageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => Container(color: AppColors.background),
+                          errorWidget: (_, __, ___) => Container(
+                            color: AppColors.background,
+                            child: const Icon(Icons.image_outlined, color: AppColors.textDisabled),
+                          ),
+                        )
+                      : CachedNetworkImage(
+                          imageUrl: entry.fittingImageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => Container(color: AppColors.background),
+                          errorWidget: (_, __, ___) => Container(
+                            color: AppColors.background,
+                            child: const Icon(Icons.image_outlined, color: AppColors.textDisabled),
+                          ),
+                        )
                   : representativeItem != null
                       ? Container(
                           color: AppColors.background,

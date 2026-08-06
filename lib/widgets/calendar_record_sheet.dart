@@ -132,10 +132,12 @@ class _CalendarRecordSheetState extends State<_CalendarRecordSheet> {
 
     // 착장 소스 확정: 피팅 우선, 없으면 옷장 선택.
     String? imageUrl;
+    String? cacheKey;
     List<String> itemIds;
     List<String> itemSummaries;
     if (_selectedFitting != null) {
       imageUrl = _selectedFitting!.fittingImageUrl;
+      cacheKey = _selectedFitting!.fittingCacheKey;
       itemIds = _selectedFitting!.items.map((i) => i.id).toList();
       itemSummaries = _selectedFitting!.items
           .map((i) => '${i.category}: ${i.color ?? ''}'.trim())
@@ -160,6 +162,7 @@ class _CalendarRecordSheetState extends State<_CalendarRecordSheet> {
       date: widget.date,
       tpoTag: _tpo,
       fittingImageUrl: imageUrl,
+      fittingCacheKey: cacheKey,
       itemIds: itemIds,
       itemSummaries: itemSummaries,
       source: source,
@@ -177,6 +180,7 @@ class _CalendarRecordSheetState extends State<_CalendarRecordSheet> {
           widget.existingEntryId!,
           status: OutfitCalendarEntry.statusRecorded,
           fittingImageUrl: imageUrl,
+          fittingCacheKey: cacheKey,
           itemIds: itemIds,
           itemSummaries: itemSummaries,
           source: source,
@@ -370,6 +374,7 @@ class _CalendarRecordSheetState extends State<_CalendarRecordSheet> {
             final selected = identical(_selectedFitting, f);
             return _fittingThumb(
               imageUrl: f.fittingImageUrl!,
+              cacheKey: f.fittingCacheKey,
               selected: selected,
               onTap: () => setState(() {
                 _selectedFitting = selected ? null : f;
@@ -385,6 +390,7 @@ class _CalendarRecordSheetState extends State<_CalendarRecordSheet> {
 
   Widget _fittingThumb({
     required String imageUrl,
+    String? cacheKey,
     required bool selected,
     required VoidCallback onTap,
   }) {
@@ -405,15 +411,27 @@ class _CalendarRecordSheetState extends State<_CalendarRecordSheet> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(9),
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => Container(color: AppColors.background),
-                errorWidget: (_, __, ___) => Container(
-                  color: AppColors.background,
-                  child: const Icon(Icons.image_outlined, color: AppColors.textDisabled),
-                ),
-              ),
+              child: cacheKey != null
+                  ? SignedNetworkImage(
+                      collection: 'fitting_cache',
+                      id: cacheKey,
+                      fallbackUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(color: AppColors.background),
+                      errorWidget: (_, __, ___) => Container(
+                        color: AppColors.background,
+                        child: const Icon(Icons.image_outlined, color: AppColors.textDisabled),
+                      ),
+                    )
+                  : CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(color: AppColors.background),
+                      errorWidget: (_, __, ___) => Container(
+                        color: AppColors.background,
+                        child: const Icon(Icons.image_outlined, color: AppColors.textDisabled),
+                      ),
+                    ),
             ),
             if (selected)
               const Positioned(
