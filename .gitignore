@@ -84,3 +84,10 @@ tools/delete_orphaned_docs/manifests/
 # fittingCacheKey 백필 롤백용 manifest — 실제 문서id/피팅 캐시 키가
 # 담긴 실행 산출물이라 도구 코드와 달리 커밋 대상이 아니다.
 tools/backfill_fitting_cache_key/manifests/
+
+# 배경 제거 재개 스파이크 — 실제 옷장 사진(원본·기존 컷아웃·u2netp
+# 결과 비교 이미지)이 담긴 실행 산출물이라 도구 코드와 달리 커밋
+# 대상이 아니다. .venv도 로컬 전용.
+tools/bg_removal_spike/inputs/
+tools/bg_removal_spike/outputs/
+tools/bg_removal_spike/.venv/
