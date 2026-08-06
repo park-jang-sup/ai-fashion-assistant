@@ -153,6 +153,7 @@ def main() -> None:
     parser.add_argument("--apply", action="store_true", help="실제로 반영한다(기본은 dry-run)")
     parser.add_argument("--rollback", metavar="MANIFEST_PATH", help="지정한 manifest의 토큰을 정확히 복원하고 종료")
     parser.add_argument("--prefixes", nargs="+", default=DEFAULT_PREFIXES, help=f"대상 경로 프리픽스(기본: {DEFAULT_PREFIXES})")
+    parser.add_argument("--only", nargs="+", help="지정한 정확한 blob 경로만 대상으로 한다(리허설용 — --prefixes로 나열된 것 중 이 목록에 있는 것만 처리)")
     parser.add_argument("--bucket", default=DEFAULT_BUCKET, help="Storage 버킷 이름")
     parser.add_argument("--sample-count", type=int, default=5, help="dry-run 시 보여줄 샘플 수")
     args = parser.parse_args()
@@ -180,10 +181,16 @@ def main() -> None:
     if args.apply:
         _confirm_project(project_id, f"{', '.join(args.prefixes)} 아래 파일의 다운로드 토큰 회수")
 
+    only_set = set(args.only) if args.only else None
+    if only_set:
+        print(f"--only 지정됨 — {len(only_set)}개 경로로 제한(리허설 모드)")
+
     has_token = []
     no_token = []
     for prefix in args.prefixes:
         blobs = list(bucket.list_blobs(prefix=prefix))
+        if only_set:
+            blobs = [b for b in blobs if b.name in only_set]
         print(f"[{prefix}] {len(blobs)}건 순회")
         for blob in blobs:
             metadata = blob.metadata or {}
