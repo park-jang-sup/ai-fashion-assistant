@@ -774,3 +774,56 @@ backfill_fitting_cache_key --apply`로 28건 전량 백필(manifest:
 
 Phase C(토큰 회수) 재착수는 위 25행(24행 + 재감사로 추가된 25번)이
 전부 체크된 뒤에만 한다.
+
+## 11. A-6 — 예외 안전성 + fittingImageUrl 소스 판별 (2026-08-06)
+
+25행 체크리스트 실기기 확인(21개 항목, 사용자 확인 완료) 후 남은
+raw `CachedNetworkImage` 8곳을 지점별로 감사하면서, "폴백이라
+괜찮다"는 판단 중 Phase C(토큰 회수) 이후에는 성립하지 않는 두
+부류를 발견해 처리했다.
+
+**#8 — 배치 실패 시 전체 폴백 (이번 사고의 근본 메커니즘)**:
+`ImageUrlResolver._flushPending`이 배치 호출 예외 시 그 배치 전체를
+한꺼번에 폴백시키는 구조는 배선 완전성(A-5)과 무관하게 그대로
+남아있었다 — 정상 배선돼 있어도 서명 발급이 일시적으로 실패하면
+Phase C 이후엔 그게 곧 빈 화면이다. 조치: `FirebaseFunctions`
+직접 호출을 `testServerCall`로 주입 가능한 계층으로 분리 → 배치
+호출에 짧은 지수 백오프 재시도(최초 포함 최대 3회) 추가 →
+`SignedNetworkImage`에 재시도 가능 오류 상태 추가(서명 해석 최종
+실패 시 errorWidget에 재시도 트리거, 탭하면 `_resolve()` 재실행).
+`test/image_url_resolver_test.dart`(4개)로 재시도 성공·재시도 소진
+후 다음 요청에서 재시도됨(굳지 않음)·배치 간 격리·배치 내 원자성을
+검증.
+
+**#1/#2 — `fittingImageUrl`이 실제로는 wardrobe URL일 수 있는 경로**:
+`home_screen.dart`의 "추천을 캘린더에 기록" 프리필이 대표 옷
+아이템의 URL을 `fittingImageUrl` 자리에 저장할 수 있어(현재 데이터
+0건, 코드로는 도달 가능), 기존 "cacheKey 있으면 서명·없으면 포기"
+로직이 이 경우를 놓쳤다. 조치: `resolveFittingImageTarget()` 신설
+— cacheKey 우선, 없으면 URL 경로 프리픽스로 역산
+(`fitting_results/` → `fitting_cache`, `wardrobe_images|cutouts/`
+→ `wardrobe`+`itemIds.first`, 서버는 항상 Firestore 문서 id로만
+서명하므로 3-2 재발급 루프 방지 원칙 유지). `calendar_screen.dart`/
+`home_screen.dart`/`calendar_record_sheet.dart`/`scrap_screen.dart`
+전부 이 함수로 교체. `test/resolve_fitting_image_target_test.dart`
+(7개)로 우선순위·역산·경계조건 검증.
+
+### 8곳 최종 표 (Phase C 생존 여부)
+
+| # | 파일:행 | 필드 | 왜 미배선인가 | Phase C 이후 성립하는가 |
+|---|---|---|---|---|
+| 1 | `calendar_screen.dart` | `entry.fittingImageUrl` | `resolveFittingImageTarget`이 null일 때만 폴백(cacheKey 없음 **+** URL이 알려진 패턴 아님 **+** itemIds도 없음 — 3중 조건) | 현재 데이터로는 도달 불가 확인(실존 2건 전부 매칭). 남는 건 미지 URL 패턴 같은 극단적 이론상 경우뿐 |
+| 2 | `home_screen.dart` | 위와 동일 | 위와 동일 | 위와 동일 |
+| 3 | `calendar_record_sheet.dart` | `f.fittingImageUrl`/`_prefillImageUrl` | 위와 동일(+ 스크랩 프리필 미리보기도 동일 로직 적용) | 위와 동일 |
+| 4 | `scrap_screen.dart`(그리드) | `entry.fittingImageUrl` | 위와 동일 | 위와 동일 |
+| 5 | `full_screen_image_viewer.dart` | 호출부가 넘긴 `signedCollection`/`signedId` | 호출부(`scrap_screen`/`fitting_room_screen`)가 이미 `resolveFittingImageTarget`(scrap) 또는 직접 로직(fitting_room)으로 계산 | scrap 호출부는 1~4와 동일 수준으로 좁혀짐 |
+| 6 | `fitting_room_screen.dart:1030` | 라이브 `fittingCacheKey` | uid-null 생성 엣지케이스 — `fitting_cache` 문서 자체가 없어 URL 역산으로도 못 고침(구조적) | **성립하지 않음 — 그러나 배선으로 해결 불가능한 유일한 항목.** 원인이 "서명 안 함"이 아니라 "서명 대상 문서가 없음"이라 URL 판별 확장으로도 못 푼다. 재발 방지 대상 아님(§10 원문 그대로) |
+| 7 | `item_detail_screen.dart:110` | 하드코딩 unsplash URL | 우리 Storage/데이터가 아님 | 완전히 성립 — Phase C와 무관 |
+| 8 | `signed_network_image.dart` | 위젯 자체 렌더 지점 | 배선 메커니즘 그 자체 | **이번 조치로 성립 범위 확대** — 배치 실패해도 재시도로 흡수, 최종 실패해도 재시도 가능한 상태로 남아 "빈 화면 고정"은 아니다 |
+
+결론: 8곳 중 실질적으로 Phase C 이후 문제가 될 수 있는 건 #6
+(구조적으로 고칠 수 없는 알려진 예외) 하나뿐이다. 나머지는 조치로
+막혔거나(#1~#5, #8) 애초에 무관하다(#7).
+
+**A-5(24/25행 배선) + A-6(예외 안전성 + 소스 판별) 완료.** Phase C
+재착수 계획은 다음 단계에서 논의한다.
