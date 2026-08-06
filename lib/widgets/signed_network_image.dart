@@ -2,7 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../services/image_url_resolver.dart';
 
-export '../services/image_url_resolver.dart' show signedUrlsEnabled;
+export '../services/image_url_resolver.dart'
+    show signedUrlsEnabled, resolveFittingImageTarget;
 
 // 서명 URL 이행 A-4(docs/task_signed_urls_v1.md) — 킬 스위치. 기본
 // false면 이 위젯은 항상 fallbackUrl(기존 imageUrl/cutoutImageUrl)만

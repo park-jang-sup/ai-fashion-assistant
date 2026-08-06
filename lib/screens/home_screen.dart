@@ -869,6 +869,11 @@ class _WeeklyCalendarSectionState extends State<_WeeklyCalendarSection> {
         : entry.itemSummaries.map((s) => s.split(':').first.trim()).join(', ');
     final representativeItem =
         entry.fittingImageUrl == null ? _representativeItem(entry, wardrobeById) : null;
+    final fittingTarget = resolveFittingImageTarget(
+      fittingImageUrl: entry.fittingImageUrl,
+      fittingCacheKey: entry.fittingCacheKey,
+      itemIds: entry.itemIds,
+    );
     return GestureDetector(
       onTap: () => _openRecordSheet(entry.date, existing: entry),
       child: Container(
@@ -887,10 +892,10 @@ class _WeeklyCalendarSectionState extends State<_WeeklyCalendarSection> {
                 width: 60,
                 height: 76,
                 child: entry.fittingImageUrl != null
-                    ? entry.fittingCacheKey != null
+                    ? fittingTarget != null
                         ? SignedNetworkImage(
-                            collection: 'fitting_cache',
-                            id: entry.fittingCacheKey!,
+                            collection: fittingTarget.collection,
+                            id: fittingTarget.id,
                             fallbackUrl: entry.fittingImageUrl!,
                             fit: BoxFit.cover,
                             placeholder: (_, __) => Container(color: AppColors.background),

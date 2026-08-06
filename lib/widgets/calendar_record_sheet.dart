@@ -374,12 +374,20 @@ class _CalendarRecordSheetState extends State<_CalendarRecordSheet> {
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          if (hasPrefill) _fittingThumb(imageUrl: _prefillImageUrl!, selected: true, onTap: () {}),
+          if (hasPrefill)
+            _fittingThumb(
+              imageUrl: _prefillImageUrl!,
+              cacheKey: widget.prefillCacheKey,
+              itemIds: widget.prefillItemIds,
+              selected: true,
+              onTap: () {},
+            ),
           ...fittings.map((f) {
             final selected = identical(_selectedFitting, f);
             return _fittingThumb(
               imageUrl: f.fittingImageUrl!,
               cacheKey: f.fittingCacheKey,
+              itemIds: f.itemIds,
               selected: selected,
               onTap: () => setState(() {
                 _selectedFitting = selected ? null : f;
@@ -396,9 +404,15 @@ class _CalendarRecordSheetState extends State<_CalendarRecordSheet> {
   Widget _fittingThumb({
     required String imageUrl,
     String? cacheKey,
+    List<String> itemIds = const [],
     required bool selected,
     required VoidCallback onTap,
   }) {
+    final target = resolveFittingImageTarget(
+      fittingImageUrl: imageUrl,
+      fittingCacheKey: cacheKey,
+      itemIds: itemIds,
+    );
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -416,10 +430,10 @@ class _CalendarRecordSheetState extends State<_CalendarRecordSheet> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(9),
-              child: cacheKey != null
+              child: target != null
                   ? SignedNetworkImage(
-                      collection: 'fitting_cache',
-                      id: cacheKey,
+                      collection: target.collection,
+                      id: target.id,
                       fallbackUrl: imageUrl,
                       fit: BoxFit.cover,
                       placeholder: (_, __) => Container(color: AppColors.background),

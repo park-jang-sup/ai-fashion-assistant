@@ -177,6 +177,11 @@ class _ScrapCard extends StatelessWidget {
   }
 
   void _openFullScreen(BuildContext context) {
+    final target = resolveFittingImageTarget(
+      fittingImageUrl: entry.fittingImageUrl,
+      fittingCacheKey: entry.fittingCacheKey,
+      itemIds: entry.itemIds,
+    );
     Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
@@ -184,8 +189,8 @@ class _ScrapCard extends StatelessWidget {
         pageBuilder: (_, __, ___) => FullScreenImageViewer(
           imageUrl: entry.fittingImageUrl,
           label: '스크랩한 착장',
-          signedCollection: entry.fittingCacheKey != null ? 'fitting_cache' : null,
-          signedId: entry.fittingCacheKey,
+          signedCollection: target?.collection,
+          signedId: target?.id,
         ),
       ),
     );
@@ -193,6 +198,11 @@ class _ScrapCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final target = resolveFittingImageTarget(
+      fittingImageUrl: entry.fittingImageUrl,
+      fittingCacheKey: entry.fittingCacheKey,
+      itemIds: entry.itemIds,
+    );
     return GestureDetector(
       onTap: () => _openFullScreen(context),
       onLongPress: () => _confirmDelete(context),
@@ -216,10 +226,10 @@ class _ScrapCard extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-                    child: entry.fittingCacheKey != null
+                    child: target != null
                         ? SignedNetworkImage(
-                            collection: 'fitting_cache',
-                            id: entry.fittingCacheKey!,
+                            collection: target.collection,
+                            id: target.id,
                             fallbackUrl: entry.fittingImageUrl,
                             fit: BoxFit.cover,
                             placeholder: (_, __) => Container(color: AppColors.background),

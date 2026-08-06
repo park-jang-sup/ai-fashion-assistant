@@ -12,6 +12,59 @@ import 'package:flutter/foundation.dart';
 const bool signedUrlsEnabled =
     bool.fromEnvironment('SIGNED_URLS', defaultValue: false);
 
+// signed_url_policy.ts의 pathFromDownloadUrl과 동일 규칙(Dart 쪽 거울) —
+// Firebase 다운로드 URL의 /o/{encodedPath}에서 경로를 역산한다.
+String? _pathFromDownloadUrl(String url) {
+  final match = RegExp(r'/o/([^?]+)').firstMatch(url);
+  if (match == null) return null;
+  try {
+    return Uri.decodeComponent(match.group(1)!);
+  } catch (_) {
+    return null;
+  }
+}
+
+// A-6(docs/task_signed_urls_v1.md §10-1) — fittingImageUrl 하나로부터
+// 서명 대상 (collection, id)를 결정한다. 우선순위:
+//   1) 명시적 fittingCacheKey 필드가 있으면 그대로 쓴다(가장 신뢰도
+//      높음 — 쓰기 시점에 이미 알던 값).
+//   2) 없으면 URL 경로 프리픽스로 역산한다:
+//      - fitting_results/{key}.jpg → fitting_cache/{key} (파일명이
+//        곧 fitting_cache 문서 id — StorageService.uploadFittingResult
+//        참고, §10-1 (B)에서 28/28 실측 검증됨).
+//      - wardrobe_images|cutouts/... → wardrobe/{itemIds.first}.
+//        경로 자체에는 wardrobe 문서 id가 없다(파일명이 문서 id와
+//        무관 — 타임스탬프/난수 파일명). 그래서 itemIds가 필요하다 —
+//        이 URL이 저장될 수 있는 유일한 경로(홈 화면 "추천을 캘린더에
+//        기록" 프리필, home_screen.dart _recordToCalendar)가 대표
+//        아이템의 URL을 그대로 쓰면서 itemIds도 함께 저장하기 때문에
+//        같이 넘어온다.
+// 서버(getSignedImageUrls)는 항상 Firestore 문서 id로만 서명한다 —
+// 클라이언트가 만든 경로 문자열을 그대로 신뢰하지 않는다(3-2 재발급
+// 루프 방지 원칙 — 여기서 얻은 id도 실제로는 서버가 문서를 다시 읽어
+// 검증한다).
+({String collection, String id})? resolveFittingImageTarget({
+  required String? fittingImageUrl,
+  required String? fittingCacheKey,
+  List<String> itemIds = const [],
+}) {
+  if (fittingCacheKey != null) {
+    return (collection: 'fitting_cache', id: fittingCacheKey);
+  }
+  if (fittingImageUrl == null) return null;
+  final path = _pathFromDownloadUrl(fittingImageUrl);
+  if (path == null) return null;
+  if (path.startsWith('fitting_results/') && path.endsWith('.jpg')) {
+    final key = path.substring('fitting_results/'.length, path.length - '.jpg'.length);
+    return (collection: 'fitting_cache', id: key);
+  }
+  if (path.startsWith('wardrobe_images/') || path.startsWith('wardrobe_cutouts/')) {
+    if (itemIds.isEmpty) return null;
+    return (collection: 'wardrobe', id: itemIds.first);
+  }
+  return null;
+}
+
 // 서명 URL 이행 A-3(docs/task_signed_urls_v1.md) — 화면은 이 클래스를
 // 거쳐서만 서명 URL을 받는다(A-4에서 배선). GeminiService/StorageService와
 // 같은 static-only 서비스 패턴을 따른다.
