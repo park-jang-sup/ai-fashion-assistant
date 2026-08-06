@@ -886,8 +886,25 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
   void _openFullScreenImage() {
     final fittingImage = widget.jobController.fittingImage;
     final fittingImageUrl = widget.jobController.fittingImageUrl;
+    final fittingCacheKey = widget.jobController.fittingCacheKey;
     final hasRealResult = fittingImage != null || fittingImageUrl != null;
     if (!hasRealResult && _mockFittingImageUrl == null) return;
+    // A-5 군 (b)(§10) — 실제 피팅 결과면 fitting_cache로, 결과가 아직
+    // 없어 사용자 사진을 보여주는 경우면 wardrobe로 서명한다. 새로 만든
+    // 바이트를 그대로 보여줄 때(imageBytes)나 fittingCacheKey를 아직
+    // 못 구한 드문 경우엔 기존 URL 그대로(위젯이 알아서 폴백).
+    final String? signedCollection;
+    final String? signedId;
+    if (fittingImage != null) {
+      signedCollection = null;
+      signedId = null;
+    } else if (fittingImageUrl != null) {
+      signedCollection = fittingCacheKey != null ? 'fitting_cache' : null;
+      signedId = fittingCacheKey;
+    } else {
+      signedCollection = widget.userPhoto != null ? 'wardrobe' : null;
+      signedId = widget.userPhoto?.id;
+    }
     Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
@@ -896,6 +913,8 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
           imageBytes: fittingImage,
           imageUrl: fittingImage == null ? (fittingImageUrl ?? _mockFittingImageUrl) : null,
           label: hasRealResult ? 'AI 합성 피팅' : '내 사진 기반 피팅',
+          signedCollection: signedCollection,
+          signedId: signedId,
         ),
       ),
     );
