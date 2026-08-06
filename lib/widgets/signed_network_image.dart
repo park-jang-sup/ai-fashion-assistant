@@ -52,6 +52,11 @@ class SignedNetworkImage extends StatefulWidget {
 
 class _SignedNetworkImageState extends State<SignedNetworkImage> {
   String? _resolvedUrl;
+  // A-6 — 서명 해석이 최종 실패했다(재시도까지 소진). Phase C 이후에는
+  // fallbackUrl도 죽어있을 수 있으므로, 이 경우 errorWidget을 탭하면
+  // 다시 시도할 수 있게 한다 — "폴백이라 괜찮다"가 회수 후엔 성립하지
+  // 않는다는 §10 재감사 지적에 대한 조치.
+  bool _resolveFailed = false;
 
   @override
   void initState() {
@@ -67,6 +72,7 @@ class _SignedNetworkImageState extends State<SignedNetworkImage> {
     if (signedUrlsEnabled &&
         (oldWidget.collection != widget.collection || oldWidget.id != widget.id)) {
       _resolvedUrl = null;
+      _resolveFailed = false;
       _resolve();
     }
   }
@@ -78,11 +84,21 @@ class _SignedNetworkImageState extends State<SignedNetworkImage> {
     );
     if (!mounted) return;
     if (urls != null && widget.urlIndex < urls.length) {
-      setState(() => _resolvedUrl = urls[widget.urlIndex]);
+      setState(() {
+        _resolvedUrl = urls[widget.urlIndex];
+        _resolveFailed = false;
+      });
+    } else {
+      // null이거나 인덱스 밖 — _resolvedUrl은 null로 남아 build()가
+      // fallbackUrl을 쓴다(ImageUrlResolver.fallbackCount는 이미
+      // resolve() 안에서 증가했다). 재시도 가능 상태로 표시한다.
+      setState(() => _resolveFailed = true);
     }
-    // null이거나 인덱스 밖이면 _resolvedUrl은 null로 남아 build()가
-    // fallbackUrl을 쓴다 — ImageUrlResolver.fallbackCount는 이미
-    // resolve() 안에서 증가했다.
+  }
+
+  void _retry() {
+    setState(() => _resolveFailed = false);
+    _resolve();
   }
 
   @override
@@ -96,7 +112,29 @@ class _SignedNetworkImageState extends State<SignedNetworkImage> {
       fit: widget.fit,
       alignment: widget.alignment,
       placeholder: widget.placeholder,
-      errorWidget: widget.errorWidget,
+      errorWidget: (context, url, error) {
+        final inner = widget.errorWidget?.call(context, url, error) ??
+            const Icon(Icons.image_not_supported_outlined);
+        // 서명 해석이 실패해서 여기 온 경우에만 재시도를 건다 —
+        // fallbackUrl 자체가 유효한 이미지가 아닌 경우(진짜 깨진
+        // 이미지)까지 재시도 버튼을 붙이면 오해를 준다.
+        if (!signedUrlsEnabled || !_resolveFailed) return inner;
+        return GestureDetector(
+          onTap: _retry,
+          child: Stack(
+            fit: StackFit.expand,
+            alignment: Alignment.center,
+            children: [
+              inner,
+              const Positioned(
+                bottom: 2,
+                right: 2,
+                child: Icon(Icons.refresh, size: 14, color: Colors.white70),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

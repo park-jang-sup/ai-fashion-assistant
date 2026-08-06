@@ -51,12 +51,27 @@ class ImageUrlResolver {
   // 넉넉해야 하고, 화면 체감 지연으로 느껴지지 않을 만큼 짧아야 한다.
   static const Duration _coalesceWindow = Duration(milliseconds: 40);
 
+  // A-6(docs/task_signed_urls_v1.md §9 사고의 재발 방지) — 배치 호출이
+  // 순간적으로(네트워크 끊김 등) 실패해도 곧바로 그 배치 전체를 폴백
+  // 처리하지 않고 짧게 재시도해 흡수한다. 최초 시도 포함 최대 3회,
+  // 지수 백오프. 재시도 사이 대기 시간은 테스트에서 줄여 쓸 수 있게
+  // 별도 필드로 뺐다(기본 300ms — 화면 체감 지연이 크게 늘지 않는 선).
+  static const int _maxAttempts = 3;
+  static Duration retryBackoffBase = const Duration(milliseconds: 300);
+
   // key = "collection/id" — 같은 id라도 컬렉션이 다르면(이론상) 별개
   // 요청으로 다룬다. 진행 중(아직 응답 안 옴)인 요청의 Future를 여기서
   // 공유한다 — 새 네트워크 호출을 만들지 않는다.
   static final Map<String, Completer<List<String>?>> _pending = {};
   static final List<({String collection, String id})> _pendingQueue = [];
   static Timer? _flushTimer;
+
+  // 테스트가 실제 Firebase 호출 대신 주입하는 훅 — null이면 실제 서버를
+  // 부른다. _functions가 static final이라 목으로 못 바꾸므로 이 계층에서
+  // 갈아끼워 실패·지연을 재현한다(A-6 단위 테스트 전용).
+  @visibleForTesting
+  static Future<Map<String, dynamic>> Function(
+      List<({String collection, String id})> items)? testServerCall;
 
   @visibleForTesting
   static void resetForTest() {
@@ -68,6 +83,8 @@ class ImageUrlResolver {
     cacheHitCount = 0;
     cacheMissCount = 0;
     fallbackCount = 0;
+    testServerCall = null;
+    retryBackoffBase = const Duration(milliseconds: 300);
   }
 
   // 화면 진입 시(예: 옷장 120벌) 여러 문서의 URL을 한 번에 미리 받아둔다.
@@ -141,9 +158,11 @@ class ImageUrlResolver {
       final end = (i + _maxBatchSize < batch.length) ? i + _maxBatchSize : batch.length;
       final chunk = batch.sublist(i, end);
       try {
-        await _fetchAndCache(chunk);
+        await _fetchAndCacheWithRetry(chunk);
       } catch (e) {
-        debugPrint('[ImageUrlResolver] 발급 실패(${chunk.length}건): $e');
+        // 재시도까지 소진한 뒤에만 여기 온다 — 이 청크만 폴백 처리되고
+        // 다른 청크(반복문의 다음 회차)에는 전파되지 않는다(격리).
+        debugPrint('[ImageUrlResolver] 발급 실패(${chunk.length}건, 재시도 소진): $e');
       }
       for (final item in chunk) {
         final key = '${item.collection}/${item.id}';
@@ -163,20 +182,25 @@ class ImageUrlResolver {
     }
   }
 
+  // A-6 — 순간적 오류를 짧은 재시도로 흡수한다. 재시도를 다 써도
+  // 실패하면 예외를 그대로 던진다 — _flushPending의 catch가 이 청크만
+  // 폴백 처리하고 종료하므로, 재시도 로직이 다른 청크를 막지 않는다.
+  static Future<void> _fetchAndCacheWithRetry(
+      List<({String collection, String id})> chunk) async {
+    for (var attempt = 0; attempt < _maxAttempts; attempt++) {
+      try {
+        await _fetchAndCache(chunk);
+        return;
+      } catch (e) {
+        if (attempt == _maxAttempts - 1) rethrow;
+        await Future.delayed(retryBackoffBase * (1 << attempt));
+      }
+    }
+  }
+
   static Future<void> _fetchAndCache(
       List<({String collection, String id})> items) async {
-    final callable = _functions.httpsCallable('getSignedImageUrls');
-    final response = await callable.call({
-      'items': items
-          .map((i) => {'collection': i.collection, 'id': i.id})
-          .toList(),
-    });
-
-    // cloud_functions가 플랫폼 채널로 돌려주는 중첩 맵은 런타임 타입이
-    // Map<Object?, Object?>다(gemini_service.dart 스트리밍 주석과 동일한
-    // 함정) — 제네릭까지 검사하는 캐스트는 여기서 실패하므로 Map.from으로
-    // 다시 감싼다.
-    final data = Map<String, dynamic>.from(response.data as Map);
+    final data = await (testServerCall ?? _callServer)(items);
     final now = DateTime.now();
     for (final entry in data.entries) {
       final value = Map<String, dynamic>.from(entry.value as Map);
@@ -192,6 +216,21 @@ class ImageUrlResolver {
         refreshAt: refreshAt,
       );
     }
+  }
+
+  static Future<Map<String, dynamic>> _callServer(
+      List<({String collection, String id})> items) async {
+    final callable = _functions.httpsCallable('getSignedImageUrls');
+    final response = await callable.call({
+      'items': items
+          .map((i) => {'collection': i.collection, 'id': i.id})
+          .toList(),
+    });
+    // cloud_functions가 플랫폼 채널로 돌려주는 중첩 맵은 런타임 타입이
+    // Map<Object?, Object?>다(gemini_service.dart 스트리밍 주석과 동일한
+    // 함정) — 제네릭까지 검사하는 캐스트는 여기서 실패하므로 Map.from으로
+    // 다시 감싼다.
+    return Map<String, dynamic>.from(response.data as Map);
   }
 }
 
