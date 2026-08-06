@@ -8,9 +8,23 @@ import 'package:flutter/foundation.dart';
 // 위젯 파일을 import하는 건 계층을 거스른다 — 서비스 계층인 여기로
 // 옮기고 signed_network_image.dart는 재수출만 한다.
 //
-//   flutter run --dart-define=SIGNED_URLS=true
+// [C-4a, 2026-08-06] 기본값을 true로 전환 — Phase C(토큰 회수)가
+// wardrobe_images/wardrobe_cutouts/fitting_results 250건 전부 완료돼
+// 레거시 URL이 이미 죽어있다(docs/task_signed_urls_v1.md §12).
+//
+// **이 스위치는 더 이상 안전한 롤백 경로가 아니다.** false로 명시해도
+// 코드는 여전히 레거시 URL(fallbackUrl)로 폴백을 "시도"하지만, 그
+// URL 자체의 토큰이 이미 회수돼 죽어있으므로 이미지는 안 뜬다 —
+// 이 플래그가 지금 하는 일은 "서명 경로를 쓸지 말지"라는 코드
+// 경로 전환뿐이고, "회수 이전 상태로 되돌리는" 진짜 롤백은
+// tools/revoke_storage_tokens의 manifest --rollback으로만 가능하다.
+// 이 구분을 흐리지 말 것 — 다음에 문제가 생겼을 때 이 스위치를
+// false로 내리는 것만으로 안전해진다고 착각하면 §9 사고를 다른
+// 형태로 반복한다.
+//
+//   flutter run --dart-define=SIGNED_URLS=false  # 코드 경로만 레거시로(안전망 아님)
 const bool signedUrlsEnabled =
-    bool.fromEnvironment('SIGNED_URLS', defaultValue: false);
+    bool.fromEnvironment('SIGNED_URLS', defaultValue: true);
 
 // signed_url_policy.ts의 pathFromDownloadUrl과 동일 규칙(Dart 쪽 거울) —
 // Firebase 다운로드 URL의 /o/{encodedPath}에서 경로를 역산한다.
