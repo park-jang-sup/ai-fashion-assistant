@@ -163,6 +163,7 @@ class _ScrapCard extends StatelessWidget {
       context,
       date: OutfitCalendarEntry.normalizeDate(picked),
       prefillImageUrl: entry.fittingImageUrl,
+      prefillCacheKey: entry.fittingCacheKey,
       prefillItemIds: entry.itemIds,
       prefillItemSummaries: entry.itemSummaries,
     );

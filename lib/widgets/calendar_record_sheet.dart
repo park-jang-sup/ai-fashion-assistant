@@ -22,6 +22,7 @@ Future<bool?> showCalendarRecordSheet(
   BuildContext context, {
   required DateTime date,
   String? prefillImageUrl,
+  String? prefillCacheKey,
   List<String> prefillItemIds = const [],
   List<String> prefillItemSummaries = const [],
   String? recommendationId,
@@ -42,6 +43,7 @@ Future<bool?> showCalendarRecordSheet(
     builder: (_) => _CalendarRecordSheet(
       date: date,
       prefillImageUrl: prefillImageUrl,
+      prefillCacheKey: prefillCacheKey,
       prefillItemIds: prefillItemIds,
       prefillItemSummaries: prefillItemSummaries,
       recommendationId: recommendationId,
@@ -54,6 +56,7 @@ Future<bool?> showCalendarRecordSheet(
 class _CalendarRecordSheet extends StatefulWidget {
   final DateTime date;
   final String? prefillImageUrl;
+  final String? prefillCacheKey;
   final List<String> prefillItemIds;
   final List<String> prefillItemSummaries;
   final String? recommendationId;
@@ -63,6 +66,7 @@ class _CalendarRecordSheet extends StatefulWidget {
   const _CalendarRecordSheet({
     required this.date,
     this.prefillImageUrl,
+    this.prefillCacheKey,
     this.prefillItemIds = const [],
     this.prefillItemSummaries = const [],
     this.recommendationId,
@@ -144,6 +148,7 @@ class _CalendarRecordSheetState extends State<_CalendarRecordSheet> {
           .toList();
     } else if (_prefillImageUrl != null) {
       imageUrl = _prefillImageUrl;
+      cacheKey = widget.prefillCacheKey;
       itemIds = widget.prefillItemIds;
       itemSummaries = widget.prefillItemSummaries;
     } else {
