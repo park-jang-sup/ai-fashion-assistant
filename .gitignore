@@ -69,3 +69,7 @@ tools/eval_harness/labels.json
 # 이미지 경로 백필 롤백용 manifest — 실제 문서id/경로가 담긴 실행
 # 산출물이라 도구 코드와 달리 커밋 대상이 아니다.
 tools/backfill_image_paths/manifests/
+
+# Storage 토큰 회수 롤백용 manifest — 실제 다운로드 토큰 값이 담긴
+# 실행 산출물이라(토큰 자체가 접근 키다) 절대 커밋하지 않는다.
+tools/revoke_storage_tokens/manifests/
