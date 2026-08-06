@@ -683,32 +683,52 @@ backfill_fitting_cache_key --apply`로 28건 전량 백필(manifest:
 "과거 이력은 소실 고지 후 제거", (B) 선택 시 "서명 경로로 로드",
 (C) 선택 시 이 4행+파생 1행은 이번 Phase C 재착수 범위에서 제외).
 
+**[재감사 2026-08-06 — 24행 → 최종 25행]** 구현 완료 후 목록 자체의
+완전성을 재확인했다: (1) `lib/` 전체에서 `CachedNetworkImage(`/
+`Image.network(`/`NetworkImage(`/`http.get(` 등 원격 이미지 접근
+패턴을 전수 재grep, (2) 남은 raw `CachedNetworkImage(`가 전부
+의도된 것인지 확인 — `SignedNetworkImage`와 짝을 이루는 폴백
+분기 8곳, 위젯 내부 구현체(`signed_network_image.dart` 자체) 1곳,
+`item_detail_screen.dart`의 하드코딩 unsplash placeholder 1곳
+(실데이터 아님, 범위 밖), `fitting_room_screen.dart`의 문서화된
+드문 예외(§10 표 각주) 1곳 — 전부 설명 가능, 미배선 잔여 없음.
+(3) `http`/`dio` 등 바이트 다운로드 경로도 재확인 — `lib/`에서
+`http` 패키지를 쓰는 곳은 `gemini_service.dart`(이미 배선)와
+`weather_service.dart`(날씨 API, 사용자 이미지와 무관)뿐. (4) 24행
+각각이 실제로 `SignedNetworkImage`/리졸버 경유로 배선됐는지 역방향
+확인 — 24행 전부 코드와 일치. 다만 그 과정에서 group (a) 작업 중
+부수적으로 고친 지점 하나가 원래 24행 목록에 없었다는 게 드러나
+25번으로 추가한다(**미배선 잔여가 아니라 이미 고쳐진 것을 뒤늦게
+기록하는 것** — 재감사가 놓친 결함이 아니라 목록 누락이었다).
+
 | # | 파일:행 | 군 | 통과 기준 |
 |---|---|---|---|
 | 1 | `fitting_job_controller.dart:83` | a | 서명 URL로 다운로드 성공 |
-| 2 | `fitting_job_controller.dart:109` | a | 서명 URL로 다운로드 성공 |
-| 3 | `fitting_job_controller.dart:183` | a | 서명 URL로 다운로드 성공 |
-| 4 | `fitting_job_controller.dart:239-240` | a | 서명 URL로 다운로드 성공 |
-| 5 | `wardrobe_screen.dart:46` | a | 서명 URL로 다운로드 성공 |
+| 2 | `fitting_job_controller.dart:110` | a | 서명 URL로 다운로드 성공 |
+| 3 | `fitting_job_controller.dart:185` | a | 서명 URL로 다운로드 성공 |
+| 4 | `fitting_job_controller.dart:242-244` | a | 서명 URL로 다운로드 성공 |
+| 5 | `wardrobe_screen.dart:45` | a | 서명 URL로 다운로드 성공 |
 | 6 | `agent_sweeper.dart:95-98` | a | 서명 URL로 다운로드 성공 |
-| 7 | `wardrobe_screen.dart:1893` | a | 서명 URL로 표시 |
-| 8 | `home_screen.dart:541` | a | 서명 URL로 표시 |
-| 9 | `home_screen.dart:899` | a | 서명 URL로 표시 |
-| 10 | `calendar_screen.dart:528` | a | 서명 URL로 표시 |
-| 11 | `calendar_record_sheet.dart:482` | a | 서명 URL로 표시 |
-| 12 | `outfit_board.dart:399` | a | 서명 URL로 표시 |
-| 13 | `outfit_board.dart:661` | a | 서명 URL로 표시 |
+| 7 | `wardrobe_screen.dart:1893`(카드 액션시트 "비슷한 옷") | a | 서명 URL로 표시 |
+| 7b | `wardrobe_screen.dart:2026`(그리드 `_WardrobeCard`, A-4 원original) | a | 서명 URL로 표시(이미 배선돼 있던 기준점) |
+| 8 | `home_screen.dart:542`(`_RecommendationItemImage`) | a | 서명 URL로 표시 |
+| 9 | `home_screen.dart:915`(대표 아이템/캘린더 요약) | a | 서명 URL로 표시 |
+| 10 | `calendar_screen.dart:541`(대표 아이템) | a | 서명 URL로 표시 |
+| 11 | `calendar_record_sheet.dart:501`(아이템 선택 그리드) | a | 서명 URL로 표시 |
+| 12 | `outfit_board.dart:399`(보드 슬롯) | a | 서명 URL로 표시 |
+| 13 | `outfit_board.dart:664`(아이템 선택 다이얼로그) | a | 서명 URL로 표시 |
 | 14 | `weekly_plan_sheet.dart:150` | a | 서명 URL로 표시 |
-| 15 | `fitting_room_screen.dart:623` | a | 서명 URL로 표시 |
-| 16 | `fitting_room_screen.dart:983` | a | 서명 URL로 표시 |
-| 17 | `fitting_room_screen.dart:1651` | a | 서명 URL로 표시 |
-| 18 | `fitting_room_screen.dart:1785` | a | 서명 URL로 표시 |
-| 19 | `fitting_room_screen.dart:1992` | a | 서명 URL로 표시 |
-| 20 | `full_screen_image_viewer.dart:32`(fitting_room_screen 호출부) | b | 서명 URL로 표시 |
-| 21 | `home_screen.dart:886` | c | 서명 URL로 표시(§10-1 (B) 백필 완료 — 28/28 `fittingCacheKey` 보유) |
-| 22 | `calendar_screen.dart:515` | c | 서명 URL로 표시 |
-| 23 | `calendar_record_sheet.dart:407` | c | 서명 URL로 표시 |
-| 24 | `scrap_screen.dart:215` + `full_screen_image_viewer.dart:32`(scrap_screen 호출부) | c | 서명 URL로 표시 |
+| 15 | `fitting_room_screen.dart:624`(전신 사진 슬롯) | a | 서명 URL로 표시 |
+| 16 | `fitting_room_screen.dart:985`(피팅 결과 큰 이미지) | a | 서명 URL로 표시 |
+| 17 | `fitting_room_screen.dart:1698`(옷 선택 슬라이드) | a | 서명 URL로 표시 |
+| 18 | `fitting_room_screen.dart:1835`(풀스크린 슬라이드) | a | 서명 URL로 표시 |
+| 19 | `fitting_room_screen.dart:2045`(옷 선택 그리드) | a | 서명 URL로 표시 |
+| 20 | `full_screen_image_viewer.dart:42`(fitting_room_screen 호출부) | b | 서명 URL로 표시 |
+| 21 | `home_screen.dart:891`(홈 피팅 카드) | c | 서명 URL로 표시(§10-1 (B) 백필 완료) |
+| 22 | `calendar_screen.dart:517`(캘린더 피팅 이미지) | c | 서명 URL로 표시 |
+| 23 | `calendar_record_sheet.dart:415`(피팅 선택 목록) | c | 서명 URL로 표시 |
+| 24 | `scrap_screen.dart:219` + `full_screen_image_viewer.dart:42`(scrap_screen 호출부, `signedCollection`) | c | 서명 URL로 표시 |
+| 25(신규) | `fitting_room_screen.dart:1007`(피팅 결과 없을 때 사용자 사진 placeholder) | a | 서명 URL로 표시 — group (a) 작업 중 부수 발견·즉시 수정, 원래 24행 목록에 누락돼 있었음 |
 
 **[갱신 2026-08-06]** §10-1에서 (B)를 채택해 28건 전량 백필 완료 —
 (c)군도 "신규만 서명"이 아니라 **전부 서명 경로**가 통과 기준이다.
@@ -752,4 +772,5 @@ backfill_fitting_cache_key --apply`로 28건 전량 백필(manifest:
 안 하고 넘어가면 반복된다) — 이번엔 구현 중 실제 호출부를 따라가며
 발견해 즉시 수정했다.
 
-Phase C(토큰 회수) 재착수는 위 24행이 전부 체크된 뒤에만 한다.
+Phase C(토큰 회수) 재착수는 위 25행(24행 + 재감사로 추가된 25번)이
+전부 체크된 뒤에만 한다.
