@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_background_remover/image_background_remover.dart';
 import 'package:image_cropper/image_cropper.dart';
@@ -43,7 +42,7 @@ Future<void> _extractAndCacheAttributes(
   final uid = FirebaseAuth.instance.currentUser?.uid;
   ClothingAttributes attributes;
   try {
-    attributes = await AgentPlanner.extractAttributesWithRetry(imageUrl, category);
+    attributes = await AgentPlanner.extractAttributesWithRetry(itemId, imageUrl, category);
     debugPrint('[RECOMMEND] 속성 추출 완료: color=${attributes.color}, style=${attributes.style}');
   } catch (e) {
     // 업로드 자체는 이미 끝난 뒤라 실패를 사용자에게 노출하지 않는다.
@@ -1890,8 +1889,11 @@ class _SimilarItemThumbnail extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: CachedNetworkImage(
-              imageUrl: item.cutoutImageUrl ?? item.imageUrl,
+            child: SignedNetworkImage(
+              collection: 'wardrobe',
+              id: item.id,
+              urlIndex: item.cutoutImageUrl != null ? 1 : 0,
+              fallbackUrl: item.cutoutImageUrl ?? item.imageUrl,
               width: 64,
               height: 64,
               fit: BoxFit.cover,

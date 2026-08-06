@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../constants/app_colors.dart';
 import '../constants/tpo_tags.dart';
 import '../services/agent_planner.dart';
+import 'signed_network_image.dart';
 
 // 주간 코디 플랜 결과 시트 — 날짜별 조합 카드 리스트. 각 카드의 "이 코디로
 // 확정"을 누르면 onConfirm으로 그 날 착장이 캘린더에 저장된다(중복 확정 방지로
@@ -147,8 +147,11 @@ class _WeeklyPlanSheetState extends State<_WeeklyPlanSheet> {
                         padding: const EdgeInsets.only(right: 8),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: CachedNetworkImage(
-                            imageUrl: item.cutoutImageUrl ?? item.imageUrl,
+                          child: SignedNetworkImage(
+                            collection: 'wardrobe',
+                            id: item.id,
+                            urlIndex: item.cutoutImageUrl != null ? 1 : 0,
+                            fallbackUrl: item.cutoutImageUrl ?? item.imageUrl,
                             width: 52,
                             height: 64,
                             fit: BoxFit.cover,

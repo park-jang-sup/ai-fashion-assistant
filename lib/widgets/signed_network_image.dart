@@ -2,16 +2,17 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../services/image_url_resolver.dart';
 
+export '../services/image_url_resolver.dart' show signedUrlsEnabled;
+
 // 서명 URL 이행 A-4(docs/task_signed_urls_v1.md) — 킬 스위치. 기본
 // false면 이 위젯은 항상 fallbackUrl(기존 imageUrl/cutoutImageUrl)만
 // 쓰고 ImageUrlResolver를 아예 건드리지 않는다 — off 경로 비용 0,
 // 산출물이 CachedNetworkImage(imageUrl: fallbackUrl)와 100% 동일하다
 // (useEmbeddingRecovery/fillOptionalFromRelaxed와 같은 "기본 비활성
-// 도입" 패턴).
-//
-//   flutter run --dart-define=SIGNED_URLS=true
-const bool signedUrlsEnabled =
-    bool.fromEnvironment('SIGNED_URLS', defaultValue: false);
+// 도입" 패턴). 플래그 자체는 services/image_url_resolver.dart에 있다
+// — A-5(군 (a))에서 GeminiService도 이 플래그로 게이팅해야 해서
+// 서비스 계층으로 옮기고 여기서는 재수출만 한다(기존 import부
+// 호환 유지).
 
 // wardrobe/demo_wardrobe/fitting_cache 이미지를 그리는 공통 위젯 —
 // CachedNetworkImage를 감싸 SIGNED_URLS on일 때만 ImageUrlResolver를
@@ -27,6 +28,7 @@ class SignedNetworkImage extends StatefulWidget {
   final double? width;
   final double? height;
   final BoxFit? fit;
+  final Alignment alignment;
   final Widget Function(BuildContext, String)? placeholder;
   final Widget Function(BuildContext, String, Object)? errorWidget;
 
@@ -39,6 +41,7 @@ class SignedNetworkImage extends StatefulWidget {
     this.width,
     this.height,
     this.fit,
+    this.alignment = Alignment.center,
     this.placeholder,
     this.errorWidget,
   });
@@ -91,6 +94,7 @@ class _SignedNetworkImageState extends State<SignedNetworkImage> {
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
+      alignment: widget.alignment,
       placeholder: widget.placeholder,
       errorWidget: widget.errorWidget,
     );

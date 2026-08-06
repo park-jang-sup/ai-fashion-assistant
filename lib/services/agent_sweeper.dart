@@ -93,6 +93,7 @@ class AgentSweeper {
 
     try {
       final attributes = await AgentPlanner.extractAttributesWithRetry(
+        itemId,
         item.imageUrl,
         item.category,
       );

@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_colors.dart';
 import '../models/outfit_history_entry.dart';
 import '../models/wardrobe_item.dart';
 import '../services/firestore_service.dart';
+import 'signed_network_image.dart';
 
 // 보드에 배치되는 슬롯 정의. key는 화면 내부 상태 식별자(및 selectedItems의
 // 키)로 쓰이고, category는 wardrobeStream을 필터링할 때 쓰는 실제 등록
@@ -396,8 +396,11 @@ class _OutfitBoardState extends State<OutfitBoard> {
       width: width,
       height: height,
       child: item != null
-          ? CachedNetworkImage(
-              imageUrl: item.cutoutImageUrl ?? item.imageUrl,
+          ? SignedNetworkImage(
+              collection: 'wardrobe',
+              id: item.id,
+              urlIndex: item.cutoutImageUrl != null ? 1 : 0,
+              fallbackUrl: item.cutoutImageUrl ?? item.imageUrl,
               fit: BoxFit.contain,
               alignment: alignment,
               placeholder: (_, __) => const SizedBox.shrink(),
@@ -658,8 +661,11 @@ class _BoardItemPickerSheet extends StatelessWidget {
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(9),
-                            child: CachedNetworkImage(
-                              imageUrl: item.cutoutImageUrl ?? item.imageUrl,
+                            child: SignedNetworkImage(
+                              collection: 'wardrobe',
+                              id: item.id,
+                              urlIndex: item.cutoutImageUrl != null ? 1 : 0,
+                              fallbackUrl: item.cutoutImageUrl ?? item.imageUrl,
                               fit: BoxFit.cover,
                               placeholder: (_, __) => Container(color: AppColors.background),
                               errorWidget: (_, __, ___) => Container(

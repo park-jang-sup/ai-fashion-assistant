@@ -12,6 +12,7 @@ import '../models/wardrobe_item.dart';
 import '../services/agent_planner.dart';
 import '../services/firestore_service.dart';
 import '../widgets/calendar_record_sheet.dart';
+import '../widgets/signed_network_image.dart';
 import '../widgets/weekly_plan_sheet.dart';
 
 // 착장 캘린더(OOTD 기록) 탭. 월간 뷰에서 기록 있는 날에 마커를 찍고,
@@ -525,8 +526,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ? Container(
                           color: AppColors.background,
                           padding: const EdgeInsets.all(4),
-                          child: CachedNetworkImage(
-                            imageUrl:
+                          child: SignedNetworkImage(
+                            collection: 'wardrobe',
+                            id: representativeItem.id,
+                            urlIndex: representativeItem.cutoutImageUrl != null ? 1 : 0,
+                            fallbackUrl:
                                 representativeItem.cutoutImageUrl ?? representativeItem.imageUrl,
                             fit: BoxFit.contain,
                             placeholder: (_, __) => Container(color: AppColors.background),

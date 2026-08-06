@@ -80,6 +80,7 @@ class FittingJobController extends ChangeNotifier {
         DateTime? debugFirstChunkAt;
         await for (final chunk in GeminiService.analyzeOutfitFromAttributesStream(
           items: itemsWithAttributes,
+          userPhotoId: userPhoto?.id,
           userPhotoUrl: userPhoto?.imageUrl,
           userProfile: userProfile,
           recentHistoryText: recentHistoryText,
@@ -106,6 +107,7 @@ class FittingJobController extends ChangeNotifier {
         analysisResult = await GeminiService.withTextModelFallback(
           (model) => GeminiService.analyzeOutfitFromAttributes(
             items: itemsWithAttributes,
+            userPhotoId: userPhoto?.id,
             userPhotoUrl: userPhoto?.imageUrl,
             userProfile: userProfile,
             recentHistoryText: recentHistoryText,
@@ -180,6 +182,7 @@ class FittingJobController extends ChangeNotifier {
 
       final extracted = await GeminiService.withTextModelFallback(
         (model) => GeminiService.extractAttributes(
+          itemId: item.id,
           imageUrl: item.imageUrl,
           category: item.category,
           model: model,
@@ -236,7 +239,9 @@ class FittingJobController extends ChangeNotifier {
 
       final bytes = await _withRetry(
         () => GeminiService.generateFittingImage(
+          userPhotoId: userPhoto.id,
           userPhotoUrl: userPhoto.imageUrl,
+          clothingItemIds: clothingItems.map((i) => i.id).toList(),
           clothingImageUrls: clothingItems.map((i) => i.imageUrl).toList(),
           clothingNames: clothingItems.map((i) => i.category).toList(),
         ),

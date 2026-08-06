@@ -11,6 +11,7 @@ import '../services/agent_activity.dart';
 import '../services/firestore_service.dart';
 import '../services/weather_service.dart';
 import '../widgets/calendar_record_sheet.dart';
+import '../widgets/signed_network_image.dart';
 
 // ── 홈 화면: "DOT." 레퍼런스 디자인에 맞춰 단순화한 버전.
 // 인사/날씨 히어로, 액션 그리드, 최근 착장 레일, AI 팁 배너를 하나의
@@ -538,8 +539,11 @@ class _RecommendationItemImage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(20),
-      child: CachedNetworkImage(
-        imageUrl: item.cutoutImageUrl ?? item.imageUrl,
+      child: SignedNetworkImage(
+        collection: 'wardrobe',
+        id: item.id,
+        urlIndex: item.cutoutImageUrl != null ? 1 : 0,
+        fallbackUrl: item.cutoutImageUrl ?? item.imageUrl,
         fit: BoxFit.contain,
         placeholder: (_, __) => const SizedBox.shrink(),
         errorWidget: (_, __, ___) =>
@@ -896,8 +900,11 @@ class _WeeklyCalendarSectionState extends State<_WeeklyCalendarSection> {
                         ? Container(
                             color: AppColors.background,
                             padding: const EdgeInsets.all(4),
-                            child: CachedNetworkImage(
-                              imageUrl:
+                            child: SignedNetworkImage(
+                              collection: 'wardrobe',
+                              id: representativeItem.id,
+                              urlIndex: representativeItem.cutoutImageUrl != null ? 1 : 0,
+                              fallbackUrl:
                                   representativeItem.cutoutImageUrl ?? representativeItem.imageUrl,
                               fit: BoxFit.contain,
                               placeholder: (_, __) => Container(color: AppColors.background),

@@ -8,6 +8,7 @@ import '../models/clothing_attributes.dart';
 import '../models/clothing_size.dart';
 import '../models/user_profile.dart';
 import 'gemini_api_exception.dart';
+import 'image_url_resolver.dart';
 
 class GeminiService {
   // 모델명을 한 곳에 모아서 나중에 교체하기 쉽게 관리한다.
@@ -187,15 +188,21 @@ class GeminiService {
   // 그대로 넣는 것뿐이다(텍스트 계열 호출들과 동일한 패턴, gemini_service.dart
   // 상단 A-1 주석 참고).
   static Future<Uint8List> generateFittingImage({
+    required String userPhotoId,
     required String userPhotoUrl,
+    required List<String> clothingItemIds,
     required List<String> clothingImageUrls,
     required List<String> clothingNames,
   }) async {
     // 이미지들을 순차 다운로드하면 N개 x 다운로드시간만큼 대기하게 되므로
     // Future.wait로 병렬 실행해 가장 느린 한 건의 시간만큼만 기다리게 한다.
     final downloaded = await Future.wait([
-      _downloadImageBytesCached(userPhotoUrl),
-      ...clothingImageUrls.map(_downloadImageBytesCached),
+      _downloadViaResolverOrFallback(id: userPhotoId, fallbackUrl: userPhotoUrl),
+      for (var i = 0; i < clothingItemIds.length; i++)
+        _downloadViaResolverOrFallback(
+          id: clothingItemIds[i],
+          fallbackUrl: clothingImageUrls[i],
+        ),
     ]);
     final userPhotoBytes = downloaded.first;
     final clothingImageBytes = downloaded.skip(1).toList();
@@ -219,11 +226,12 @@ class GeminiService {
 
   // ── 옷 사진 1장 → 속성 추출 (등록 시점 백그라운드 / 분석 시점 폴백) ──
   static Future<ClothingAttributes> extractAttributes({
+    required String itemId,
     required String imageUrl,
     required String category,
     String? model,
   }) async {
-    final bytes = await _downloadImageBytesCached(imageUrl);
+    final bytes = await _downloadViaResolverOrFallback(id: itemId, fallbackUrl: imageUrl);
     final parts = <Map<String, dynamic>>[
       {'text': _buildAttributeExtractionPrompt(category)},
       {'inlineData': {'mimeType': 'image/jpeg', 'data': base64Encode(bytes)}},
@@ -361,6 +369,7 @@ class GeminiService {
   // ── 코디 텍스트 분석 (옷 이미지 대신 캐싱된 속성 텍스트로 매칭 평가) ──
   static Future<String> analyzeOutfitFromAttributes({
     required List<({String category, ClothingAttributes attributes})> items,
+    String? userPhotoId,
     String? userPhotoUrl,
     UserProfile? userProfile,
     String? recentHistoryText,
@@ -378,7 +387,12 @@ class GeminiService {
 
     final imageParts = <Map<String, dynamic>>[];
     if (!hasProfile && userPhotoUrl != null) {
-      final bytes = await _downloadImageBytesCached(userPhotoUrl);
+      // userPhotoId는 호출부가 userPhotoUrl과 항상 같이 넘긴다(둘 다
+      // 같은 WardrobeItem에서 나옴) — null이면 서명 경로를 건너뛰고
+      // 바로 기존 URL로 내려받는다(방어적).
+      final bytes = userPhotoId != null
+          ? await _downloadViaResolverOrFallback(id: userPhotoId, fallbackUrl: userPhotoUrl)
+          : await _downloadImageBytesCached(userPhotoUrl);
       imageParts.add({
         'inlineData': {'mimeType': 'image/jpeg', 'data': base64Encode(bytes)}
       });
@@ -476,6 +490,7 @@ $feedbackSection
   // 텍스트를 그때그때 yield해 화면에 점진적으로 표시할 수 있게 한다.
   static Stream<String> analyzeOutfitFromAttributesStream({
     required List<({String category, ClothingAttributes attributes})> items,
+    String? userPhotoId,
     String? userPhotoUrl,
     UserProfile? userProfile,
     String? recentHistoryText,
@@ -486,7 +501,12 @@ $feedbackSection
 
     final imageParts = <Map<String, dynamic>>[];
     if (!hasProfile && userPhotoUrl != null) {
-      final bytes = await _downloadImageBytesCached(userPhotoUrl);
+      // userPhotoId는 호출부가 userPhotoUrl과 항상 같이 넘긴다(둘 다
+      // 같은 WardrobeItem에서 나옴) — null이면 서명 경로를 건너뛰고
+      // 바로 기존 URL로 내려받는다(방어적).
+      final bytes = userPhotoId != null
+          ? await _downloadViaResolverOrFallback(id: userPhotoId, fallbackUrl: userPhotoUrl)
+          : await _downloadImageBytesCached(userPhotoUrl);
       imageParts.add({
         'inlineData': {'mimeType': 'image/jpeg', 'data': base64Encode(bytes)}
       });
@@ -530,6 +550,22 @@ $feedbackSection
     final bytes = await _downloadImageBytes(url);
     _imageCache[url] = bytes;
     return bytes;
+  }
+
+  // A-5 군 (a) — 사용자 사진·옷 원본 다운로드는 전부 `wardrobe` 문서
+  // (urlIndex 0 = 이미지, 컷아웃 아님 — 합성·속성추출은 원본을 쓴다).
+  // 서명 URL이 꺼져 있거나(SIGNED_URLS=false) 서버가 이 id를 거부하면
+  // (정책 거부·경로 없음 등) 기존 URL로 그대로 내려받는다 — 표시
+  // 위젯(SignedNetworkImage)의 폴백과 대칭인 동작.
+  static Future<Uint8List> _downloadViaResolverOrFallback({
+    required String id,
+    required String fallbackUrl,
+  }) async {
+    final urls = await ImageUrlResolver.resolveIfEnabled(collection: 'wardrobe', id: id);
+    if (urls != null && urls.isNotEmpty) {
+      return _downloadImageBytesCached(urls[0]);
+    }
+    return _downloadImageBytesCached(fallbackUrl);
   }
 
   static String _extractTextFromResponse(String body) {

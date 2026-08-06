@@ -2,6 +2,16 @@ import 'dart:async';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 
+// 서명 URL 이행 A-4의 킬 스위치 — 여기 두는 이유(2026-08-06 이전엔
+// widgets/signed_network_image.dart에만 있었다): A-5에서 GeminiService의
+// 다운로드 경로(군 (a))도 이 플래그로 게이팅해야 하는데, 서비스가
+// 위젯 파일을 import하는 건 계층을 거스른다 — 서비스 계층인 여기로
+// 옮기고 signed_network_image.dart는 재수출만 한다.
+//
+//   flutter run --dart-define=SIGNED_URLS=true
+const bool signedUrlsEnabled =
+    bool.fromEnvironment('SIGNED_URLS', defaultValue: false);
+
 // 서명 URL 이행 A-3(docs/task_signed_urls_v1.md) — 화면은 이 클래스를
 // 거쳐서만 서명 URL을 받는다(A-4에서 배선). GeminiService/StorageService와
 // 같은 static-only 서비스 패턴을 따른다.
@@ -105,6 +115,17 @@ class ImageUrlResolver {
     _pendingQueue.add((collection: collection, id: id));
     _flushTimer ??= Timer(_coalesceWindow, _flushPending);
     return completer.future;
+  }
+
+  // A-5 군 (a) — GeminiService의 다운로드 경로가 쓰는 진입점. 킬 스위치가
+  // off면 resolve()조차 부르지 않는다(호출부가 매번 signedUrlsEnabled를
+  // 따로 검사하지 않아도 되게, 여기서 한 곳에 모아둔다).
+  static Future<List<String>?> resolveIfEnabled({
+    required String collection,
+    required String id,
+  }) {
+    if (!signedUrlsEnabled) return Future.value(null);
+    return resolve(collection: collection, id: id);
   }
 
   static Future<void> _flushPending() async {

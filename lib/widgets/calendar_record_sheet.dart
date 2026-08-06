@@ -10,6 +10,7 @@ import '../models/outfit_history_entry.dart';
 import '../models/wardrobe_item.dart';
 import '../services/agent_planner.dart';
 import '../services/firestore_service.dart';
+import 'signed_network_image.dart';
 
 // 착장 기록 바텀시트 — 캘린더 화면과 스크랩 화면이 공용으로 연다.
 // (a) TPO 태그 선택 (b) 착장 소스 선택: 최근 가상 피팅 결과에서 고르거나
@@ -479,8 +480,11 @@ class _CalendarRecordSheetState extends State<_CalendarRecordSheet> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(7),
-                    child: CachedNetworkImage(
-                      imageUrl: item.cutoutImageUrl ?? item.imageUrl,
+                    child: SignedNetworkImage(
+                      collection: 'wardrobe',
+                      id: item.id,
+                      urlIndex: item.cutoutImageUrl != null ? 1 : 0,
+                      fallbackUrl: item.cutoutImageUrl ?? item.imageUrl,
                       fit: BoxFit.cover,
                       placeholder: (_, __) => Container(color: AppColors.background),
                       errorWidget: (_, __, ___) => Container(color: AppColors.background),

@@ -774,11 +774,13 @@ class AgentPlanner {
   // 타임아웃/일시적 과부하 시 같은 모델로 재시도하는 대신 대체 모델로 바꿔
   // 한 번 더 시도한다(GeminiService.withTextModelFallback 공통 정책).
   static Future<ClothingAttributes> extractAttributesWithRetry(
+    String itemId,
     String imageUrl,
     String category,
   ) {
     return GeminiService.withTextModelFallback(
       (model) => GeminiService.extractAttributes(
+        itemId: itemId,
         imageUrl: imageUrl,
         category: category,
         model: model,

@@ -620,8 +620,10 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(9),
-                    child: CachedNetworkImage(
-                      imageUrl: photo.imageUrl,
+                    child: SignedNetworkImage(
+                      collection: 'wardrobe',
+                      id: photo.id,
+                      fallbackUrl: photo.imageUrl,
                       fit: BoxFit.cover,
                       placeholder: (_, __) => Container(color: AppColors.background),
                       errorWidget: (_, __, ___) => Container(color: AppColors.background),
@@ -979,7 +981,32 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
                             child: const Icon(Icons.image_outlined,
                                 color: AppColors.textDisabled, size: 40)),
                       )
+                    else if (fittingImageUrl == null && widget.userPhoto != null)
+                      // 아직 실제 피팅 결과가 없어 사용자 사진을 placeholder로
+                      // 보여주는 경우 — fitting_cache가 아니라 wardrobe 문서다.
+                      SignedNetworkImage(
+                        collection: 'wardrobe',
+                        id: widget.userPhoto!.id,
+                        fallbackUrl: _mockFittingImageUrl!,
+                        width: double.infinity,
+                        height: 320,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                            height: 320,
+                            color: AppColors.background,
+                            child: const Center(
+                                child: CircularProgressIndicator(
+                                    color: AppColors.navy, strokeWidth: 2))),
+                        errorWidget: (_, __, ___) => Container(
+                            height: 220,
+                            color: AppColors.background,
+                            child: const Icon(Icons.image_outlined,
+                                color: AppColors.textDisabled, size: 40)),
+                      )
                     else
+                      // fittingImageUrl은 있는데 fittingCacheKey가 없는 드문
+                      // 경우(uid 없어 캐시 문서 저장을 건너뛴 생성 직후, §10
+                      // 참고) — 서명 대상 문서 자체가 없어 폴백 유지.
                       CachedNetworkImage(
                         imageUrl: fittingImageUrl ?? _mockFittingImageUrl!,
                         width: double.infinity,
@@ -1648,8 +1675,11 @@ class _StyleRecommendationRowState extends State<_StyleRecommendationRow> {
                     border: Border.all(color: AppColors.border),
                   ),
                   clipBehavior: Clip.antiAlias,
-                  child: CachedNetworkImage(
-                    imageUrl: slide.item.cutoutImageUrl ?? slide.item.imageUrl,
+                  child: SignedNetworkImage(
+                    collection: 'wardrobe',
+                    id: slide.item.id,
+                    urlIndex: slide.item.cutoutImageUrl != null ? 1 : 0,
+                    fallbackUrl: slide.item.cutoutImageUrl ?? slide.item.imageUrl,
                     fit: BoxFit.cover,
                     placeholder: (_, __) => Container(color: AppColors.surface),
                     errorWidget: (_, __, ___) =>
@@ -1782,8 +1812,11 @@ class _FittingLoadingPopupState extends State<_FittingLoadingPopup> {
                               final item = slides[i].item;
                               return Padding(
                                 padding: const EdgeInsets.all(14),
-                                child: CachedNetworkImage(
-                                  imageUrl: item.cutoutImageUrl ?? item.imageUrl,
+                                child: SignedNetworkImage(
+                                  collection: 'wardrobe',
+                                  id: item.id,
+                                  urlIndex: item.cutoutImageUrl != null ? 1 : 0,
+                                  fallbackUrl: item.cutoutImageUrl ?? item.imageUrl,
                                   fit: BoxFit.contain,
                                   placeholder: (_, __) => const SizedBox.shrink(),
                                   errorWidget: (_, __, ___) => const Icon(
@@ -1989,8 +2022,11 @@ class _WardrobePickerSheet extends StatelessWidget {
                               child: Stack(
                                 fit: StackFit.expand,
                                 children: [
-                                  CachedNetworkImage(
-                                    imageUrl: item.cutoutImageUrl ?? item.imageUrl,
+                                  SignedNetworkImage(
+                                    collection: 'wardrobe',
+                                    id: item.id,
+                                    urlIndex: item.cutoutImageUrl != null ? 1 : 0,
+                                    fallbackUrl: item.cutoutImageUrl ?? item.imageUrl,
                                     fit: BoxFit.cover,
                                     placeholder: (_, __) =>
                                         Container(color: AppColors.background),
