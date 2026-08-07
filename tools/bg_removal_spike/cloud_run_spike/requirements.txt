@@ -1,4 +1,4 @@
 firebase-functions>=0.4.0
-rembg>=2.0.60
 onnxruntime>=1.19.0
+numpy>=1.26.0
 pillow>=10.0.0
