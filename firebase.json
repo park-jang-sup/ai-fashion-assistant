@@ -15,12 +15,6 @@
       ]
     },
     {
-      "source": "tools/bg_removal_spike/cloud_run_spike",
-      "codebase": "bgremovalspike",
-      "runtime": "python312",
-      "ignore": ["venv", "__pycache__", "*.pyc", ".gcloudignore"]
-    },
-    {
       "source": "functions_bg_removal",
       "codebase": "bgremoval",
       "runtime": "python312",

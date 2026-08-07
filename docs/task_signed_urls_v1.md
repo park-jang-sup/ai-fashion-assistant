@@ -1332,4 +1332,33 @@ merge write로 채운 직후, 옷장 화면에 이미 떠 있던 카드가 플�
 확인한다.
 
 `flutter analyze` 클린, `flutter test` 166개 전량 통과(기존 163 +
-신규 3) 확인 후 커밋 예정.
+신규 3) 확인 후 커밋(`3515ae2`, `2026-08-07 16:03:25 +0900`).
+
+**재현 보고("수정 후에도 재현됐다") 원인 확정 — 재빌드 누락,
+간헐 결함 아님(2026-08-07).** 커밋 직후 재실측을 요청했으나 실제로는
+`flutter build`/`adb install`을 다시 하지 않았다 — 폰에는 이 수정이
+없는 이전 릴리스 APK(§1-7 "실측 1·2 통과" 때 설치분)가 그대로 남아
+있었다. 원인 미상으로 남기지 않고 다음 두 근거로 확정:
+
+- **커밋 시각과 설치 시각 대조.** 수정 커밋 `2026-08-07 16:03:25`.
+  이 수정을 포함한 첫 설치는 진단 로그를 추가한 디버그 빌드
+  (`adb shell dumpsys package com.fashionai.ai_fashion_assistant` →
+  `lastUpdateTime=2026-08-07 16:20:30`) — 커밋보다 **17분 뒤**다.
+  그 사이 세션에서 실행한 빌드/설치 명령이 없다(대화 기록으로
+  확인) — 즉 "재현됐다" 보고 시점의 APK는 수정 전 것으로 확정.
+- **수정 포함 빌드에서의 실행 경로 실측(로그).** 위 디버그 빌드로
+  재등록했을 때: Firestore `snapshots()`가 갱신을 실제로 수신
+  (`docChange type=DocumentChangeType.modified`, `cutoutImageUrl`/
+  `cutoutPath` 포함) → `didUpdateWidget`이 `fallbackUrl` 변경을
+  감지(`sameFallback=false`) → `invalidate()` 호출
+  (`hadCache=true`) → 재해석이 `urlsLen=2`로 응답 → `urlIndex=1`이
+  유효 범위 안. 같은 컷아웃 객체로 별도 발급한 서명 URL을 직접
+  curl해 `HTTP_STATUS:200 SIZE:201677 CONTENT_TYPE:image/png`도
+  확인 — 위젯 로직·캐시·서버 서명·객체 전부 정상.
+
+두 근거를 합치면 "안 됐다가 갑자기 잘 된다"가 아니라 **"수정이
+설치 안 된 빌드로 실패를 재확인했고, 수정이 설치된 빌드에서는
+처음부터 성공했다"**로 확정된다 — 이 결함 자체의 재발이나 간헐성은
+없다. 이 트랙(배경 제거 재개)에서 발견된 결함1(카테고리 메타데이터
+미필터링)의 첫 실측 실패와 같은 유형(구버전 앱으로 검증)의 두 번째
+사례 — `docs/task_background_removal_v1.md` §1-7에도 교차 기록.
