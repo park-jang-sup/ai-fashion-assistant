@@ -338,6 +338,44 @@ Eventarc 트리거로 동시에 받는다** — GCP는 이걸 순서 보장 없�
    대조 없이는 임의의 인증된 클라이언트가 `wardrobeDocId`를
    조작해 **다른 사용자의 문서에 컷아웃을 주입**할 수 있다 —
    메타데이터를 신뢰하되 소유권만은 서버가 다시 확인한다.
+
+   **[정정 2026-08-08] 이 서술은 틀렸다 — "서버가 다시 확인한다"가
+   아니라 자기참조 대조다.** 대조하는 두 값 중 하나(메타데이터의
+   `ownerUid`)가 바로 그 업로더가 임의로 실을 수 있는 값이라
+   (`storage_service.dart`의 `uploadWardrobeImage`가 호출부
+   파라미터를 그대로 커스텀 메타데이터에 싣고, `storage.rules`는
+   `request.resource.metadata`를 전혀 검사하지 않는다 — 위 문단이
+   인용한 `storage.rules` 서술 자체는 맞다), 서버는 "요청자가 실은
+   `ownerUid`"와 "대상 문서의 `ownerUid`"가 같은지만 볼 뿐 요청자가
+   실제로 그 uid의 소유자인지는 확인하지 못한다.
+
+   **실제로 막는 범위**: `wardrobeDocId`만 단독으로 조작하는 경우
+   (자기 `ownerUid` + 남의 `wardrobeDocId`) — 대상 문서의 실제
+   `ownerUid`와 안 맞아 걸린다.
+   **못 막는 범위**: `wardrobeDocId`와 `ownerUid`를 피해자 값으로
+   짝 맞춰 보내는 경우 — 대조를 그대로 통과해 타인의 문서에
+   `cutoutPath`/`cutoutImageUrl`이 주입된다.
+
+   다만 그러려면 공격자가 피해자의 `wardrobeDocId`와 `uid`를 둘 다
+   알아야 하고, 피해자의 `wardrobe` 문서는 `firestore.rules`로 읽을
+   수 없어 그 값을 알아낼 경로가 마땅치 않다 — 심각도를 부풀리지
+   않는다. 지금은 등록만, 로직은 안 고친다(`functions_bg_removal/
+   main.py`의 같은 날짜 정정 참고).
+
+   **유효해지는 조건**: `storage.rules`의 `wardrobe_images/` write
+   규칙이 `request.resource.metadata.ownerUid == request.auth.uid`를
+   요구해야 한다.
+   **다만 이 조건을 걸 때 프리픽스를 반드시 `wardrobe_images/`로
+   한정해야 한다** — `storage_service.dart`의 `uploadWardrobeCutout`/
+   `uploadFittingResult`는 `customMetadata` 자체를 안 싣는다(직접
+   확인: 둘 다 `SettableMetadata(contentType: ...)`만 넘기고
+   `customMetadata` 필드가 없음). 같은 조건을 전역이나
+   `wardrobe_cutouts/`/`fitting_results/`에도 걸면 검증할 메타데이터
+   자체가 없어 컷아웃·피팅 결과 업로드가 조용히
+   permission-denied로 죽는다 — `isValidImage`가
+   `request.resource == null`을 먼저 보는 것(주석 참고)과 같은
+   계열의 함정. 다음 작업(규칙 실제 수정)의 설계 근거로 남긴다.
+
 6. `demo_wardrobe`는 대상이 아니다 — 데모 옷장은
    `seedDemoWardrobe()`(`firestore_service.dart`)가 기존 `wardrobe`
    컷아웃을 복사해 채우는 것이라(코드 확인됨) 이 트리거를 거치는

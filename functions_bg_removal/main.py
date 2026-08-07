@@ -17,12 +17,27 @@ Storage 커스텀 메타데이터(`wardrobeDocId`/`ownerUid`/`category`)에
 실어 보내고, 이 함수는 조회 없이 그 문서를 바로 대상으로 삼는다.
 **메타데이터(셋 중 하나라도)가 없는 업로드는 처리 대상에서 제외하고
 로그만 남긴다** — 경로 기반으로 문서를 추측하지 않는다(레거시 업로드,
-다른 클라이언트 대비). `ownerUid`는 방어용 — 대상 문서가 이미
-존재하면 그 문서의 `ownerUid`와 메타데이터의 `ownerUid`가 일치하는지
-대조해, 다른 사용자의 문서에 컷아웃이 주입되는 걸 막는다
-(`storage.rules`가 `wardrobe_images/`에 소유자 검사 없이
-`allow write: if request.auth != null`만 요구하므로 이 대조가 없으면
-임의의 인증된 클라이언트가 `wardrobeDocId`를 조작해 주입할 수 있다).
+다른 클라이언트 대비). **[정정 2026-08-08] `ownerUid` 대조는 소유권을
+증명하지 못한다 — 자기참조다.** 대상 문서가 이미 존재하면 그 문서의
+`ownerUid`와 메타데이터의 `ownerUid`가 일치하는지 대조하지만,
+대조 대상인 메타데이터 쪽 `ownerUid` 자체가 업로더가 임의로 실은
+값이다(`storage.rules`의 `wardrobe_images/` write 규칙이
+`request.auth != null`과 `isValidImage(10)`만 검사하고
+`request.resource.metadata`는 전혀 검사하지 않기 때문 —
+`storage_service.dart`의 `uploadWardrobeImage`가 `wardrobeDocId`/
+`ownerUid`를 호출부 파라미터 그대로 커스텀 메타데이터에 싣는다).
+그래서 이 가드가 **실제로 막는 것은 `wardrobeDocId` 단독 조작뿐**
+(그러면 대상 문서의 실제 `ownerUid`와 업로더가 실은 자기 `ownerUid`가
+달라 걸린다) — **`wardrobeDocId`와 `ownerUid`를 피해자 값으로 짝
+맞춰 보내면 이 대조를 그대로 통과**해 타인의 문서에 `cutoutPath`/
+`cutoutImageUrl`이 주입된다. 다만 그러려면 공격자가 피해자의
+`wardrobeDocId`와 `uid`를 둘 다 알아야 하고, 피해자의 `wardrobe`
+문서는 `firestore.rules`로 읽을 수 없어 그 값을 알아낼 경로가
+마땅치 않다 — 등록만 해두고 이번 정정에서 로직은 안 고친다.
+유효해지려면 `storage.rules`가
+`request.resource.metadata.ownerUid == request.auth.uid`를
+요구해야 한다(별도 작업, `docs/task_background_removal_v1.md`
+항목 5 정정 참고).
 
 **'전신' 카테고리 제외(결함 1 수정, 2026-08-07)**: 전신 사진은 가상
 피팅의 기준 이미지이고(`wardrobe_screen.dart`도 같은 이유로
