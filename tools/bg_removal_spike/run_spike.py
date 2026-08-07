@@ -158,7 +158,7 @@ def _current_rss_mb() -> float:
     return psutil.Process().memory_info().rss / (1024 * 1024)
 
 
-def run_model(model_name: str, items: list[dict], new_session, remove) -> dict:
+def run_model(model_name: str, items: list[dict], new_session, remove, output_dir: Path) -> dict:
     print(f"\n--- 모델: {model_name} ---")
 
     gc.collect()
@@ -199,7 +199,7 @@ def run_model(model_name: str, items: list[dict], new_session, remove) -> dict:
         new_cutout_img.load()
         cutouts[item_id] = new_cutout_img
 
-        out_path = OUTPUT_DIR / f"{item_id}_{model_name}.png"
+        out_path = output_dir / f"{item_id}_{model_name}.png"
         out_path.write_bytes(result_bytes)
 
         per_item_results.append({
@@ -235,24 +235,27 @@ def run_model(model_name: str, items: list[dict], new_session, remove) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--models", default="u2netp,u2net", help="쉼표로 구분된 모델 목록(순서대로 실행)")
+    parser.add_argument("--tag", help="select_and_download.py --tag와 짝 — selection_<tag>.json을 읽고 outputs/<tag>/에 쓴다")
     args = parser.parse_args()
     model_names = [m.strip() for m in args.models.split(",") if m.strip()]
 
-    selection_path = INPUT_DIR / "selection.json"
+    selection_name = f"selection_{args.tag}.json" if args.tag else "selection.json"
+    selection_path = INPUT_DIR / selection_name
     if not selection_path.is_file():
-        raise SystemExit(f"selection.json이 없습니다 — 먼저 select_and_download.py를 실행하세요: {selection_path}")
+        raise SystemExit(f"{selection_name}이 없습니다 — 먼저 select_and_download.py를 실행하세요: {selection_path}")
     manifest = json.loads(selection_path.read_text(encoding="utf-8"))
     items = manifest["selected"]
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    output_dir = (OUTPUT_DIR / args.tag) if args.tag else OUTPUT_DIR
+    output_dir.mkdir(exist_ok=True, parents=True)
 
-    print(f"\n=== 배경 제거 스파이크 — {len(items)}건 x 모델 {model_names} ===")
+    print(f"\n=== 배경 제거 스파이크 — {len(items)}건 x 모델 {model_names} (tag={args.tag or '(기본)'}) ===")
 
     from rembg import new_session, remove  # 임포트 자체도 무거워 측정 시작 이후로 늦춘다
 
     per_model_reports = {}
     per_model_cutouts = {}
     for model_name in model_names:
-        result = run_model(model_name, items, new_session, remove)
+        result = run_model(model_name, items, new_session, remove, output_dir)
         per_model_reports[model_name] = result["report"]
         per_model_cutouts[model_name] = result["cutouts"]
 
@@ -271,15 +274,20 @@ def main() -> None:
             panels.append((_flatten_on_checkerboard(cutout_img), MODEL_LABELS.get(model_name, model_name)))
 
         compare_img = make_comparison(panels)
-        compare_out = OUTPUT_DIR / f"{item_id}_compare.png"
+        compare_out = output_dir / f"{item_id}_compare.png"
         compare_img.save(compare_out)
         print(f"  {item_id} -> {compare_out.name}")
 
     report = {
         "itemCount": len(items),
         "models": model_names,
+        "tag": args.tag,
         "perModel": per_model_reports,
-        "notes": {
+    }
+    # 아래 knownIssueCases는 기본(태그 없음) 15건 표본에서 발견된 사례라
+    # 태그 있는 실행(예: 신발 전수)에는 안 붙인다 — 다른 선정이라 무관하다.
+    if not args.tag:
+        report["notes"] = {
             "knownIssueCases": {
                 "kC0gwb3bHizwF5TPp2Th": (
                     "신발, 분리된 신발끈 — u2netp는 끈이 반투명하게 사라짐, "
@@ -307,9 +315,8 @@ def main() -> None:
                 "크롭 후처리를 파이프라인에 포함 예정 — 이 스파이크 "
                 "산출물 자체는 크롭 후처리 적용 전(원본 캔버스 그대로)."
             ),
-        },
-    }
-    report_path = OUTPUT_DIR / "report.json"
+        }
+    report_path = output_dir / "report.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print("\n=== 요약 ===")
@@ -321,7 +328,7 @@ def main() -> None:
               f"전체 피크 RSS {r['peakRssMbOverall']:.1f}MB (베이스라인 {r['baselineRssMbBeforeLoad']:.1f}MB)")
 
     print(f"\nreport.json: {report_path}")
-    print(f"비교 이미지: {OUTPUT_DIR}/<id>_compare.png")
+    print(f"비교 이미지: {output_dir}/<id>_compare.png")
 
 
 if __name__ == "__main__":

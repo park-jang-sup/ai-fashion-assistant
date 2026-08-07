@@ -274,6 +274,89 @@ Functions/Cloud Run 둘 다 컨테이너 기반 배포이므로 방식은 동일
   구조 자체를 줄이는 변경이라, 이러면 u2net의 콜드스타트 페널티도
   같이 줄어들어 재평가할 가치가 생긴다.
 
+### 2-4. 배포 실측 — §2-3의 콜드스타트 전제가 틀렸다 (2026-08-06/07)
+
+**전제 붕괴.** §2-3 결정은 로컬 하한(u2netp 1.29초) + "컨테이너
+부팅은 몇 초 더 붙을 것"이라는 가정 위에서 "업로드 후 백그라운드라
+체감 안 됨"이라고 판단했다. `tools/bg_removal_spike/cloud_run_spike/`
+(HTTP 최소 구성, u2netp 컨테이너 번들링, 최소 인스턴스 0, invoker를
+Admin SDK 서비스 계정으로 제한, 트리거 배선 없음)를 실제 배포해
+재보니:
+
+- **콜드스타트 실측 5회, 64~70초.** GCP 공식 지표
+  (`run.googleapis.com/container/startup_latencies` — 내 코드가
+  아니라 Cloud Run 자체가 잰 값) 4회: 67.9s/70.3s/67.9s/68.0s. 내
+  직접 호출(외부 wall-clock) 2회: 69.5s/65.3s(그중 1회는 GCP 지표와
+  같은 사건). **로컬 하한의 ~50배.**
+- **원인은 모델도 onnxruntime도 아니다.** 함수 내부 타이머로 분해한
+  결과 `moduleImportSeconds`(=rembg의 `import` 문 자체)가 63~67초로
+  전체의 93% 이상, 모델 로드(0.1초)·요청 처리(1~1.6초)는 로컬과
+  비슷하게 빠르다.
+- **스케일다운이 예상(15분)보다 훨씬 공격적이다.**
+  `run.googleapis.com/container/instance_count` 지표 실측 —
+  마지막 요청 후 **1~3분 안에** 인스턴스가 사라진다. 연속으로 호출한
+  두 요청도 각각 콜드스타트였다(둘 다 moduleImportSeconds
+  63~67초로 동일). 콜드스타트가 드물 것이라는 가정도 같이 무너진다.
+- **메모리·품질은 이상 없음** — 피크 메모리 실측 695MB/1024MB(68%,
+  `run.googleapis.com/container/memory/utilizations`), 로컬 실측
+  (693MB)과 거의 일치. 결과 이미지는 로컬과 픽셀 대조(평균 절대
+  차이 0.39/255, 치수 동일) — 배포 함수가 입력을 JPEG로 한 번
+  재인코딩하는 정규화 단계 때문의 미세 차이일 뿐 품질 문제 아님.
+- 이번 배포+테스트 호출로 든 실제 비용: 콜드 5회+웜 2회 ≈ 350
+  vCPU-초, 무료 등급(180,000/월)의 0.19% — §2-3의 비용 그림 자체는
+  안 바뀐다.
+
+**결론: 68~70초는 감수하지 않는다(사용자 판단, 2026-08-07) — min-
+instances=1로 되돌리지도 않는다(월 $56, "비용 없는 개발" 원칙에
+어긋남).** 재검토 조건 (c)(경량 런타임)를 즉시 착수.
+
+### 2-5. 재검토 조건 (c) 착수 — 원인 확정 + 경량 재구현 검증 (2026-08-07)
+
+**원인 확정(로컬, `python -X importtime -c "import rembg"`)**: 예상
+(numba/scipy)은 맞았지만 경로가 달랐다 — **`rembg.bg`가 모듈 로드
+시점에 `pymatting.alpha`를 무조건 임포트한다.** `pymatting.alpha`
+→ `pymatting.util` → `pymatting.util.kdtree` → `numba` →
+`numba.np.arraymath`/`numba.core.config` → `scipy.linalg`가 로컬
+기준 전체 임포트 시간(1.9초)의 **63%(1.2초)**를 차지 — onnxruntime
+자체는 176ms(9%)뿐이다. **결정적으로, 이 경로는 죽은 코드다**:
+`remove(img, session=session)`(우리가 실제로 쓰는 기본 인자)는
+`alpha_matting=False`가 기본값이라 `naive_cutout()`만 실행되고
+`pymatting`은 임포트만 되고 한 번도 호출되지 않는다. Cloud Run
+콜드 컨테이너의 디스크 I/O가 로컬 SSD보다 훨씬 느려서(추정 — 정확한
+원인은 GCP 인프라 내부라 확인 불가) 이 무거운 체인(특히 numba의
+LLVM JIT 백엔드 초기화)이 로컬 대비 불균형하게 느려진 것으로 보인다
+(63~67초/1.2초 ≈ 50~55배, onnxruntime 자체의 로컬~클라우드 배율과
+직접 비교할 클라우드 실측치는 없음 — §2-4의 68초는 rembg 전체
+import 한 덩어리로만 쟀지 패키지별로 분해하지 않았다).
+
+**경량 재구현(`tools/bg_removal_spike/minimal_runtime.py`)**:
+rembg 없이 onnxruntime+numpy+Pillow만으로 동일 파이프라인을
+재현했다 — `rembg.sessions.base.BaseSession.normalize()`(ImageNet
+평균/표준편차, 320×320, LANCZOS)와
+`rembg.sessions.u2netp.U2netpSession.predict()`의 후처리, `rembg.bg
+.naive_cutout()`/`fix_image_orientation()`을 소스에서 그대로 확인해
+옮겼다(정규화 파라미터를 임의로 정하지 않음).
+
+**검증 — 34건(기존 15건 표본 + 신발 22벌 전수의 합집합, 중복 제거),
+크롭 전 상태로 rembg u2netp 출력과 픽셀 대조**:
+- **픽셀 차이 0.0000/255, 34건 전부 — 완전히 동일한 마스크.**
+  결정론적 추론이라 당연한 결과지만, 재구현이 rembg의 전처리/
+  후처리를 정확히 재현했다는 직접 증거다.
+- **임포트 시간 0.107초**(rembg 1.04~1.36초 대비 **~10~13배
+  감소**, 로컬 기준).
+- 모델 로드 0.077초, 장당 추론 평균 0.128초(rembg와 사실상 동일 —
+  같은 onnxruntime 호출이므로 예상대로).
+- 피크 RSS 646.4MB — rembg 버전(693MB)보다 오히려 낮음(scipy/numba/
+  pymatting을 안 올리므로).
+
+**아직 확인 안 된 것**: 이 로컬 개선이 클라우드 콜드스타트에 그대로
+반영되는지는 **미실측**이다. §2-4의 교훈이 정확히 "로컬 배율로
+클라우드를 추정하면 틀린다"였으므로(로컬에선 rembg 전체가 1.9초인데
+클라우드에선 68초, 로컬 기준 상상도 못 할 배율), 이번에도 로컬 10배
+개선을 클라우드에 그대로 대입하지 않는다 — 재배포해 실측해야 한다
+(사용자 승인 대기, `tools/bg_removal_spike/cloud_run_spike/`가
+비교 대상으로 남아있어 같은 조건으로 바로 재배포 가능).
+
 ## 3. 컷아웃 없는 상태의 처리
 
 현행 동작과 동일하게 유지한다(4장 원칙 — "폴백은 아무것도 하지

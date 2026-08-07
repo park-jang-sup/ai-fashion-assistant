@@ -6,13 +6,22 @@ Storage 객체를 조회·다운로드만 하고, 어떤 문서·파일도 쓰�
 선정 방법: ownerUid가 실제 사용자(uid는 --uid로 지정, 기본값은 이
 세션에서 계속 써온 본인 계정)인 wardrobe 문서 중 imagePath와
 cutoutPath(=온디바이스 ONNX로 이미 만들어진 컷아웃)가 둘 다 있는
-것만 후보로 삼는다. 카테고리별로 createdAt 오름차순 정렬 후 등간격
-인덱스로 뽑는다 — 특정 업로드 배치(같은 날 한꺼번에 올린 것들)에
-쏠리지 않게 하기 위해서다. "결과가 잘 나올 것 같은 것"을 사람이
-눈으로 고르지 않는다.
+것만 후보로 삼는다. 기본 모드는 카테고리별로 createdAt 오름차순
+정렬 후 등간격 인덱스로 뽑는다 — 특정 업로드 배치(같은 날 한꺼번에
+올린 것들)에 쏠리지 않게 하기 위해서다. "결과가 잘 나올 것 같은
+것"을 사람이 눈으로 고르지 않는다.
+
+--category를 주면 표본 추출을 하지 않고 그 카테고리 **전수**를
+선정한다(신발 22벌 전수 평가처럼 표본 대신 전량이 필요할 때).
+--tag를 주면 selection_<tag>.json으로 별도 저장해 기존 선정
+(기본 selection.json, 5카테고리 x 3건)과 섞이지 않는다 — 다운로드된
+원본/컷아웃 파일 자체는 item id로 이름 붙어 공유되므로 겹치는
+항목은 중복 다운로드 없이 재사용된다.
 
 원본 다운로드가 실패하는 항목(예: §8-3 사고로 원본이 소실된 문서)은
-같은 카테고리의 다음 인덱스로 자동 대체한다.
+표본 모드에서는 같은 카테고리의 다음 인덱스로 자동 대체하고,
+전수 모드(--category)에서는 그냥 제외한다(대체할 다음 순번 개념이
+없음 — 전수이므로).
 """
 from __future__ import annotations
 
@@ -98,7 +107,9 @@ def main() -> None:
     parser.add_argument("--credentials", help="서비스 계정 키 경로(저장소 밖). 생략 시 GOOGLE_APPLICATION_CREDENTIALS 사용")
     parser.add_argument("--uid", default=DEFAULT_UID, help=f"대상 사용자 uid(기본 {DEFAULT_UID})")
     parser.add_argument("--bucket", default=DEFAULT_BUCKET, help="Storage 버킷 이름")
-    parser.add_argument("--per-category", type=int, default=PER_CATEGORY, help="카테고리당 선정 개수")
+    parser.add_argument("--per-category", type=int, default=PER_CATEGORY, help="카테고리당 선정 개수(표본 모드)")
+    parser.add_argument("--category", help="지정하면 표본 대신 이 카테고리 전수를 선정한다(예: 신발)")
+    parser.add_argument("--tag", help="selection_<tag>.json으로 별도 저장(기본 selection.json과 안 섞이게)")
     args = parser.parse_args()
 
     cred = _load_credentials(args.credentials)
@@ -135,26 +146,43 @@ def main() -> None:
     excluded: list[dict] = []
     INPUT_DIR.mkdir(exist_ok=True)
 
-    for category, items in sorted(candidates_by_category.items()):
+    full_mode = args.category is not None
+    if full_mode:
+        if args.category not in candidates_by_category:
+            print(f"카테고리 '{args.category}'에 후보가 없습니다. "
+                  f"가능한 카테고리: {sorted(candidates_by_category)}", file=sys.stderr)
+            sys.exit(1)
+        categories_to_process = {args.category: candidates_by_category[args.category]}
+    else:
+        categories_to_process = candidates_by_category
+
+    for category, items in sorted(categories_to_process.items()):
         items.sort(key=lambda x: x["createdAt"] or "")
-        # 다운로드 실패 시 대체할 수 있도록 등간격 인덱스 + 나머지 순서를
-        # 우선순위 큐로 둔다(등간격으로 뽑은 것 먼저, 나머지는 등간격
-        # 지점에서 가까운 순).
-        target_n = min(args.per_category, len(items))
-        primary_idx = _spaced_indices(len(items), target_n)
-        remaining_idx = [i for i in range(len(items)) if i not in primary_idx]
-        order = primary_idx + remaining_idx
+
+        if full_mode:
+            # 전수 모드 — 표본 추출 없이 전부 순서대로, 대체 없음(실패하면 그냥 제외).
+            order = list(range(len(items)))
+            primary_idx = set(order)
+            target_n = len(items)
+        else:
+            # 다운로드 실패 시 대체할 수 있도록 등간격 인덱스 + 나머지 순서를
+            # 우선순위 큐로 둔다(등간격으로 뽑은 것 먼저, 나머지는 등간격
+            # 지점에서 가까운 순).
+            target_n = min(args.per_category, len(items))
+            primary_idx = set(_spaced_indices(len(items), target_n))
+            remaining_idx = [i for i in range(len(items)) if i not in primary_idx]
+            order = list(primary_idx) + remaining_idx
 
         picked_for_category = 0
         for idx in order:
-            if picked_for_category >= target_n:
+            if not full_mode and picked_for_category >= target_n:
                 break
             item = items[idx]
             was_primary = idx in primary_idx
             try:
                 original_bytes = bucket.blob(item["imagePath"]).download_as_bytes()
                 cutout_bytes = bucket.blob(item["cutoutPath"]).download_as_bytes()
-            except Exception as e:  # noqa: BLE001 — 다운로드 실패는 전부 대체 사유로 기록
+            except Exception as e:  # noqa: BLE001 — 다운로드 실패는 전부 제외/대체 사유로 기록
                 excluded.append({**item, "excludeReason": f"다운로드 실패: {e}", "wasPrimaryPick": was_primary})
                 print(f"  [{category}] {item['id']} 다운로드 실패 — 건너뜀 ({e})")
                 continue
@@ -170,15 +198,20 @@ def main() -> None:
             item["wasPrimaryPick"] = was_primary
             selected.append(item)
             picked_for_category += 1
-            print(f"  [{category}] {item['id']} 선정 "
-                  f"({'등간격' if was_primary else '대체'}) — "
+            pick_label = "전수" if full_mode else ("등간격" if was_primary else "대체")
+            print(f"  [{category}] {item['id']} 선정 ({pick_label}) — "
                   f"{original_out.name}, {cutout_out.name}")
 
     manifest = {
         "uid": args.uid,
         "bucket": args.bucket,
-        "perCategory": args.per_category,
+        "mode": "full_category" if full_mode else "stratified_sample",
+        "category": args.category,
+        "perCategory": None if full_mode else args.per_category,
         "selectionMethod": (
+            f"'{args.category}' 카테고리 전수 선정(표본 추출 없음). "
+            "원본 다운로드 실패 시 제외(excluded 목록 참고, 대체 없음)."
+            if full_mode else
             "카테고리별 createdAt 오름차순 정렬 후 등간격 인덱스로 "
             f"{args.per_category}개씩 선정. 원본 다운로드 실패 시 같은 "
             "카테고리의 다음 순번으로 자동 대체(excluded 목록 참고)."
@@ -186,12 +219,13 @@ def main() -> None:
         "selected": selected,
         "excluded": excluded,
     }
-    (INPUT_DIR / "selection.json").write_text(
+    manifest_name = f"selection_{args.tag}.json" if args.tag else "selection.json"
+    (INPUT_DIR / manifest_name).write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
     print(f"\n선정 {len(selected)}건, 제외(다운로드 실패) {len(excluded)}건.")
-    print(f"selection.json: {INPUT_DIR / 'selection.json'}")
+    print(f"{manifest_name}: {INPUT_DIR / manifest_name}")
 
 
 if __name__ == "__main__":

@@ -91,3 +91,7 @@ tools/backfill_fitting_cache_key/manifests/
 tools/bg_removal_spike/inputs/
 tools/bg_removal_spike/outputs/
 tools/bg_removal_spike/.venv/
+# 배포 콜드스타트 스파이크에 번들링하는 모델 바이너리(4.7MB) —
+# 코드가 아니라 빌드 산출물이라 커밋 대상이 아니다. 배포 시 로컬에
+# 있어야 하지만(rembg 캐시에서 복사), git으로 추적하지 않는다.
+tools/bg_removal_spike/cloud_run_spike/u2netp.onnx
