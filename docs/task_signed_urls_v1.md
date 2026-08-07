@@ -1272,3 +1272,64 @@ URL 필드를 직접 fetch하거나 유효한 이미지 주소로 가정하지 �
 스케줄 발화 로그 확인뿐이며, 이는 (C) 자체의 정상 동작을 이미
 실기기로 확인한 뒤의 보강 확인이라 서명 URL 이행의 완료 판정을
 막지 않는다.
+
+## 13. 결함 발견·수정 — SignedNetworkImage 갱신 실패 (2026-08-07)
+
+**발견 경위**: 배경 제거 재개 트랙(`docs/task_background_removal_v1.md`
+§1-7)의 실측 1에서 컷아웃 신규 생성 경로가 이 서명 URL 인프라 위에서
+처음 실행됐다 — 트리거가 문서에 `cutoutPath`/`cutoutImageUrl`을
+merge write로 채운 직후, 옷장 화면에 이미 떠 있던 카드가 플레이스홀더
++ 재시도 아이콘(깨진 이미지)으로 표시됨. 전신 카테고리(컷아웃 없이
+그대로 원본만 유지)는 정상 — **컷아웃이 새로 생긴 항목만 깨졌다.**
+앱 재시작 후에는 정상 표시. 실기기로 재확인해 이미지 로드 자체
+실패가 아니라 **살아있는 위젯이 문서 변경을 재해석하지 않는
+갱신(stale state) 문제**로 확정.
+
+**원인 (코드 근거)**: `signed_network_image.dart`의
+`_SignedNetworkImageState.didUpdateWidget`이 `collection`/`id` 변경만
+감지하고 `urlIndex`/`fallbackUrl` 변경은 무시했다(수정 전 코드,
+69-79행). 컷아웃이 새로 생겨도 `id`는 그대로라 재해석이 전혀
+발화하지 않고, `build()`(108행)는 처음 해석해 둔 `_resolvedUrl`을
+계속 썼다.
+
+**수정**:
+- `image_url_resolver.dart`에 `ImageUrlResolver.invalidate(id)` 신설
+  — 문서 단위 캐시(`_cache`)에서 해당 id를 제거한다. 캐시는 만료
+  80% 시점까지 "적중"으로 보므로(§3-3), 캐시를 안 비우고 재해석만
+  다시 불렀다면 옛(더 짧은) urls 배열을 그대로 돌려받아 `urlIndex`가
+  범위를 벗어나 오히려 깨진 상태가 재현됐을 것 — 재해석과 캐시 무효화
+  둘 다 필요했다.
+- `signed_network_image.dart`의 `didUpdateWidget`에 분기 추가: 같은
+  문서라도 `fallbackUrl`이 바뀌면 `ImageUrlResolver.invalidate(widget.id)`
+  후 재해석한다. **`urlIndex`가 아니라 `fallbackUrl` 변경을 신호로
+  택함** — 이 코드베이스의 모든 호출부가 `urlIndex`를
+  `item.cutoutImageUrl != null`에서 그대로 유도하므로(예:
+  `wardrobe_screen.dart`/`outfit_board.dart`/`home_screen.dart` 등
+  24곳 전부 `urlIndex: item.cutoutImageUrl != null ? 1 : 0,
+  fallbackUrl: item.cutoutImageUrl ?? item.imageUrl` 패턴)
+  `urlIndex`는 `fallbackUrl`의 파생값이다. 컷아웃이 "새로 생기는"
+  경우는 둘 다 같이 바뀌어 어느 쪽을 봐도 잡히지만, 컷아웃이
+  재처리로 값만 바뀌고(`urlIndex`는 1→1로 그대로) URL 문자열만
+  달라지는 경우는 `urlIndex` 비교로는 못 잡고 `fallbackUrl` 비교로만
+  잡힌다 — 더 일반적인 신호.
+- `test/image_url_resolver_test.dart`에 단위 테스트 3건 추가:
+  캐시 적중 시 서버 재호출 없음, `invalidate()` 후에는 캐시를
+  건너뛰고 서버를 다시 불러 새(더 긴) 배열을 받음, `invalidate()`
+  1회당 서버 호출이 정확히 1건만 추가되고 그 이후 재호출은 다시
+  캐시 적중만 반복됨(반복 재해석으로 `signCount`가 새지 않는다는
+  것의 근거).
+
+**signCount 영향 판단**: 코드상 `invalidate()`+재해석은 `fallbackUrl`이
+실제로 바뀔 때만(즉 Firestore 문서가 실제로 갱신될 때만) 정확히 1회
+발화한다 — 리빌드마다 반복되지 않는다(위 세 번째 테스트가 이를
+직접 확인). 이건 2026-08-06에 고친 "prefetch와 개별 타일 resolve()가
+서로 모르고 동시에 쏘는" 종류의 누수(§ 위 91-100행 주석)와는 다른
+지점 — 그 문제는 마운트 시점의 중복 발사였고, 이번 수정은 마운트
+후 나중에 딱 한 번 일어나는 문서 변경에만 반응한다. 다만 이건
+코드 추론이고, **실제 옷장 진입 시 `signCount` 증가분을 수정 전/후로
+실기기에서 비교하는 실측은 아직 안 했다** — 다음 실기기 검증(배경
+제거 트랙, 옷을 하나 등록하고 화면을 유지한 채 확인) 때 함께
+확인한다.
+
+`flutter analyze` 클린, `flutter test` 166개 전량 통과(기존 163 +
+신규 3) 확인 후 커밋 예정.

@@ -201,6 +201,17 @@ class ImageUrlResolver {
     return completer.future;
   }
 
+  // 갱신 결함 수정(2026-08-07 실기기 실측) — 문서가 서명 대상 경로
+  // 집합을 바꾼 뒤(예: 컷아웃이 새로 생김) resolve()를 다시 불러도
+  // 이 캐시가 만료 전이면 옛(더 짧은) urls 배열을 그대로 돌려준다 —
+  // SignedNetworkImage가 옛 배열의 범위를 벗어난 urlIndex로 읽으려다
+  // 깨진 상태가 된 원인이 이거였다(§3-3 만료 80% 시점까지는 "적중"으로
+  // 보므로 이 경우 15분~수십 분 동안 안 풀림). 위젯이 fallbackUrl
+  // 변경을 감지하면 재해석 전에 이걸로 캐시를 먼저 비워야 한다.
+  static void invalidate(String id) {
+    _cache.remove(id);
+  }
+
   // A-5 군 (a) — GeminiService의 다운로드 경로가 쓰는 진입점. 킬 스위치가
   // off면 resolve()조차 부르지 않는다(호출부가 매번 signedUrlsEnabled를
   // 따로 검사하지 않아도 되게, 여기서 한 곳에 모아둔다).

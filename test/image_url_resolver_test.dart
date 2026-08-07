@@ -84,6 +84,83 @@ void main() {
     expect(okay, ['https://signed.example/ok']);
   });
 
+  test('캐시가 살아있으면 resolve()를 다시 불러도 서버를 재호출하지 않는다(캐시 적중)', () async {
+    var calls = 0;
+    ImageUrlResolver.testServerCall = (items) async {
+      calls++;
+      return fakeResponse(items);
+    };
+
+    final first = await ImageUrlResolver.resolve(collection: 'wardrobe', id: 'itemC');
+    final second = await ImageUrlResolver.resolve(collection: 'wardrobe', id: 'itemC');
+
+    expect(first, ['https://signed.example/itemC']);
+    expect(second, ['https://signed.example/itemC']);
+    expect(calls, 1, reason: '두 번째 resolve()는 캐시 적중이라 서버를 다시 안 부른다');
+    expect(ImageUrlResolver.cacheHitCount, 1);
+  });
+
+  test('invalidate() 후 resolve()는 캐시를 건너뛰고 서버를 다시 불러 새 배열을 받는다 — '
+      '갱신 결함 수정(2026-08-07)의 전제 조건', () async {
+    var calls = 0;
+    ImageUrlResolver.testServerCall = (items) async {
+      calls++;
+      // 두 번째 호출부터는 컷아웃 경로가 추가된 것처럼 배열이 늘어난
+      // 서버 응답을 흉내낸다(옷장 화면에서 실제로 관측된 시나리오).
+      return {
+        for (final i in items)
+          i.id: {
+            'urls': calls == 1
+                ? ['https://signed.example/${i.id}']
+                : ['https://signed.example/${i.id}', 'https://signed.example/${i.id}/cutout'],
+            'expiresAt': DateTime.now().add(const Duration(hours: 1)).toIso8601String(),
+          },
+      };
+    };
+
+    final beforeInvalidate = await ImageUrlResolver.resolve(collection: 'wardrobe', id: 'itemD');
+    expect(beforeInvalidate, ['https://signed.example/itemD']);
+    expect(calls, 1);
+
+    // invalidate() 없이 다시 부르면 캐시가 만료 전이라 옛(1개짜리)
+    // 배열을 그대로 돌려준다 — SignedNetworkImage가 urlIndex=1로
+    // 읽으려다 범위를 벗어나 깨지는 게 바로 이 경로였다.
+    final stillCached = await ImageUrlResolver.resolve(collection: 'wardrobe', id: 'itemD');
+    expect(stillCached, ['https://signed.example/itemD']);
+    expect(calls, 1, reason: 'invalidate 전이라 여전히 캐시 적중');
+
+    ImageUrlResolver.invalidate('itemD');
+    final afterInvalidate = await ImageUrlResolver.resolve(collection: 'wardrobe', id: 'itemD');
+
+    expect(calls, 2, reason: 'invalidate 후에는 캐시를 안 타고 서버를 다시 부른다');
+    expect(afterInvalidate, [
+      'https://signed.example/itemD',
+      'https://signed.example/itemD/cutout',
+    ]);
+  });
+
+  test('invalidate()는 서버를 딱 한 번만 추가로 부른다 — signCount가 반복 재해석으로 새지 않는다', () async {
+    var calls = 0;
+    ImageUrlResolver.testServerCall = (items) async {
+      calls++;
+      return fakeResponse(items);
+    };
+
+    await ImageUrlResolver.resolve(collection: 'wardrobe', id: 'itemE');
+    expect(calls, 1);
+
+    ImageUrlResolver.invalidate('itemE');
+    await ImageUrlResolver.resolve(collection: 'wardrobe', id: 'itemE');
+    expect(calls, 2, reason: 'invalidate 1회당 서버 호출은 정확히 1건만 추가된다');
+
+    // invalidate를 안 부르면(위젯이 fallbackUrl 변경을 다시 감지하지
+    // 않는 한) 그 뒤로는 계속 캐시 적중이어야 한다 — 재해석이 반복
+    // 호출로 새지 않는다는 것의 확인.
+    await ImageUrlResolver.resolve(collection: 'wardrobe', id: 'itemE');
+    await ImageUrlResolver.resolve(collection: 'wardrobe', id: 'itemE');
+    expect(calls, 2, reason: '추가 invalidate 없이는 몇 번을 다시 불러도 캐시 적중만 반복된다');
+  });
+
   test('같은 코얼레싱 창(같은 배치) 안에서는 일부만 실패할 수 없다 — 배치 전체가 예외 하나로 실패/재시도된다', () async {
     var calls = 0;
     ImageUrlResolver.testServerCall = (items) async {

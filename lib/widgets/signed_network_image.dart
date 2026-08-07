@@ -68,10 +68,33 @@ class _SignedNetworkImageState extends State<SignedNetworkImage> {
   @override
   void didUpdateWidget(covariant SignedNetworkImage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!signedUrlsEnabled) return;
+
     // 그리드가 재사용(리스트 재정렬 등)되며 같은 위젯 인스턴스가 다른
     // 문서를 가리키게 되면 다시 해석한다.
-    if (signedUrlsEnabled &&
-        (oldWidget.collection != widget.collection || oldWidget.id != widget.id)) {
+    if (oldWidget.collection != widget.collection || oldWidget.id != widget.id) {
+      _resolvedUrl = null;
+      _resolveFailed = false;
+      _resolve();
+      return;
+    }
+
+    // 갱신 결함 수정(2026-08-07, 실기기 실측 확인 — 등록 직후 컷아웃이
+    // 반영돼도 화면을 유지한 채로는 깨진 이미지로 남고 앱 재시작
+    // 후에만 정상화됐다) — 같은 문서라도 fallbackUrl(cutoutImageUrl
+    // ?? imageUrl)이 바뀌면 서명 대상 경로 집합이 바뀐 것이다(컷아웃이
+    // 새로 생기면 이 코드베이스 모든 호출부가 urlIndex도 함께
+    // `item.cutoutImageUrl != null`에서 그대로 유도해 0→1로 바뀐다 —
+    // urlIndex는 fallbackUrl의 파생값이다). fallbackUrl 쪽을 보는 게
+    // 더 일반적인 신호다: 컷아웃이 재처리로 값만 바뀌고 urlIndex는
+    // 1→1로 그대로인 경우도 urlIndex 비교로는 놓치지만 fallbackUrl
+    // 비교로는 잡힌다. ImageUrlResolver의 캐시는 문서 단위로 만료
+    // 80% 시점까지 유지되므로(§3-3) 여기서 바로 _resolve()만 부르면
+    // 그 캐시가 옛(더 짧은) urls 배열을 그대로 돌려줘 urlIndex가
+    // 범위를 벗어나 오히려 깨진 상태가 재현된다 — 그래서 재해석
+    // 전에 캐시를 먼저 비운다.
+    if (oldWidget.fallbackUrl != widget.fallbackUrl) {
+      ImageUrlResolver.invalidate(widget.id);
       _resolvedUrl = null;
       _resolveFailed = false;
       _resolve();
