@@ -39,15 +39,200 @@
 진행한다는 것이 이번 결정이다 — 되돌리기 어려운 결정은 아니다(§7
 참고, 트리거 하나 삭제로 원복 가능).
 
-## 1. 처리 시점과 트리거 설계 — D-1 구현 완료 (2026-08-07, 배포 전)
+## 1. 처리 시점과 트리거 설계 — 배포 완료, 실기기 실측 대기 (2026-08-07)
 
 `functions_bg_removal/`(Python 코드베이스, `firebase.json`에
 `bgremoval` 코드베이스로 등록) — 아래 §1-1~1-3 설계 그대로
 구현했다. `main.py`(트리거), `minimal_runtime.py`(§2-5/§2-6에서
-검증된 것 그대로 복사), `requirements.txt`. 로컬 임포트/헬퍼 함수
-동작은 확인했으나(모듈 로드, `_cutout_path_for`/`_legacy_download_url`
-단위 확인) **실제 Firestore/Storage에 대고 돌려보는 검증과 배포는
-아직 안 함** — 별도 승인 대기.
+검증된 것 그대로 복사), `requirements.txt`.
+
+푸시 후 코드 리뷰(사용자, 2026-08-07)에서 결함 2건 발견 — §1-4/§1-5
+참고. 결함 1(전신 사진에 컷아웃 생성)·결함 2(디버그 빌드 이중 생성,
+(b) 채택) 둘 다 수정 완료. `flutter analyze` 클린, `flutter test`
+163개 전량 통과 확인.
+
+**배포 완료(2026-08-07)**: `firebase deploy --only functions:bgremoval`
+실행, `bg_removal_on_upload` 신규 생성 확인(리전 asia-northeast3,
+메모리 1024Mi, `min_instance_count: 0`, 타임아웃 60초 — 배포 감사
+로그의 `CreateFunction` 요청 본문으로 직접 확인). 기존 7개 함수
+(default 6개 + `bgremovalspike` 코드베이스의 `bg_removal_coldstart_spike`)
+불변 확인(`firebase functions:list`). 배포 직후 업로드 없이 로그
+확인 — 컨테이너 기동/핸들러 실행 로그 둘 다 없음, `CreateFunction`
+감사 로그 2건(요청/응답)만 존재. 예기치 않은 발화 없음.
+
+**아직 안 함 — 실기기 실측 대기**: 실제 Firestore/Storage에 대고
+도는 것(일반 옷 등록으로 컷아웃 생성, 전신 사진으로 제외 확인)은
+사용자가 앱에서 직접 등록하는 실측 1·2로 진행한다 — 별도 승인 하에
+진행 중, 이 절은 그 결과가 나오면 갱신한다.
+
+### 1-4. 리뷰 결함 1 — 전신 사진에 컷아웃 생성 (수정 완료, 2026-08-07)
+
+**증상**: 클라이언트는 `category != '전신'`일 때만 배경 제거를
+시도하는데(`wardrobe_screen.dart:587`), 트리거(`functions_bg_removal/
+main.py`)는 애초에 조회를 안 하는 설계(§1-3)라 카테고리를 판정할
+수단이 없어 전신 사진에도 컷아웃을 만들고 있었다. `SignedNetworkImage`가
+`cutoutImageUrl ?? imageUrl` 순으로 우선 컷아웃을 표시하므로(§3),
+옷장 카드와 피팅룸 Step 1의 전신 기준 이미지 표시가 의도치 않게
+바뀐다. u2netp는 인물 매팅 모델이 아니라 품질도 보장 안 됨.
+
+**수정**: 업로드 커스텀 메타데이터에 `category`를 추가해(§1-3의
+`wardrobeDocId`/`ownerUid`와 같은 자리) 트리거가 조회 없이 판정할
+수 있게 했다.
+
+- `storage_service.dart`의 `uploadWardrobeImage`에 `required String
+  category` 파라미터 추가, `customMetadata`에 `'category': category`
+  포함.
+- `wardrobe_screen.dart` 호출부에서 이미 선택된 `category`를 그대로
+  전달.
+- `functions_bg_removal/main.py`: `wardrobeDocId`/`ownerUid`와 함께
+  `category`도 메타데이터 완전성 검사에 포함(셋 중 하나라도 없으면
+  §1-3 7항과 동일하게 처리 대상 제외 + 로그만). `category == '전신'`이면
+  즉시 반환(로그 남김). **Firestore 조회로 판정하지 않는다** — 이
+  설계의 전제(문서가 아직 없을 수 있음, §1-3)를 그대로 지킨다.
+
+### 1-5. 리뷰 결함 2 — 디버그 빌드에서 컷아웃 이중 생성 ((b) 채택·구현 완료, 2026-08-07)
+
+**증상**: `wardrobe_screen.dart:201`의 `if (kReleaseMode) return;`은
+release에서만 온디바이스 배경 제거 초기화를 막는다. 디버그 빌드에서는
+`_isBgRemoverReady`가 true가 되어 클라이언트가 자체 컷아웃을 만들어
+`uploadWardrobeCutout`으로 올리고, **동시에** 서버 트리거도 같은
+`wardrobeDocId`에 대해 독립적으로 컷아웃을 만들어 `doc_ref.set(...,
+merge=True)`로 `cutoutPath`/`cutoutImageUrl`을 쓴다. 두 쓰기 다 같은
+필드를 갱신하므로 나중에 도착한 쪽이 이기고, 진 쪽이 올린 Storage
+파일은 어느 문서에서도 참조되지 않는 고아로 남는다 — §1-3에서 언급한
+기존 고아 유형(5.18.3, 5.19.4)과 같은 구조가 새 경로에서 재생산되는
+것. release에서는 클라이언트 쪽이 애초에 안 돌아 충돌이 없다.
+
+**방향 비교**(결정은 사용자 몫, 코드 변경 없음):
+
+| 방향 | 내용 | 장점 | 단점 |
+|---|---|---|---|
+| (a) 클라이언트 배경 제거 경로 완전 제거 | `image_background_remover`/온디바이스 초기화·호출 코드를 디버그 포함 전부 삭제 | 이중 생성 구조 자체가 없어짐, 코드 단순화 | §6에서 이미 "서버 경로가 검증되기 전에는 아무것도 제거하지 않는다"는 원칙을 세워둔 상태 — 서버가 아직 실기기 미검증인 지금 되돌릴 안전망(클라이언트 경로)을 먼저 없애는 셈. 서버에 새 결함이 나오면 롤백 수단이 `functions:delete`뿐이고, 그 사이 컷아웃이 전혀 안 생기는 공백 발생 |
+| (b) 디버그에서도 클라이언트 경로를 끄고 서버만 쓰게(플래그 하나) | `kReleaseMode` 대신 별도 상수(예: `_useOnDeviceBgRemoval = false`)로 온디바이스 초기화 자체를 막되, 코드/의존성은 유지 | 이중 생성 즉시 해소, 클라이언트 코드는 그대로 남아 있어 되돌리기 쉬움(상수 하나 뒤집으면 복구), §6 원칙("아무것도 제거하지 않는다")과 충돌 없음 | 디버그에서 온디바이스 경로 자체를 비교 검증할 수단이 당분간 사라짐(§6이 이미 "디버그에서는 비교용으로 당분간 남겨둘 수도 있다"고 언급한 용도가 없어짐) |
+| (c) 클라이언트/서버 어느 쪽이 썼는지 구분해 서버 쓰기만 우선시키는 조율 | 예: 서버 쓰기에 `cutoutSource: 'server_v1'` 마커(§5에서 이미 제안된 필드)를 달고, 클라이언트는 디버그에서 컷아웃을 **올리지 않고 로컬 미리보기로만** 쓰거나, 문서에 이미 `cutoutSource`가 있으면 클라이언트 쓰기를 건너뜀 | 디버그에서 온디바이스 결과를 여전히 눈으로 비교해볼 수 있음(파일 업로드는 안 하고 미리보기만) | 구현 범위가 (b)보다 크다(§5의 스키마 변경을 앞당겨 결정해야 함, 이 문서 §5는 "제안만"이라고 못박아 둔 상태) — 이번 리뷰 대응치고 과함 |
+
+**결정: (b) 채택**(사용자, 2026-08-07). 구현:
+
+- `wardrobe_screen.dart`의 `_initBackgroundRemover()` 진입부를
+  `if (kReleaseMode) return;`에서 `if (!_kOnDeviceBgRemovalEnabled)
+  return;`로 교체 — **명시적 상수 하나**(`const bool
+  _kOnDeviceBgRemovalEnabled = false;`, 파일 상단)로 디버그·릴리스를
+  동일하게 끈다. release 전용 분기였던 게 release에서만 재현되는
+  결함(온디바이스 배경 제거 크래시 자체가 그 사례)을 디버그 검증이
+  못 잡는 전례를 반복하지 않기 위함 — 디버그가 릴리스와 다른 경로를
+  타면 "디버그에서 됐다"가 릴리스 동작을 보증하지 못한다.
+- `image_background_remover` 의존성과 `_isBgRemoverReady`/
+  `_removeBackgroundWithPreview`/온디바이스 ONNX 초기화 코드는
+  **그대로 둔다** — 지우지 않는다. 플래그가 꺼진 상태에서
+  `_isBgRemoverReady`는 초기값 `false`에서 절대 바뀌지 않고(그
+  값을 `true`로 바꾸는 유일한 지점이 `_initBackgroundRemover()`
+  안, 위 조기 반환 뒤에 있음), 업로드 시점의
+  `category != '전신' && _isBgRemoverReady` 판정이 항상 거짓이 되어
+  `cutoutBytes`가 `null`로 남는다 — `StorageService
+  .uploadWardrobeCutout()` 호출부(`if (cutoutBytes != null) {...}`)
+  자체가 도달 불가능해진다. 서명 URL 이행에서 킬 스위치를 기본
+  꺼짐으로 두고 회수 후에도 레거시 폴백을 남긴 것과 같은 원칙 —
+  서버 경로가 실기기 검증을 통과하기 전에는 되돌아갈 곳을 남긴다.
+- **한시적 장치임을 코드 주석에 명시**(`_kOnDeviceBgRemovalEnabled`
+  선언부): 최종 상태는 이 플래그가 아니라 (a) — 서버 경로가 실기기
+  검증을 통과하면 온디바이스 초기화/호출 코드와
+  `image_background_remover` 의존성 자체를 걷어낸다. 그때까지는
+  서버에 새 결함이 나왔을 때 돌아갈 안전망으로 남겨둔다.
+
+**남은 계획(이 문서에 등록)**: 서버 경로(`functions_bg_removal`)가
+배포되어 실기기 검증(§4 체크리스트)을 통과하면, 다음 별도 승인
+단계에서 (a)로 전환 — `_kOnDeviceBgRemovalEnabled`와 그 판정부,
+`_isBgRemoverReady`/`_removeBackgroundWithPreview`/온디바이스 ONNX
+초기화 코드, `image_background_remover`/`tflite_flutter`(§6에서
+이미 별도 판단 대상으로 남겨둔 것) 의존성을 함께 제거한다. 지금
+단계에서는 실행하지 않는다.
+
+### 1-6. 미해결로 등록 — "파일은 있고 문서는 없거나 바닥 상태" (구현 안 함, 기록만)
+
+코드 리뷰 Q3에서 확인된 유형: 클라이언트가 `uploadWardrobeImage`
+이후 ~ `addWardrobeItem` 이전 사이 종료되면, Storage에는 원본(및
+트리거가 이미 돌았다면 컷아웃까지)이 남고 Firestore에는 문서가
+아예 없거나 `cutoutPath`/`cutoutImageUrl`만 있는 바닥 문서가 남는다
+(`ownerUid`가 없어 `wardrobeStream`엔 절대 안 뜬다 — 사용자에게
+안 보이는 채로 조용히 쌓임). §1-3에서 언급한 "문서만 있고 파일 없음"
+(5.18.3/5.19.4)의 **반대 방향** 고아 유형이다.
+
+발생 조건이 좁아(업로드 완료~문서 생성 사이의 짧은 창에서 앱 강제
+종료) 지금 정리 도구를 새로 만들지 않는다 — 기존 `tools/
+delete_orphaned_docs/`는 반대 방향(문서만 있음)을 다루는 도구라
+범위 밖이다. 필요해지면 이 반대 방향 유형과 묶어 한 도구로 다룰 수
+있다는 점만 남겨둔다.
+
+**실측 1건 관측(2026-08-07)**: 이 유형이 이론이 아니라 실재함을
+확인했다. `bg_removal_on_upload` 배포 직후 실측 1·2 시도 과정에서
+`wardrobe_images/1e25aec129df4ff55c3574a38350fadc.jpg`
+(`timeCreated` 2026-08-07T06:27:10Z)가 업로드됐으나, `imagePath`가
+이 경로인 `wardrobe` 문서가 존재하지 않는다(읽기 전용으로 확인,
+Firestore `where('imagePath', '==', ...)` 매칭 0건). 앞선 두 건
+(`9131b52d...`, `bfc95961...`)은 정상적으로 문서가 붙었고 이 건만
+빠졌다는 점에서, 등록 흐름 도중 이탈·취소(예: 카테고리/치수 선택
+바텀시트를 닫거나 앱을 벗어남)로 `uploadWardrobeImage` 완료 후
+`addWardrobeItem` 전에 흐름이 끊긴 것으로 추정 — §1-6 위 문단에서
+설계 단계에 예견한 정확히 그 창이다. **손대지 않았다**(읽기만, 파일
+삭제·문서 생성 안 함) — 금지 사항(2026-08-07 배포 지시) 준수.
+
+### 1-7. 실기기 실측 1·2 결과 (2026-08-07, 릴리스 APK)
+
+첫 시도(구버전 앱, 재빌드 전)는 업로드 객체에 커스텀 메타데이터가
+전혀 없어 트리거가 전부 "메타데이터 없음" 경로로 스킵됐다 — 서버는
+설계대로 안전하게 처리했으나 신규 클라이언트 코드가 반영 안 된
+빌드였던 게 원인. `flutter build apk --release` → `adb install -r`로
+재설치 후 재실측:
+
+- **실측 1(상의 등록) 통과.** Storage 업로드 커스텀 메타데이터에
+  `wardrobeDocId`/`ownerUid`/`category`(="상의") 전부 확인. 트리거
+  발화 → `wardrobe_cutouts/`에 컷아웃 생성 → 알파 bbox 크롭 확인
+  (원본 666×740 → 컷아웃 612×597, 원본 672×784 → 컷아웃 672×677 —
+  두 건 다 원본보다 작음, PIL로 직접 다운로드해 치수 대조). 문서에
+  `cutoutPath`/`cutoutImageUrl` 기록 확인. 같은 카테고리로 두 건
+  등록됐고 둘 다 통과(두 번째는 `attributes`/`size`까지 정상 추출).
+- **실측 2(전신 등록) 통과.** 업로드 메타데이터에 `category`="전신"
+  확인. 트리거 로그 `[bg_removal_on_upload] 전신 카테고리, 처리
+  대상 제외`(정확히 그 문구) 확인. `wardrobe_cutouts/`에 아무것도
+  생성 안 됨, 문서에 `cutoutPath`/`cutoutImageUrl` 필드 자체가 없음
+  — 둘 다 확인.
+- **처리 시간(핸들러 내부 타이머)**: 1.572초, 0.994초(상의 두 건).
+  **콜드/웜**: 배포 시점(06:08) 이후 유일한 "Starting new instance"
+  로그가 06:09:50 한 번뿐 — 이후 06:17/06:18/06:27/06:41/06:42의
+  모든 호출이 같은 인스턴스에서 처리됨(14분 이상 idle 구간을
+  거치고도 재기동 없음). **즉 이번 실측은 전부 웜 실행이라 §2-6의
+  콜드스타트 수치(1.3~2.1초)와 직접 비교할 수 없다** — 비교 가능한
+  콜드스타트 값은 아직 못 얻었다(min-instances=0인데도 스케일다운이
+  이렇게 느린 건 §2-7의 "스케일다운 관측 정정"과 같은 패턴).
+- **Storage finalize → `cutoutPath` 기록까지 체감 지연**: 상의
+  1건 기준 06:41:03.880Z(원본 finalize) → 06:41:06.249Z(컷아웃
+  finalize) = 약 2.37초.
+- **Q2 답변 정정(실측으로 수정)**: 이전 코드 리뷰 답변에서
+  "revokeTokenOnUpload가 컷아웃 토큰을 나중에 지운다"고 추정했는데,
+  실측 결과 **애초에 토큰이 생기지 않는다.** `main.py`가
+  `cutout_blob.upload_from_string()`(Admin SDK 원시 GCS 쓰기)로
+  컷아웃을 올리는데, `firebaseStorageDownloadTokens` 자동 생성은
+  Firebase Storage REST v0(클라이언트 SDK) 계층의 동작이라 Admin
+  SDK 원시 쓰기에는 적용되지 않는다 — `revokeTokenOnUpload`가 컷아웃
+  경로에 대해 매번 `result=already_clean`으로 응답한 것으로 확인
+  (지울 토큰이 애초에 없었다는 뜻). 그래서 트리거가 기록하는
+  `cutoutImageUrl`은 "곧 죽는 URL"이 아니라 **처음부터 빈 토큰으로
+  기록되는 URL**이다(`...&token=` 뒤가 비어 있음, 실제 확인).
+  결론은 바뀌지 않는다 — 어차피 폴백 전용 필드고 정식 경로는
+  `cutoutPath` + 서명 URL이라 기능상 문제는 없다. 다만 메커니즘
+  설명이 이전 답변과 달라 정정해둔다.
+- **화면 자동 갱신 결함 — 실기기로 확정, 별도 수정 완료
+  (2026-08-07)**: 실기기에서 상의 2건이 플레이스홀더+재시도 아이콘
+  (깨진 이미지)으로 표시됨, 전신(컷아웃 없음)은 정상 — 컷아웃이 새로
+  생긴 항목만 깨졌다. 앱 재시작 후 정상 표시, 피팅룸·코디보드도
+  정상. "이미지 로드 실패"가 아니라 **살아있는 위젯이 문서 변경을
+  재해석하지 않는 갱신 문제**로 확정 — 위에서 코드로 예측한
+  `didUpdateWidget`의 `urlIndex` 미감지가 실제 원인이었다. 원인
+  규명·수정·단위 테스트·`flutter analyze`/`test` 통과까지
+  `docs/task_signed_urls_v1.md` §13에 기록(이 결함은 배경 제거
+  트랙이 아니라 서명 URL 인프라 쪽 코드라 그 문서가 정본).
+  **signCount 영향은 코드 추론(반복 재해석 없음, 단위 테스트로
+  확인)까지만 했고 실기기 실측은 다음 등록 검증 때 같이 한다.**
 
 ### 1-1. 트리거 신설
 
@@ -512,22 +697,22 @@ Pillow 표준 기능). §2-1의 품질 스파이크 산출물
 사진 1건 등 다른 경로였고, 온디바이스 배경 제거는 릴리스에서 계속
 꺼져 있었다). 구현 후 반드시 확인:
 
-- **a. `cutoutPath`가 실제로 기록되는가.** 새 함수가
-  `wardrobe/{id}` 문서에 `cutoutPath`를 쓸 때
-  `firestore_service.dart`의 `addWardrobeItem`이 쓰던 것과 동일한
-  필드명·형식(`ref.fullPath`, 예: `wardrobe_cutouts/{fileName}.png`)
-  을 지키는지 — 어긋나면 `getSignedImageUrls`가 이 필드를 못 읽는다.
-- **b. 서명 경로로 정상 로드되는가.** `SignedNetworkImage`가
-  `cutoutPath` 기반으로 서명 URL을 받아와 화면에 표시하는지 —
-  기존 111건(`task_signed_urls_v1.md` §9 회수분)과 같은 방식으로
-  뜨는지 실기기 확인.
-- **c. 업로드 트리거의 토큰 제거가 신규 컷아웃에도 적용되는가.**
-  `revokeTokenOnUpload`가 `wardrobe_cutouts/` 프리픽스를 이미
-  포함하므로 코드상으로는 자동 적용돼야 하나, §1-2에서 분석한
-  "같은 이벤트를 두 함수가 병렬로 받는다" 상호작용이 실제로도
-  안전한지 실기기 로그로 재확인(함수 로그에 `revokeTokenOnUpload
-  path=wardrobe_cutouts/... result=revoked`가 새 컷아웃 경로에
-  대해서도 찍히는지).
+- **a. `cutoutPath`가 실제로 기록되는가 — 확인됨(2026-08-07, §1-7).**
+  `ref.fullPath`와 동일 형식(`wardrobe_cutouts/{fileName}.png`)으로
+  기록, `getSignedImageUrls`가 정상적으로 읽어 서명함(§1-3 아래
+  진단 참고).
+- **b. 서명 경로로 정상 로드되는가 — 확인됨, 단 한 번 걸림돌
+  있었음(2026-08-07).** 서명 자체(`getSignedUrl`)는 처음부터
+  정상이었으나, **이미 화면에 떠 있던 위젯이 문서 갱신을 재해석하지
+  않는 별개 결함**(`task_signed_urls_v1.md` §13)이 최초 실기기
+  검증에서 걸렸다 — 컷아웃 신규 생성 경로가 이 결함을 처음으로
+  드러낸 자리였다. 수정 후 재검증은 다음 등록 때 진행.
+- **c. 업로드 트리거의 토큰 제거가 신규 컷아웃에도 적용되는가 —
+  확인됨, 단 예상과 다른 메커니즘(2026-08-07, §1-7 Q2 정정).**
+  `revokeTokenOnUpload`가 신규 컷아웃 경로에서도 매번 발화하지만,
+  Admin SDK 원시 쓰기라 애초에 토큰이 생기지 않아 매번
+  `result=already_clean`으로 응답한다 — "지운다"가 아니라 "지울 게
+  없다"였다.
 
 ## 5. 기존 111건과 신규 생성분의 구분
 

@@ -13,16 +13,24 @@ Eventarc 필터(`bucket`)만으로는 프리픽스를 못 거르므로 함수 �
 
 **Firestore 문서 연결(§1-3, 메타데이터 전달)**: 폴링도 업로드 순서
 반전도 아니다 — 클라이언트가 업로드 *전에* 미리 뽑은 문서 ID를
-Storage 커스텀 메타데이터(`wardrobeDocId`/`ownerUid`)에 실어 보내고,
-이 함수는 조회 없이 그 문서를 바로 대상으로 삼는다. **메타데이터가
-없는 업로드는 처리 대상에서 제외하고 로그만 남긴다** — 경로 기반으로
-문서를 추측하지 않는다(레거시 업로드, 다른 클라이언트 대비).
-`ownerUid`는 방어용 — 대상 문서가 이미 존재하면 그 문서의 `ownerUid`와
-메타데이터의 `ownerUid`가 일치하는지 대조해, 다른 사용자의 문서에
-컷아웃이 주입되는 걸 막는다(`storage.rules`가 `wardrobe_images/`에
-소유자 검사 없이 `allow write: if request.auth != null`만 요구하므로
-이 대조가 없으면 임의의 인증된 클라이언트가 `wardrobeDocId`를 조작해
-주입할 수 있다).
+Storage 커스텀 메타데이터(`wardrobeDocId`/`ownerUid`/`category`)에
+실어 보내고, 이 함수는 조회 없이 그 문서를 바로 대상으로 삼는다.
+**메타데이터(셋 중 하나라도)가 없는 업로드는 처리 대상에서 제외하고
+로그만 남긴다** — 경로 기반으로 문서를 추측하지 않는다(레거시 업로드,
+다른 클라이언트 대비). `ownerUid`는 방어용 — 대상 문서가 이미
+존재하면 그 문서의 `ownerUid`와 메타데이터의 `ownerUid`가 일치하는지
+대조해, 다른 사용자의 문서에 컷아웃이 주입되는 걸 막는다
+(`storage.rules`가 `wardrobe_images/`에 소유자 검사 없이
+`allow write: if request.auth != null`만 요구하므로 이 대조가 없으면
+임의의 인증된 클라이언트가 `wardrobeDocId`를 조작해 주입할 수 있다).
+
+**'전신' 카테고리 제외(결함 1 수정, 2026-08-07)**: 전신 사진은 가상
+피팅의 기준 이미지이고(`wardrobe_screen.dart`도 같은 이유로
+`category != '전신'`일 때만 클라이언트 배경 제거를 시도한다), u2netp도
+인물 매팅용 모델이 아니다. 이 함수는 Firestore를 조회하지 않는
+설계라(위 문단) 문서에서 카테고리를 읽어 판정할 수 없으므로, 클라이언트가
+업로드 메타데이터에 실어 보낸 `category`를 그대로 신뢰해 '전신'이면
+컷아웃을 만들지 않고 즉시 반환한다.
 
 **`revokeTokenOnUpload`(functions/src/index.ts, Node)와의 상호작용
 (§1-2, 무간섭 확인됨)**: 같은 `google.cloud.storage.object.v1.finalized`
@@ -102,8 +110,12 @@ def bg_removal_on_upload(event: storage_fn.CloudEvent) -> None:
     metadata = event.data.metadata or {}
     wardrobe_doc_id = metadata.get("wardrobeDocId")
     owner_uid = metadata.get("ownerUid")
-    if not wardrobe_doc_id or not owner_uid:
+    category = metadata.get("category")
+    if not wardrobe_doc_id or not owner_uid or not category:
         print(f"[bg_removal_on_upload] 메타데이터 없음, 처리 대상 제외 path={path}")
+        return
+    if category == "전신":
+        print(f"[bg_removal_on_upload] 전신 카테고리, 처리 대상 제외 path={path}")
         return
 
     db = firestore.client()

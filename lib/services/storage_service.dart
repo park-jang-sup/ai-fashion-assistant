@@ -43,10 +43,16 @@ class StorageService {
   // 전달 방식 — 폴링도 업로드 순서 반전도 아님). 문서 ID는 호출부가
   // 업로드 *전에* `FirestoreService.newWardrobeDocId()`로 미리 뽑아
   // 이 함수와 그 다음 `addWardrobeItem` 양쪽에 같은 값을 넘겨야 한다.
+  // [결함 1 수정, 2026-08-07] category도 함께 싣는다 — 트리거는
+  // Firestore 조회 없이 대상 문서를 특정하는 설계라(§1-3) 문서를
+  // 읽어 카테고리를 판정할 수 없다. '전신'은 가상 피팅 기준
+  // 이미지라 배경 제거 대상에서 제외해야 하므로(wardrobe_screen.dart의
+  // 클라이언트 판단과 동일 기준을 서버도 조회 없이 알 수 있어야 함).
   static Future<({String url, String path})> uploadWardrobeImage(
     XFile xFile, {
     required String wardrobeDocId,
     required String ownerUid,
+    required String category,
   }) async {
     final file = File(xFile.path);
     final fileName = '${_randomFileStem()}.jpg';
@@ -59,6 +65,7 @@ class StorageService {
         customMetadata: {
           'wardrobeDocId': wardrobeDocId,
           'ownerUid': ownerUid,
+          'category': category,
         },
       ),
     );

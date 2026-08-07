@@ -24,6 +24,28 @@ import '../widgets/signed_network_image.dart';
 
 const _uploadCategories = ['상의', '하의', '아우터', '신발', '액세서리', '전신'];
 
+// [배경 제거 재개, 2026-08-07 — 리뷰 결함 2 수정] 서버 트리거
+// (functions_bg_removal)가 wardrobe_images/ 업로드마다 독립적으로
+// 컷아웃을 생성하므로, 클라이언트도 온디바이스 배경 제거를 하면 같은
+// wardrobe 문서에 컷아웃 필드가 두 번 따로 쓰인다 — 나중에 도착한
+// 쪽이 이기고, 진 쪽이 올린 Storage 파일은 고아로 남는다
+// (docs/task_background_removal_v1.md §1-5 결함 2).
+//
+// **한시적 차단, kReleaseMode 아님.** 디버그·릴리스를 이 플래그
+// 하나로 동일하게 끈다 — release 전용 분기(`if (kReleaseMode)`)였던
+// 게 release에서만 재현되는 결함을 디버그 검증이 못 잡는 전례를
+// 이미 3번 반복했다(_initBackgroundRemover 아래 크래시 포렌식
+// 주석 참고). 디버그가 릴리스와 다른 경로를 타면 "디버그에서 됐다"가
+// 릴리스 동작을 보증하지 못한다.
+//
+// **최종 상태는 이 플래그가 아니다.** 서버 경로가 실기기 검증을
+// 통과하면 §1-5의 (a) — 아래 온디바이스 초기화/호출 코드와
+// `image_background_remover` 의존성 자체를 걷어낸다. 그 전까지는
+// 서버에 새 결함이 나왔을 때 돌아갈 안전망으로 코드를 지우지 않고
+// 이 플래그만 내려둔다(서명 URL 이행에서 킬 스위치를 기본 꺼짐으로
+// 두고 레거시 폴백을 남긴 것과 같은 원칙).
+const bool _kOnDeviceBgRemovalEnabled = false;
+
 // 체형과 대조 가능한 치수 개념(가슴단면·허리단면 등)이 있는 카테고리만
 // 치수 입력/수정을 노출한다. 신발·액세서리·전신에는 해당 개념이 없다.
 const _sizeInputCategories = {'상의', '하의', '아우터'};
@@ -197,8 +219,13 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     // flutter-worker 스레드는 전부 대기 중, session.run()은 단일 스레드에서만
     // 실행 중이었음)은 전부 원인에서 배제됐다. onnxruntime-android(1.23.0)
     // 네이티브 JNI 유틸 내부 버그로 확정 — 우리 쪽 코드/설정으로는 고칠 수
-    // 없으므로 release에서는 아예 초기화하지 않고 원본 이미지로 등록한다.
-    if (kReleaseMode) return;
+    // 없다(이후 배경 제거 자체를 서버로 이관하기로 한 근거,
+    // docs/task_background_removal_v1.md §0). 지금은 그 이관이
+    // 끝나 서버 트리거가 컷아웃을 대신 만들므로, 아래는 release
+    // 크래시가 아니라 **서버와의 이중 생성**(위 `_kOnDeviceBgRemovalEnabled`
+    // 주석 참고)을 막기 위해 꺼져 있다 — 차단 사유가 바뀌었을 뿐
+    // 차단 자체는 유지된다.
+    if (!_kOnDeviceBgRemovalEnabled) return;
 
     try {
       // 이미 다른 마운트에서 초기화를 시작/완료했으면 그 Future를 그대로
@@ -617,6 +644,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         xFile,
         wardrobeDocId: itemId,
         ownerUid: ownerUid,
+        category: category,
       );
       final imageUrl = url;
       final imagePath = path;
