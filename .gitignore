@@ -95,3 +95,12 @@ tools/bg_removal_spike/.venv/
 # 코드가 아니라 빌드 산출물이라 커밋 대상이 아니다. 배포 시 로컬에
 # 있어야 하지만(rembg 캐시에서 복사), git으로 추적하지 않는다.
 tools/bg_removal_spike/cloud_run_spike/u2netp.onnx
+tools/bg_removal_spike/cloud_run_spike/venv/
+
+# functions_bg_removal(배경 제거 업로드 트리거, 실서비스 코드베이스)의
+# 로컬 전용 항목 — venv는 firebase deploy의 Python 함수 탐지용
+# 로컬 가상환경(위와 같은 이유), u2netp.onnx는 빌드 시 컨테이너에
+# 번들링되는 모델 바이너리라 코드가 아니다.
+functions_bg_removal/venv/
+functions_bg_removal/__pycache__/
+functions_bg_removal/u2netp.onnx

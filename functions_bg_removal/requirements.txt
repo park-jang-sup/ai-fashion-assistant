@@ -1,0 +1,5 @@
+firebase-admin>=6.5.0
+firebase-functions>=0.4.0
+onnxruntime>=1.19.0
+numpy>=1.26.0
+pillow>=10.0.0

@@ -34,6 +34,14 @@ class FirestoreService {
         );
   }
 
+  // [배경 제거 재개, 2026-08-07] 업로드 *전에* 문서 ID를 미리 확보한다
+  // — 서버 왕복 없이 클라이언트에서 새 ID만 할당(쓰기 아님). 이 ID를
+  // StorageService.uploadWardrobeImage의 커스텀 메타데이터와
+  // addWardrobeItem 양쪽에 같은 값으로 넘겨야 배경 제거 트리거가
+  // 조회 없이 대상 문서를 특정할 수 있다(docs/task_background_removal_v1.md
+  // §1-3).
+  static String newWardrobeDocId() => _db.collection(_wardrobeCol).doc().id;
+
   // imagePath/cutoutPath는 서명 URL 이행 A-3(docs/task_signed_urls_v1.md)
   // — URL 필드와 함께 이중 기록한다(§1 "URL 필드는 건드리지 않는다").
   // getSignedImageUrls(functions)가 이 필드를 우선 읽고, 없으면(Phase B
@@ -42,7 +50,14 @@ class FirestoreService {
   // uploadWardrobeImage 주석([C-4b] 표기) 참고 — 업로드 직후 서버 트리거가
   // 토큰을 회수하기 전까지만 유효한 잔여물이다. 정식 경로는 imagePath/
   // cutoutPath + getSignedImageUrls.
-  static Future<String> addWardrobeItem({
+  //
+  // [배경 제거 재개, 2026-08-07] `.add()`(자동 ID) 대신 `newWardrobeDocId()`
+  // 로 미리 뽑은 id에 `.doc(id).set(..., merge: true)`로 쓴다 — 배경 제거
+  // 트리거가 같은 id에 cutoutPath/cutoutImageUrl을 merge write로 채우는데,
+  // 클라이언트 쪽 이 쓰기도 merge라 어느 쪽이 먼저 도착하든 서로 덮어쓰지
+  // 않는다(§1-3 "레이스가 성립하지 않는다" 설계 — 여기가 그 절반이다).
+  static Future<void> addWardrobeItem({
+    required String id,
     required String imageUrl,
     required String imagePath,
     String? cutoutImageUrl,
@@ -52,7 +67,7 @@ class FirestoreService {
     ClothingSize? size,
     required String ownerUid,
   }) async {
-    final doc = await _db.collection(_wardrobeCol).add({
+    await _db.collection(_wardrobeCol).doc(id).set({
       'imageUrl': imageUrl,
       'imagePath': imagePath,
       if (cutoutImageUrl != null) 'cutoutImageUrl': cutoutImageUrl,
@@ -62,8 +77,7 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
       if (size != null) 'size': size.toFirestore(),
       'ownerUid': ownerUid,
-    });
-    return doc.id;
+    }, SetOptions(merge: true));
   }
 
   // 등록 직후 백그라운드 추출, 또는 분석 시점 폴백 추출 결과를 문서에 patch.

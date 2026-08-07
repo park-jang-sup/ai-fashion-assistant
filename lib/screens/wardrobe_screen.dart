@@ -609,7 +609,15 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
       _isUploading = true;
     });
     try {
-      final (:url, :path) = await StorageService.uploadWardrobeImage(xFile);
+      // 업로드 *전에* 문서 ID를 미리 뽑는다 — 배경 제거 트리거가 이
+      // 값을 업로드 커스텀 메타데이터에서 읽어 조회 없이 대상 문서를
+      // 특정한다(docs/task_background_removal_v1.md §1-3).
+      final itemId = FirestoreService.newWardrobeDocId();
+      final (:url, :path) = await StorageService.uploadWardrobeImage(
+        xFile,
+        wardrobeDocId: itemId,
+        ownerUid: ownerUid,
+      );
       final imageUrl = url;
       final imagePath = path;
       String? cutoutImageUrl;
@@ -619,7 +627,8 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         cutoutImageUrl = cutout.url;
         cutoutPath = cutout.path;
       }
-      final itemId = await FirestoreService.addWardrobeItem(
+      await FirestoreService.addWardrobeItem(
+        id: itemId,
         imageUrl: imageUrl,
         imagePath: imagePath,
         cutoutImageUrl: cutoutImageUrl,

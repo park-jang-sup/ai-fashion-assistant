@@ -36,14 +36,31 @@ class StorageService {
   // 코드에서 이 URL 필드를 직접 fetch하거나 "유효한 이미지 주소"로
   // 가정하지 말 것. 다음 사람이 이 필드를 정식 경로로 오인하는 건
   // 5.13.2/5.13.3 계열의 재발이다.
-  static Future<({String url, String path})> uploadWardrobeImage(XFile xFile) async {
+  // [배경 제거 재개, 2026-08-07] wardrobeDocId/ownerUid를 커스텀
+  // 메타데이터에 실어 보낸다 — 배경 제거 트리거(functions_bg_removal)가
+  // 이 업로드가 어느 wardrobe 문서 소유인지 조회 없이 바로 알 수 있게
+  // 하기 위함(docs/task_background_removal_v1.md §1-3, 메타데이터
+  // 전달 방식 — 폴링도 업로드 순서 반전도 아님). 문서 ID는 호출부가
+  // 업로드 *전에* `FirestoreService.newWardrobeDocId()`로 미리 뽑아
+  // 이 함수와 그 다음 `addWardrobeItem` 양쪽에 같은 값을 넘겨야 한다.
+  static Future<({String url, String path})> uploadWardrobeImage(
+    XFile xFile, {
+    required String wardrobeDocId,
+    required String ownerUid,
+  }) async {
     final file = File(xFile.path);
     final fileName = '${_randomFileStem()}.jpg';
     final ref = _storage.ref().child('$_folder/$fileName');
 
     await ref.putFile(
       file,
-      SettableMetadata(contentType: 'image/jpeg'),
+      SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {
+          'wardrobeDocId': wardrobeDocId,
+          'ownerUid': ownerUid,
+        },
+      ),
     );
 
     final url = await ref.getDownloadURL();
