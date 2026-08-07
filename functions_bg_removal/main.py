@@ -39,6 +39,16 @@ Storage 커스텀 메타데이터(`wardrobeDocId`/`ownerUid`/`category`)에
 요구해야 한다(별도 작업, `docs/task_background_removal_v1.md`
 항목 5 정정 참고).
 
+**[정정 2026-08-08 추가] 이 가드는 이제 조건부로 성립한다.**
+`storage.rules`의 `wardrobe_images/` write 규칙에 `isOwnUpload()`
+(`request.resource.metadata.ownerUid == request.auth.uid` 요구)를
+추가했다 — 에뮬레이터 4케이스 실측(케이스1 ownerUid 일치 ALLOW,
+케이스2 불일치 DENY)으로 조건을 확인했다. **다만 이 규칙이
+`firebase deploy --only storage`로 실제 배포된 상태일 때만
+유효하다** — 배포 전에는 위 문단의 자기참조 문제가 그대로다. 배포
+여부는 `storage.rules`의 `isOwnUpload()` 주석(케이스별 실측 기록
+포함)을 참고.
+
 **'전신' 카테고리 제외(결함 1 수정, 2026-08-07)**: 전신 사진은 가상
 피팅의 기준 이미지이고(`wardrobe_screen.dart`도 같은 이유로
 `category != '전신'`일 때만 클라이언트 배경 제거를 시도한다), u2netp도
