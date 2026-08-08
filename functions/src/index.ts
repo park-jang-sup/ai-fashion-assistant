@@ -1,3 +1,4 @@
+import {randomUUID} from "node:crypto";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {onSchedule} from "firebase-functions/v2/scheduler";
 import {onObjectFinalized} from "firebase-functions/v2/storage";
@@ -62,9 +63,26 @@ function extractUpstreamErrorMessage(rawBody: string): string {
   }
 }
 
-async function fetchUpstream(endpoint: string, body: string): Promise<Response> {
+// reqId/startedAt는 계측용 상관 키 - callGeminiText의 시작 로그와 같은
+// 키로 묶여야 여러 요청이 겹칠 때(동시 사용자·재시도) 어느 시작에 어느
+// 완료/abort가 대응하는지 알 수 있다(handoff_2026-08-08 "업스트림 이미지
+// 생성이 55초를 넘겨 실패" 계측 설계).
+async function fetchUpstream(
+  endpoint: string,
+  body: string,
+  reqId: string,
+  startedAt: number
+): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  const timer = setTimeout(() => {
+    // abort()가 실제로 발동했는지를 로그로 직접 남긴다 - 이전엔 이 시점을
+    // 알 방법이 없어 "55초를 넘겼다"를 함수 로그의 침묵으로부터 추론해야
+    // 했다(handoff_2026-08-07.md "업스트림 이미지 생성이 55초를 넘겨 실패").
+    console.log(
+      `[callGeminiText] upstream-abort reqId=${reqId} elapsedMs=${Date.now() - startedAt}`
+    );
+    controller.abort();
+  }, UPSTREAM_TIMEOUT_MS);
   try {
     return await fetch(endpoint, {
       method: "POST",
@@ -177,6 +195,13 @@ export const callGeminiText = onCall(
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
     }
 
+    // 완료·실패 로그 부재로 5.19.2류 증상(무한 로딩 vs 정상 실패)을 구분 못
+    // 했던 계측 공백을 메운다(handoff_2026-08-08). reqId는 시작 로그와
+    // 완료 로그를 묶는 상관 키 - 동시 요청이 섞여도 어느 시작에 어느
+    // 완료가 대응하는지 알 수 있어야 한다.
+    const reqId = randomUUID().slice(0, 8);
+    const startedAt = Date.now();
+
     const {model, requestBody} = (request.data ?? {}) as {
       model?: unknown;
       requestBody?: unknown;
@@ -195,7 +220,10 @@ export const callGeminiText = onCall(
     // 그대로 재사용한다 - 대용량 페이로드에서 JSON.stringify를 두 번
     // 하는 비용을 피한다.
     const requestBytes = Buffer.byteLength(requestBodyJson, "utf8");
-    console.log(`[callGeminiText] model=${model} requestBytes=${requestBytes}`);
+    console.log(
+      `[callGeminiText] start reqId=${reqId} uid=${request.auth.uid} ` +
+        `model=${model} requestBytes=${requestBytes}`
+    );
 
     // 호출량 상한과 같은 model→kind 파생을 쓴다(payload_limit.ts
     // kindForModel - 단일 출처, 이전엔 여기 인라인 삼항연산자였다).
@@ -223,6 +251,10 @@ export const callGeminiText = onCall(
       // 설계판단(나): upstream 오류가 details에 upstreamStatus/
       // upstreamMessage를 싣는 것과 같은 형식으로, 로그 없이도 원인을
       // 알 수 있게 requestBytes/limitBytes/kind를 싣는다.
+      console.log(
+        `[callGeminiText] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
+          "outcome=rejected reason=payload_limit"
+      );
       throw new HttpsError("invalid-argument", "요청 페이로드가 너무 큽니다.", {
         requestBytes,
         limitBytes: payloadDecision.limitBytes,
@@ -230,120 +262,149 @@ export const callGeminiText = onCall(
       });
     }
 
-    // 계수 시점은 상류 호출 전 - 실패할 요청도 셈한다(실패를 반복 때리는
-    // 것도 남용이다). resource-exhausted를 던지면 여기서 함수가 끝나
-    // fetchUpstream은 아예 호출되지 않는다.
-    await checkAndRecordRateLimit(request.auth.uid, kind);
+    // 이 아래(호출량 상한 이후)는 outcome을 아직 모른 채로 여러 실패 지점
+    // (rate limit/data-loss/internal/invalid-json/성공)으로 갈라지므로,
+    // 하나의 try/catch로 감싸 완료 로그 한 줄을 반드시 남긴다 - 어느
+    // 경로로 끝나든 reqId·elapsedMs가 찍힌다(계측 공백 메움,
+    // handoff_2026-08-08).
+    try {
+      // 계수 시점은 상류 호출 전 - 실패할 요청도 셈한다(실패를 반복 때리는
+      // 것도 남용이다). resource-exhausted를 던지면 여기서 함수가 끝나
+      // fetchUpstream은 아예 호출되지 않는다.
+      await checkAndRecordRateLimit(request.auth.uid, kind);
 
-    const key = geminiApiKey.value();
-    const endpoint = request.acceptsStreaming ?
-      `${GEMINI_BASE_URL}/models/${model}:streamGenerateContent?alt=sse&key=${key}` :
-      `${GEMINI_BASE_URL}/models/${model}:generateContent?key=${key}`;
+      const key = geminiApiKey.value();
+      const endpoint = request.acceptsStreaming ?
+        `${GEMINI_BASE_URL}/models/${model}:streamGenerateContent?alt=sse&key=${key}` :
+        `${GEMINI_BASE_URL}/models/${model}:generateContent?key=${key}`;
 
-    const upstream = await fetchUpstream(endpoint, requestBodyJson);
+      const upstream = await fetchUpstream(endpoint, requestBodyJson, reqId, startedAt);
 
-    if (!request.acceptsStreaming) {
-      let text: string;
-      try {
-        text = await upstream.text();
-      } catch (err) {
-        // 헤더는 받았지만(fetchUpstream 통과) 본문 전송 도중 연결이 끊긴
-        // 경우 - AbortError도 네트워크 실패도 아니라 fetchUpstream의 catch를
-        // 거치지 않고 여기서 처음 발생한다. 안 잡으면 프레임워크가 디테일
-        // 없는 internal로 뭉개 클라이언트가 재시도 여부를 판단할 근거를
-        // 잃는다. "응답이 끊겨 온전히 못 받음"은 어느 모델을 썼는지와
-        // 무관한 순수 네트워크 문제이므로 data-loss로 명시하고, 클라이언트
-        // _mapProxyException이 이를 GeminiApiException(503)으로 재구성해
-        // 기존 재시도(isRetryable) 판정에 태워 대체 모델로 넘어가게 한다.
-        const message = err instanceof Error ? err.message : String(err);
-        throw new HttpsError(
-          "data-loss",
-          `업스트림 응답 본문을 읽는 중 연결이 끊겼습니다: ${message}`
-        );
+      if (!request.acceptsStreaming) {
+        let text: string;
+        try {
+          text = await upstream.text();
+        } catch (err) {
+          // 헤더는 받았지만(fetchUpstream 통과) 본문 전송 도중 연결이 끊긴
+          // 경우 - AbortError도 네트워크 실패도 아니라 fetchUpstream의 catch를
+          // 거치지 않고 여기서 처음 발생한다. 안 잡으면 프레임워크가 디테일
+          // 없는 internal로 뭉개 클라이언트가 재시도 여부를 판단할 근거를
+          // 잃는다. "응답이 끊겨 온전히 못 받음"은 어느 모델을 썼는지와
+          // 무관한 순수 네트워크 문제이므로 data-loss로 명시하고, 클라이언트
+          // _mapProxyException이 이를 GeminiApiException(503)으로 재구성해
+          // 기존 재시도(isRetryable) 판정에 태워 대체 모델로 넘어가게 한다.
+          const message = err instanceof Error ? err.message : String(err);
+          throw new HttpsError(
+            "data-loss",
+            `업스트림 응답 본문을 읽는 중 연결이 끊겼습니다: ${message}`
+          );
+        }
+        if (!upstream.ok) {
+          const message = extractUpstreamErrorMessage(text);
+          throw new HttpsError("internal", message, {
+            upstreamStatus: upstream.status,
+            upstreamMessage: message,
+          });
+        }
+        try {
+          const parsed = JSON.parse(text);
+          console.log(
+            `[callGeminiText] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
+              `outcome=success upstreamStatus=${upstream.status} ` +
+              `responseBytes=${Buffer.byteLength(text, "utf8")}`
+          );
+          return parsed;
+        } catch (err) {
+          // 200인데 본문이 유효 JSON이 아닌 경우 - Gemini는 성공으로 응답했지만
+          // 파싱 불가한 바디를 준 것이므로, 직접 호출 시절 _parseJsonObject가
+          // 던지던 FormatException(1차 모델 응답이 중간에 잘림 등)과 같은
+          // 성격의 실패다. reason: invalid-json으로 표시해 클라이언트가
+          // FormatException으로 재구성하게 한다 - withTextModelFallback은
+          // 이미 FormatException을 "대체 모델로 넘어갈 이유"로 처리한다.
+          const message = err instanceof Error ? err.message : String(err);
+          throw new HttpsError(
+            "internal",
+            `Gemini 응답이 유효한 JSON이 아닙니다: ${message}`,
+            {reason: "invalid-json"}
+          );
+        }
       }
-      if (!upstream.ok) {
+
+      // 스트리밍 경로 - SSE data: 라인을 텍스트 추출 없이 원본 JSON 그대로 중계한다.
+      if (!upstream.ok || !upstream.body) {
+        const text = await upstream.text();
         const message = extractUpstreamErrorMessage(text);
         throw new HttpsError("internal", message, {
           upstreamStatus: upstream.status,
           upstreamMessage: message,
         });
       }
-      try {
-        return JSON.parse(text);
-      } catch (err) {
-        // 200인데 본문이 유효 JSON이 아닌 경우 - Gemini는 성공으로 응답했지만
-        // 파싱 불가한 바디를 준 것이므로, 직접 호출 시절 _parseJsonObject가
-        // 던지던 FormatException(1차 모델 응답이 중간에 잘림 등)과 같은
-        // 성격의 실패다. reason: invalid-json으로 표시해 클라이언트가
-        // FormatException으로 재구성하게 한다 - withTextModelFallback은
-        // 이미 FormatException을 "대체 모델로 넘어갈 이유"로 처리한다.
-        const message = err instanceof Error ? err.message : String(err);
-        throw new HttpsError(
-          "internal",
-          `Gemini 응답이 유효한 JSON이 아닙니다: ${message}`,
-          {reason: "invalid-json"}
-        );
-      }
-    }
 
-    // 스트리밍 경로 - SSE data: 라인을 텍스트 추출 없이 원본 JSON 그대로 중계한다.
-    if (!upstream.ok || !upstream.body) {
-      const text = await upstream.text();
-      const message = extractUpstreamErrorMessage(text);
-      throw new HttpsError("internal", message, {
-        upstreamStatus: upstream.status,
-        upstreamMessage: message,
-      });
-    }
-
-    const reader = upstream.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    for (;;) {
-      let done: boolean;
-      let value: Uint8Array | undefined;
-      try {
-        ({done, value} = await reader.read());
-      } catch (err) {
-        // SSE 스트리밍 도중 연결이 끊긴 경우 - 비스트리밍 경로의 upstream.text()
-        // 실패와 같은 성격(본문 전송 중 단절)이라 동일하게 data-loss로 던진다.
-        // 다만 이 경로의 실제 착지점은 fitting_job_controller의 catch(e) →
-        // [STREAM-FALLBACK] → 비스트리밍 재시도이므로, 여기서의 코드 선택보다
-        // "internal로 뭉개지 않고 원인을 남긴다"는 점이 더 중요하다.
-        const message = err instanceof Error ? err.message : String(err);
-        throw new HttpsError(
-          "data-loss",
-          `스트리밍 응답을 읽는 중 연결이 끊겼습니다: ${message}`
-        );
-      }
-      if (done) break;
-      buffer += decoder.decode(value, {stream: true});
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        if (!line.startsWith("data:")) continue;
-        const jsonStr = line.slice(5).trim();
-        if (!jsonStr) continue;
-        let chunk: unknown;
+      const reader = upstream.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamedBytes = 0;
+      for (;;) {
+        let done: boolean;
+        let value: Uint8Array | undefined;
         try {
-          chunk = JSON.parse(jsonStr);
+          ({done, value} = await reader.read());
         } catch (err) {
-          // SSE 한 청크가 깨진 JSON인 경우 - 비스트리밍 경로의 JSON.parse(text)
-          // 실패와 같은 응답 형식 문제이므로 동일하게 invalid-json으로 표시한다.
-          // 이 예외도 결국 [STREAM-FALLBACK]으로 착지하지만, 원인을 남겨야
-          // 나중에 로그에서 "형식 문제였는지 연결 문제였는지" 구분할 수 있다.
+          // SSE 스트리밍 도중 연결이 끊긴 경우 - 비스트리밍 경로의 upstream.text()
+          // 실패와 같은 성격(본문 전송 중 단절)이라 동일하게 data-loss로 던진다.
+          // 다만 이 경로의 실제 착지점은 fitting_job_controller의 catch(e) →
+          // [STREAM-FALLBACK] → 비스트리밍 재시도이므로, 여기서의 코드 선택보다
+          // "internal로 뭉개지 않고 원인을 남긴다"는 점이 더 중요하다.
           const message = err instanceof Error ? err.message : String(err);
           throw new HttpsError(
-            "internal",
-            `SSE 청크가 유효한 JSON이 아닙니다: ${message}`,
-            {reason: "invalid-json"}
+            "data-loss",
+            `스트리밍 응답을 읽는 중 연결이 끊겼습니다: ${message}`
           );
         }
-        response?.sendChunk(chunk);
+        if (done) break;
+        streamedBytes += value?.byteLength ?? 0;
+        buffer += decoder.decode(value, {stream: true});
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue;
+          const jsonStr = line.slice(5).trim();
+          if (!jsonStr) continue;
+          let chunk: unknown;
+          try {
+            chunk = JSON.parse(jsonStr);
+          } catch (err) {
+            // SSE 한 청크가 깨진 JSON인 경우 - 비스트리밍 경로의 JSON.parse(text)
+            // 실패와 같은 응답 형식 문제이므로 동일하게 invalid-json으로 표시한다.
+            // 이 예외도 결국 [STREAM-FALLBACK]으로 착지하지만, 원인을 남겨야
+            // 나중에 로그에서 "형식 문제였는지 연결 문제였는지" 구분할 수 있다.
+            const message = err instanceof Error ? err.message : String(err);
+            throw new HttpsError(
+              "internal",
+              `SSE 청크가 유효한 JSON이 아닙니다: ${message}`,
+              {reason: "invalid-json"}
+            );
+          }
+          response?.sendChunk(chunk);
+        }
       }
+      console.log(
+        `[callGeminiText] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
+          `outcome=success upstreamStatus=${upstream.status} responseBytes=${streamedBytes}`
+      );
+      // 최종 반환값은 쓰지 않는다 - 클라이언트가 청크를 누적해 직접 파싱한다.
+      return {};
+    } catch (err) {
+      // HttpsError면 code/message를 그대로, 아니면 이름만이라도 남긴다 -
+      // 어느 쪽이든 "왜 끝났는지"가 이 한 줄에 남아야 한다.
+      const code = err instanceof HttpsError ? err.code : "unknown";
+      const message = err instanceof Error ? err.message : String(err);
+      console.log(
+        `[callGeminiText] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
+          `outcome=error code=${code} message=${message}`
+      );
+      throw err;
     }
-    // 최종 반환값은 쓰지 않는다 - 클라이언트가 청크를 누적해 직접 파싱한다.
-    return {};
   }
 );
 
