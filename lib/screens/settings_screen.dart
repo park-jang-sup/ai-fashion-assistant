@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:workmanager/workmanager.dart';
 import '../constants/app_colors.dart';
+import '../data/region_presets.dart';
 import '../models/user_profile.dart';
 import '../services/background_agent.dart';
 import '../services/fcm_service.dart';
@@ -74,6 +75,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
       MaterialPageRoute(builder: (_) => const BodyProfileScreen()),
     );
     _loadProfile();
+  }
+
+  // 지역 선택 — 지오코딩 없이 광역시도 17개 프리셋 중 고른다(날씨
+  // 조회 좌표용, 옷차림 판단엔 시도 단위 해상도면 충분하다는 판단).
+  // saveUserProfile은 문서 전체를 덮어쓰므로(merge 아님) 반드시
+  // copyWith로 기존 체형/취향 필드를 보존한 채 지역만 바꿔서 저장한다
+  // — 안 그러면 지역 하나 바꿨다고 체형 정보가 날아간다.
+  Future<void> _openRegionPicker() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final selected = await showModalBottomSheet<RegionPreset>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _RegionPickerSheet(current: _profile?.regionName),
+    );
+    if (selected == null || !mounted) return;
+
+    final updated = (_profile ?? const UserProfile()).copyWith(
+      regionName: selected.name,
+      regionLatitude: selected.latitude,
+      regionLongitude: selected.longitude,
+    );
+    try {
+      await FirestoreService.saveUserProfile(uid, updated);
+      if (mounted) setState(() => _profile = updated);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('지역 저장 실패: $e'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.red,
+      ));
+    }
   }
 
   void _openScraps() {
@@ -481,6 +516,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: (v) => setState(() => _marketingEnabled = v),
                   ),
                 ),
+                _SettingsRow(
+                  label: '지역',
+                  sub: '날씨 기반 코디 추천에 사용됩니다',
+                  trailingText: _profile?.regionName ?? '미설정(서울)',
+                  onTap: _openRegionPicker,
+                ),
                 if (uid != null)
                   _SettingsRow(
                     label: '데모 옷장 비우기',
@@ -700,6 +741,101 @@ class _SettingsRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// 지역 선택 시트 — 광역시도 17개 프리셋 목록. 지오코딩 검색 없음(범위
+// 밖), 목록에서 고르기만 한다.
+class _RegionPickerSheet extends StatelessWidget {
+  final String? current;
+
+  const _RegionPickerSheet({this.current});
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                child: Column(
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                            color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        const Text('지역 선택',
+                            style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.4)),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                                color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+                            child: const Icon(Icons.close, color: AppColors.textMuted, size: 18),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('날씨 기반 코디 추천에 쓰일 지역이에요',
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.divider),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: regionPresets.length,
+                  itemBuilder: (context, index) {
+                    final preset = regionPresets[index];
+                    final isSelected = preset.name == current;
+                    return ListTile(
+                      title: Text(preset.name,
+                          style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500)),
+                      trailing:
+                          isSelected ? const Icon(Icons.check, color: AppColors.blue, size: 18) : null,
+                      onTap: () => Navigator.pop(context, preset),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

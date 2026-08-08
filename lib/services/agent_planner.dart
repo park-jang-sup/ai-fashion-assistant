@@ -85,7 +85,17 @@ class AgentPlanner {
       final usable = wardrobe.where((i) => i.attributes != null).toList();
       if (usable.length < 2) return (created: 0, firstLabel: null);
 
-      final weather = await WeatherService.fetch();
+      // 지역 선택(설정 화면) — 여기서 한 번만 읽어 이 실행 전체(아래
+      // WeatherService.fetch()와 _prepareRecommendationFor 내부 호출)에
+      // 같이 쓴다. runProactiveCheck는 포그라운드(main.dart)·백그라운드
+      // (background_agent.dart)·FCM 탭(fcm_service.dart) 세 경로가 공유하는
+      // 합류 지점이라, 여기 한 곳에서만 읽으면 세 경로 전부 커버된다.
+      // 미설정이면 null → WeatherService.fetch()가 서울 기본값으로 폴백.
+      final profile = await FirestoreService.getUserProfileSilently(uid);
+      final latitude = profile?.regionLatitude;
+      final longitude = profile?.regionLongitude;
+
+      final weather = await WeatherService.fetch(latitude: latitude, longitude: longitude);
 
       for (var i = 0; i < planned.length; i++) {
         final plan = planned[i];
@@ -141,7 +151,8 @@ class AgentPlanner {
 
         final madeRecommendation = await _prepareRecommendationFor(
             uid, plan, usable,
-            replanCount: replanCount, previousItemIds: previousItemIds);
+            replanCount: replanCount, previousItemIds: previousItemIds,
+            latitude: latitude, longitude: longitude);
         if (madeRecommendation) {
           created++;
           firstLabel ??= '${_relativeLabel(plan.date)} [${plan.tpoTag}]';
@@ -314,6 +325,8 @@ class AgentPlanner {
     List<WardrobeItem> wardrobe, {
     int replanCount = 0,
     List<String> previousItemIds = const [],
+    double? latitude,
+    double? longitude,
   }) async {
     final tag = TpoTags.byLabel(plan.tpoTag);
     final wardrobeById = {for (final i in wardrobe) i.id: i};
@@ -329,7 +342,8 @@ class AgentPlanner {
 
     // 날씨를 관찰 도구로 사용 — 이 일정 날짜의 예보가 특이하면(비/극한 기온)
     // 카드 문구에 반영할 근거로 남긴다. 조회 실패(null)면 조용히 건너뛴다.
-    final dayWeather = (await WeatherService.fetch())?.forDate(plan.date);
+    final dayWeather =
+        (await WeatherService.fetch(latitude: latitude, longitude: longitude))?.forDate(plan.date);
     String? weatherNote;
     if (dayWeather != null) {
       if (dayWeather.precipitationProbability >= WeatherService.rainProbabilityThreshold) {
@@ -641,9 +655,17 @@ class AgentPlanner {
       if (e.isPlanned) plannedByDate[_dateKey(e.date)] = e.tpoTag;
     }
 
+    // 지역 선택 — runProactiveCheck와 별개 배선이다(이 함수는 캘린더
+    // 화면에서만 부르는 포그라운드 전용 경로라 runProactiveCheck의 합류
+    // 지점을 안 거친다). 미설정이면 null → 서울 기본값 폴백.
+    final profile = await FirestoreService.getUserProfileSilently(uid);
+
     // 날씨를 관찰 도구로 사용 — 7일 예보를 날짜별 제약으로 스케줄 줄에
     // 덧붙인다. 조회 실패(null)면 조용히 날씨 제약 없이 진행한다.
-    final weather = await WeatherService.fetch();
+    final weather = await WeatherService.fetch(
+      latitude: profile?.regionLatitude,
+      longitude: profile?.regionLongitude,
+    );
     if (weather != null) {
       final rainyDayLabels = <String>[];
       for (final d in weather.daily) {

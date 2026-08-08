@@ -109,20 +109,30 @@ class WeatherSnapshot {
   }
 }
 
-// Open-Meteo(무료, API 키 불필요) 기반 날씨 조회. 위치는 서울 좌표로
-// 고정한다 — geolocator/위치 권한 처리는 범위 밖(마감 전 리스크 회피).
-// 나중에 사용자 위치로 바꾸기 쉽도록 좌표만 상수로 분리해둔다.
+// Open-Meteo(무료, API 키 불필요) 기반 날씨 조회. 좌표는 호출부가
+// 넘긴다(지역 선택, lib/data/region_presets.dart) — 안 넘기면 아래
+// 기본 좌표(서울)로 폴백한다. geolocator/위치 권한 처리는 여전히 범위
+// 밖(마감 전 리스크 회피 판단 유지) — 지역 선택은 좌표를 GPS가 아니라
+// 사용자가 고른 광역시도 프리셋에서 가져온다.
 class WeatherService {
-  static const _latitude = 37.57;
-  static const _longitude = 126.98;
+  // 미설정 폴백 좌표(서울) — 사용자가 지역을 아직 설정하지 않았을 때만
+  // 쓰인다. fetch()의 latitude/longitude 파라미터가 null이면 이 값으로
+  // 대체된다.
+  static const _defaultLatitude = 37.57;
+  static const _defaultLongitude = 126.98;
   static const _baseUrl = 'https://api.open-meteo.com/v1/forecast';
 
   static final http.Client _client = http.Client();
 
   // 같은 세션에서 반복 호출하지 않게 메모리 캐시(프로세스 생존 동안만,
-  // Firestore 저장 없음).
+  // Firestore 저장 없음). 좌표를 캐시 키에 포함시킨다 — 그래야 지역을
+  // 바꿨을 때 이전 지역 캐시를 계속 돌려주지 않고 자연히 miss가 나서
+  // 새로 조회한다. 별도 "캐시 무효화" 호출을 만들지 않는 이유이기도
+  // 하다 — 무효화를 어디서 부를지가 또 하나의 누락 지점이 된다.
   static WeatherSnapshot? _cache;
   static DateTime? _cachedAt;
+  static double? _cachedLatitude;
+  static double? _cachedLongitude;
   static const _cacheTtl = Duration(minutes: 30);
 
   // 가장 최근 fetch() 호출(캐시 히트 포함)의 성공 여부 — 진단용 관찰 지점.
@@ -134,18 +144,25 @@ class WeatherService {
 
   // 실패(네트워크 오류/타임아웃/파싱 실패)하면 null — 호출부는 하드코딩된
   // 값으로 폴백하지 말고 위젯을 숨기거나 "불러오지 못했다"고 정직하게 표시한다.
-  static Future<WeatherSnapshot?> fetch() async {
+  static Future<WeatherSnapshot?> fetch({double? latitude, double? longitude}) async {
+    final lat = latitude ?? _defaultLatitude;
+    final lon = longitude ?? _defaultLongitude;
+
     final cached = _cache;
     final cachedAt = _cachedAt;
-    if (cached != null && cachedAt != null && DateTime.now().difference(cachedAt) < _cacheTtl) {
+    if (cached != null &&
+        cachedAt != null &&
+        _cachedLatitude == lat &&
+        _cachedLongitude == lon &&
+        DateTime.now().difference(cachedAt) < _cacheTtl) {
       lastFetchOk = true;
       return cached;
     }
 
     try {
       final uri = Uri.parse(_baseUrl).replace(queryParameters: {
-        'latitude': '$_latitude',
-        'longitude': '$_longitude',
+        'latitude': '$lat',
+        'longitude': '$lon',
         'current': 'temperature_2m,weather_code',
         'daily': 'temperature_2m_max,temperature_2m_min,precipitation_probability_max',
         'timezone': 'Asia/Seoul',
@@ -162,6 +179,8 @@ class WeatherService {
       );
       _cache = snapshot;
       _cachedAt = DateTime.now();
+      _cachedLatitude = lat;
+      _cachedLongitude = lon;
       debugPrint('[WEATHER] 조회 성공: ${snapshot.current.tempC.round()}°C '
           '${snapshot.current.condition.label}, 7일 예보 ${snapshot.daily.length}건');
       lastFetchOk = true;

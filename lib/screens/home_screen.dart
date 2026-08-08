@@ -76,8 +76,10 @@ class HomeScreen extends StatelessWidget {
 }
 
 // ── 날씨 한 줄 ────────────────────────────────────────────
-// WeatherService(Open-Meteo, 서울 좌표 고정)에서 가져온다. 실패하면 하드코딩된
-// 값으로 폴백하지 않고 "불러오지 못했다"고 정직하게 표시한다.
+// WeatherService(Open-Meteo)에서 가져온다. 좌표는 설정의 지역 선택
+// (UserProfile.regionLatitude/regionLongitude)을 쓰고, 미설정이면
+// 서울 기본값으로 폴백한다. 실패하면 하드코딩된 값으로 폴백하지 않고
+// "불러오지 못했다"고 정직하게 표시한다.
 class _WeatherRow extends StatefulWidget {
   const _WeatherRow();
 
@@ -87,6 +89,7 @@ class _WeatherRow extends StatefulWidget {
 
 class _WeatherRowState extends State<_WeatherRow> {
   WeatherSnapshot? _weather;
+  String? _regionName;
   bool _loading = true;
 
   @override
@@ -96,10 +99,18 @@ class _WeatherRowState extends State<_WeatherRow> {
   }
 
   Future<void> _load() async {
-    final snapshot = await WeatherService.fetch();
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final profile = uid != null ? await FirestoreService.getUserProfileSilently(uid) : null;
+    final snapshot = await WeatherService.fetch(
+      latitude: profile?.regionLatitude,
+      longitude: profile?.regionLongitude,
+    );
     if (!mounted) return;
     setState(() {
       _weather = snapshot;
+      // 미설정이면 기존과 동일하게 "서울"로 표시 — WeatherService의
+      // 서울 기본값 폴백과 문구를 맞춘다(회귀 0).
+      _regionName = profile?.regionName ?? '서울';
       _loading = false;
     });
   }
@@ -141,7 +152,7 @@ class _WeatherRowState extends State<_WeatherRow> {
         Icon(condition.icon, color: const Color(0xFFF59E0B), size: 18),
         const SizedBox(width: 8),
         Text(
-          '서울 · ${condition.label} ${weather.current.tempC.round()}°',
+          '${_regionName ?? '서울'} · ${condition.label} ${weather.current.tempC.round()}°',
           style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 14,
