@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -196,6 +197,20 @@ class FittingJobController extends ChangeNotifier {
   // 응답 생성이 일시적으로 느려 타임아웃났거나, Gemini가 일시적으로
   // 과부하(503)·요청 급증(429) 상태인 경우 곧바로 실패시키지 않고
   // 한 번 더 시도해본다. 두 번째도 같은 상황이면 그대로 실패로 처리한다.
+  //
+  // 프록시 페이로드 크기 상한 초과(functions/src/payload_limit.ts,
+  // handoff_2026-08-07.md §6 (4))는 결정론적 실패다 - 같은 요청을 다시
+  // 보내도 크기가 그대로라 똑같이 거부된다. 재시도하면 상한을 넣은
+  // 목적(정상 사용자의 호출량 할당을 지키는 것)과 반대로 함수만 반복
+  // 두드리게 된다.
+  // 확인(2026-08-08): 이 상한 초과는 GeminiService._mapProxyException이
+  // invalid-argument를 TimeoutException/GeminiApiException으로
+  // 재구성하지 않고 원본 FirebaseFunctionsException 그대로 돌려주므로,
+  // 아래 on절 어디에도 안 걸려 지금도 재시도되지 않는다(이미 그랬다 -
+  // 이번에 새로 막은 게 아니라 코드 추적으로 확인만 했다). 다만 이건
+  // "우연히 타입이 안 맞아서" 성립하는 암묵적 보장이라, _mapProxyException이
+  // 나중에 FirebaseFunctionsException을 다른 타입으로 감싸도록 바뀌면
+  // 조용히 깨질 수 있다 - 아래 on절로 명시해 그 보장을 코드에 고정한다.
   static Future<T> _withRetry<T>(Future<T> Function() action) async {
     try {
       return await action();
@@ -204,6 +219,9 @@ class FittingJobController extends ChangeNotifier {
     } on GeminiApiException catch (e) {
       if (!e.isRetryable) rethrow;
       return await action();
+    } on FirebaseFunctionsException catch (e) {
+      if (e.code == 'invalid-argument') rethrow; // 결정론적 실패 - 재시도 안 함
+      rethrow; // 그 외 코드는 기존 동작 그대로(변경 없음) - 여기 걸려도 항상 rethrow
     }
   }
 
