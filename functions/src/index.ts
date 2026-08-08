@@ -4,10 +4,11 @@ import {onObjectFinalized} from "firebase-functions/v2/storage";
 import {defineSecret} from "firebase-functions/params";
 import {initializeApp} from "firebase-admin/app";
 import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
-import {getMessaging} from "firebase-admin/messaging";
+import {getMessaging, SendResponse} from "firebase-admin/messaging";
 import {getStorage} from "firebase-admin/storage";
 import {evaluateRateLimit, RateLimitConfig, RateLimitKind, RateLimitState} from "./rate_limit";
 import {evaluatePayloadLimit, kindForModel, PAYLOAD_LIMIT_CONFIG} from "./payload_limit";
+import {planTokenCleanup, TokenSendResult} from "./fcm_token_cleanup";
 import {
   decideSignedUrlAccess,
   validateBatch,
@@ -463,6 +464,71 @@ export const getSignedImageUrls = onCall(
   }
 );
 
+// FCM 무효 토큰 정리(handoff_2026-08-07.md §6 "FCM 무효 토큰이 정리되지
+// 않는다") - sendTestPush/runScheduledCheckCore 둘이 같은 로직을 쓴다.
+// 두 벌이 되면 한쪽만 고쳐지는 종류의 버그가 된다.
+//
+// tokens[i] <-> responses[i] 인덱스 대응은 firebase-admin
+// sendEachForMulticast 문서가 명시적으로 보장한다 - "The responses list
+// obtained from the return value corresponds to the order of tokens/fids
+// in the MulticastMessage."(node_modules/firebase-admin/lib/messaging/
+// messaging.d.ts). 호출부는 sendEachForMulticast에 넘긴 tokens 배열을
+// 필터·정렬·중복 제거 없이 그대로 넘겨야 한다 - 어긋나면 살아있는
+// 토큰을 지우고 죽은 토큰을 남기는 사고가 나고, 증상이 "가끔 푸시가
+// 안 온다"라 원인 추적이 매우 어렵다. 길이가 안 맞으면(어긋났다는
+// 신호) 잘못 지우느니 정리를 통째로 건너뛴다.
+//
+// 삭제는 부가 작업 - 실패해도 발송 성공(sentCount/successCount)을
+// 뒤집지 않는다. 개별 삭제 실패는 로그만 남기고 조용히 넘어간다
+// (fitting_job_controller.dart의 _cacheFittingResultSilently와 같은 패턴).
+async function cleanupInvalidTokens(
+  uid: string,
+  tokens: string[],
+  responses: SendResponse[]
+): Promise<void> {
+  if (tokens.length !== responses.length) {
+    console.error(
+      `[fcmTokenCleanup] tokens/responses 길이 불일치 uid=${uid} ` +
+      `tokens=${tokens.length} responses=${responses.length} - 정리 건너뜀`
+    );
+    return;
+  }
+
+  const results: TokenSendResult[] = responses.map((r, i) => ({
+    token: tokens[i],
+    success: r.success,
+    errorCode: r.error?.code,
+  }));
+
+  const plan = planTokenCleanup(results);
+  if (plan.length === 0) return;
+
+  const db = getFirestore();
+  for (const item of plan) {
+    if (item.action === "diagnostic") {
+      // fcm_token_cleanup.ts의 DIAGNOSTIC_ONLY_CODE 판정 근거 참고 -
+      // 삭제하지 않고 눈에 띄게 로깅만 한다.
+      console.log(
+        `[fcmTokenCleanup] 진단(삭제 안 함, ${item.errorCode}) ` +
+        `uid=${uid} token=${item.token.slice(0, 12)}...`
+      );
+      continue;
+    }
+    try {
+      await db.collection("users").doc(uid).collection("fcm_tokens").doc(item.token).delete();
+      console.log(
+        `[fcmTokenCleanup] 삭제 uid=${uid} token=${item.token.slice(0, 12)}... ` +
+        `code=${item.errorCode}`
+      );
+    } catch (err) {
+      console.error(
+        `[fcmTokenCleanup] 삭제 실패(무시) uid=${uid} token=${item.token.slice(0, 12)}...:`,
+        err
+      );
+    }
+  }
+}
+
 // B단계 진단용 테스트 푸시 - 호출한 uid의 모든 등록 기기로 발송한다.
 // A-1 함정 1과 같은 이유로 onCall + request.auth 검사: onRequest로 만들면
 // 누구나 호출 가능한 무료 푸시 게이트웨이가 된다. 스케줄러(C단계)는 아직
@@ -510,6 +576,8 @@ export const sendTestPush = onCall(
       `[sendTestPush] uid=${uid} tokenCount=${tokens.length} ` +
       `successCount=${response.successCount} failureCount=${response.failureCount}`
     );
+
+    await cleanupInvalidTokens(uid, tokens, response.responses);
 
     return {
       sentCount: response.successCount,
@@ -727,6 +795,7 @@ async function runScheduledCheckCore(
       android: {notification: {channelId: FCM_NOTIFICATION_CHANNEL_ID}},
     });
     sendResult = {successCount: response.successCount, failureCount: response.failureCount};
+    await cleanupInvalidTokens(uid, tokens, response.responses);
   }
 
   await recordServerInvocation(uid, true, sendResult);
