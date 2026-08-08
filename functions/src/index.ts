@@ -7,6 +7,7 @@ import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
 import {getStorage} from "firebase-admin/storage";
 import {evaluateRateLimit, RateLimitConfig, RateLimitKind, RateLimitState} from "./rate_limit";
+import {evaluatePayloadLimit, kindForModel, PAYLOAD_LIMIT_CONFIG} from "./payload_limit";
 import {
   decideSignedUrlAccess,
   validateBatch,
@@ -189,15 +190,48 @@ export const callGeminiText = onCall(
     const requestBodyJson = JSON.stringify(requestBody);
     // A-2 이미지 경로 페이로드 실측용 - 핸드오프의 "3.5MB 안팎" 추산을
     // 실측치로 바꾸는 목적. 값 자체(옷 이미지 base64)는 로그에 남기지
-    // 않고 바이트 수만 남긴다.
-    console.log(
-      `[callGeminiText] model=${model} requestBytes=${Buffer.byteLength(requestBodyJson, "utf8")}`
-    );
+    // 않고 바이트 수만 남긴다. 이 값을 아래 페이로드 크기 상한 판정이
+    // 그대로 재사용한다 - 대용량 페이로드에서 JSON.stringify를 두 번
+    // 하는 비용을 피한다.
+    const requestBytes = Buffer.byteLength(requestBodyJson, "utf8");
+    console.log(`[callGeminiText] model=${model} requestBytes=${requestBytes}`);
 
-    // 계수 시점은 상류 호출 전 — 실패할 요청도 셈한다(실패를 반복 때리는
+    // 호출량 상한과 같은 model→kind 파생을 쓴다(payload_limit.ts
+    // kindForModel - 단일 출처, 이전엔 여기 인라인 삼항연산자였다).
+    const kind = kindForModel(model);
+
+    // 페이로드 크기 상한(handoff_2026-08-07.md §6 (4)) - 근거·상한값
+    // 도출 과정은 payload_limit.ts 상단 주석 참고.
+    //
+    // 설계판단(가): 이 검사를 호출량 상한(checkAndRecordRateLimit)보다
+    // 앞에 둔다. 상한 초과 요청은 현실적으로 악의적 남용이 아니라
+    // 클라이언트 버그 조건(예: 리사이즈 누락)에 가깝고, 그런 요청
+    // 때문에 정상 사용자의 시간당 호출 할당량이 깎이면 안 된다. 대가로
+    // "값싼 거부를 무제한 반복"할 수 있는 문이 열리지만 - 이 경로는
+    // Gemini를 타지 않으므로 비용은 함수 호출 자체뿐이다. 그 천장은
+    // 원래 maxInstances가 잡아야 하는데, **이 함수엔 현재 maxInstances가
+    // 설정돼 있지 않다**(코드 확인 - onCall 옵션에 secrets/region/
+    // timeoutSeconds뿐) - 이 트레이드오프의 다른 절반이 아직 안 닫혀
+    // 있다는 뜻이며, 별도 항목으로 남긴다(이번 범위 아님).
+    const payloadDecision = evaluatePayloadLimit(requestBytes, kind, PAYLOAD_LIMIT_CONFIG);
+    if (!payloadDecision.allowed) {
+      console.log(
+        `[payloadLimit] 초과 uid=${request.auth.uid} kind=${kind} ` +
+          `requestBytes=${requestBytes} limitBytes=${payloadDecision.limitBytes}`
+      );
+      // 설계판단(나): upstream 오류가 details에 upstreamStatus/
+      // upstreamMessage를 싣는 것과 같은 형식으로, 로그 없이도 원인을
+      // 알 수 있게 requestBytes/limitBytes/kind를 싣는다.
+      throw new HttpsError("invalid-argument", "요청 페이로드가 너무 큽니다.", {
+        requestBytes,
+        limitBytes: payloadDecision.limitBytes,
+        kind,
+      });
+    }
+
+    // 계수 시점은 상류 호출 전 - 실패할 요청도 셈한다(실패를 반복 때리는
     // 것도 남용이다). resource-exhausted를 던지면 여기서 함수가 끝나
     // fetchUpstream은 아예 호출되지 않는다.
-    const kind: RateLimitKind = model === "gemini-3.1-flash-image" ? "image" : "text";
     await checkAndRecordRateLimit(request.auth.uid, kind);
 
     const key = geminiApiKey.value();
