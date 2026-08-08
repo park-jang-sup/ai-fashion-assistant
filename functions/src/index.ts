@@ -52,7 +52,18 @@ const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
 // 업스트림이 멈추면 함수 자체 타임아웃까지 무한정 붙들리므로, 클라이언트의
 // 기존 .timeout(60초)와 같은 의도로 그보다 살짝 짧게 직접 끊는다.
-const UPSTREAM_TIMEOUT_MS = 55_000;
+//
+// [2026-08-08 측정용 임시 상향] 원래 값 55_000(55초) - 이미지 모델
+// (gemini-3.1-flash-image) 호출이 본인·심사용 두 계정, 서로 다른 이미지
+// 조합에서 반복적으로 정확히 55초 근처에서 abort되는 게 계측으로
+// 확인됐다(handoff_2026-08-07.md "업스트림 이미지 생성이 55초를 넘겨
+// 실패"). 55초가 실제 업스트림 소요시간인지 그보다 훨씬 긴 지연/무응답인지
+// 이 값 자체가 가려서 알 수 없었다 - 그래서 300초(5분)로 늘려 실제
+// 소요시간 분포를 처음 측정한다. **되돌릴 조건: 위 분포를 확보한 시점 -
+// 그때 55_000(원래 값)으로 되돌리고, 필요하면 그 분포에 맞는 근거 있는
+// 값으로 다시 정한다. 이 상수를 55_000이 아닌 다른 값으로 또 바꾸려면
+// 반드시 그 근거(측정한 분포)를 이 주석 옆에 남길 것.**
+const UPSTREAM_TIMEOUT_MS = 300_000;
 
 function extractUpstreamErrorMessage(rawBody: string): string {
   try {
@@ -188,8 +199,15 @@ async function checkAndRecordRateLimit(uid: string, kind: RateLimitKind): Promis
 // 한 이유(모델 폴백 판정에 필요한 FormatException은 호출부마다 다른 JSON
 // 파싱에서 나온다)가 축소판으로 재발한다. 모델 선택·재시도 판단은 전부
 // 클라이언트(withTextModelFallback)의 몫으로 남긴다.
+// [2026-08-08 측정용 임시 상향] 원래 값 60(60초) - UPSTREAM_TIMEOUT_MS를
+// 300초로 올린 것과 같은 세트. abort(300초)보다 여유가 있어야 abort 로그
+// 자체가 찍히고 함수가 깨끗하게 HttpsError를 반환한다(안 그러면 GCF
+// 런타임이 이 값에서 먼저 강제 종료시켜 위 upstream-abort 로그가 찍히기
+// 전에 잘린다). **되돌릴 조건: UPSTREAM_TIMEOUT_MS와 동시에 - 업스트림
+// 소요시간 분포를 확보하면 60(원래 값)으로, 또는 그 분포에 맞는 값으로
+// 되돌린다.**
 export const callGeminiText = onCall(
-  {secrets: [geminiApiKey], region: "asia-northeast3", timeoutSeconds: 60},
+  {secrets: [geminiApiKey], region: "asia-northeast3", timeoutSeconds: 320},
   async (request, response) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
