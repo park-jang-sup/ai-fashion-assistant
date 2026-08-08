@@ -167,6 +167,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // 데모 진입점 상시 노출 — 기존엔 wardrobe_screen.dart의 빈 상태
+  // 화면(items.isEmpty)에만 있어 옷을 한 벌이라도 등록하면 사라졌다
+  // (handoff_2026-08-07.md §6 "(A) 온보딩" 참고). 여기 "데모 옷장
+  // 비우기"와 대칭으로 추가 — 노출 조건(uid != null)도 대칭이다.
+  // 빈 상태 버튼은 그대로 둔다(제거하면 첫 실행 경험이 오히려 나빠짐).
+  // wardrobe_screen.dart의 _seedDemoWardrobe와 동일하게 확인 다이얼로그
+  // 없음(추가만 하는 작업이라 삭제와 달리 되돌리기 위험이 없음 —
+  // 데모 아이템은 "데모 옷장 비우기"로 언제든 도로 지울 수 있다).
+  bool _seedingDemo = false;
+
+  Future<void> _seedDemoWardrobe() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || _seedingDemo) return;
+    setState(() => _seedingDemo = true);
+    try {
+      final count = await FirestoreService.seedDemoWardrobe(uid);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('데모 옷장 $count벌을 불러왔습니다.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('데모 옷장을 불러오지 못했습니다: $e'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _seedingDemo = false);
+    }
+  }
+
   // F'.1.5 — isDemo:true인 문서만 골라 지운다(FirestoreService.clearDemoWardrobe
   // 가 그 조건으로 쿼리). 직접 등록한 옷까지 날아가는 사고를 막기 위해
   // 확인 다이얼로그 없이는 삭제하지 않는다.
@@ -522,6 +561,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailingText: _profile?.regionName ?? '미설정(서울)',
                   onTap: _openRegionPicker,
                 ),
+                if (uid != null)
+                  _SettingsRow(
+                    label: '데모 옷장 불러오기',
+                    sub: _seedingDemo ? '불러오는 중...' : '심사·시연용 데모 옷장을 내 옷장으로 복사합니다',
+                    onTap: _seedingDemo ? null : _seedDemoWardrobe,
+                  ),
                 if (uid != null)
                   _SettingsRow(
                     label: '데모 옷장 비우기',
