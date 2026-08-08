@@ -10,6 +10,15 @@ import '../models/user_profile.dart';
 import 'gemini_api_exception.dart';
 import 'image_url_resolver.dart';
 
+// docs/task_fitting_server_cache_v1.md §1/§6 - 가상 피팅 전용 서버
+// 콜러블(generateFittingImage) 배선 킬 스위치. SIGNED_URLS(image_url_resolver.dart)
+// 와 같은 원칙 — 화면 배선은 기본 꺼짐으로 추가하고, 기존 동작은 한
+// 비트도 안 바뀐다(3.12.4절 A단계와 동일 패턴). 켜지 않는 한
+// callGeminiText 경로 그대로 동작한다.
+//   flutter run --dart-define=SERVER_FITTING_CACHE=true  # 새 경로 켜기(검증 전까지 기본 꺼짐)
+const bool serverFittingCacheEnabled =
+    bool.fromEnvironment('SERVER_FITTING_CACHE', defaultValue: false);
+
 class GeminiService {
   // 모델명을 한 곳에 모아서 나중에 교체하기 쉽게 관리한다.
   // gemini-3-flash-preview로 시도해봤으나 응답이 중간에 잘리는 등
@@ -59,6 +68,35 @@ class GeminiService {
           .httpsCallable('callGeminiText',
               options: HttpsCallableOptions(timeout: const Duration(seconds: 60)))
           .call({'model': model, 'requestBody': requestBody});
+      return jsonEncode(result.data);
+    } on FirebaseFunctionsException catch (e) {
+      throw _mapProxyException(e);
+    }
+  }
+
+  // ── 가상 피팅 전용 프록시 호출 (docs/task_fitting_server_cache_v1.md) ──
+  // serverFittingCacheEnabled가 켜졌을 때만 쓰인다. callGeminiText와
+  // 달리 서버가 userPhotoId/clothingItemIds로 소유권을 직접 검증하고
+  // 성공 시 캐시까지 쓰므로 그 두 필드를 requestBody와 함께 보낸다.
+  // 시한을 150초로 둔 것은 이 호출에만 적용 — 다른 텍스트 계열
+  // 호출(_callProxyText의 60초)은 그대로다. 근거: 서버 300초 상한
+  // 배포 이후 실측 10건(성공 9건 75.5~139.4초, 실패 1건 300초+)에서
+  // 150초가 성공 9건 전부(90%)를 커버하고 180초는 그 이상 못 잡아
+  // 이득이 없었다(handoff_2026-08-07.md, task_fitting_server_cache_v1.md §2).
+  static Future<String> _callFittingProxy({
+    required String userPhotoId,
+    required List<String> clothingItemIds,
+    required Map<String, dynamic> requestBody,
+  }) async {
+    try {
+      final result = await _functions
+          .httpsCallable('generateFittingImage',
+              options: HttpsCallableOptions(timeout: const Duration(seconds: 150)))
+          .call({
+        'userPhotoId': userPhotoId,
+        'clothingItemIds': clothingItemIds,
+        'requestBody': requestBody,
+      });
       return jsonEncode(result.data);
     } on FirebaseFunctionsException catch (e) {
       throw _mapProxyException(e);
@@ -187,6 +225,14 @@ class GeminiService {
   // 바뀐다 — 프록시 결과 문자열을 직접 호출 때의 response.body 자리에
   // 그대로 넣는 것뿐이다(텍스트 계열 호출들과 동일한 패턴, gemini_service.dart
   // 상단 A-1 주석 참고).
+  // [정정 2026-08-08] 위 서술은 더 이상 전체가 사실이 아니다 — 업스트림
+  // 지연(handoff_2026-08-07.md "업스트림 이미지 생성이 55초를 넘겨 실패")
+  // 대응으로 이미지 전용 함수(generateFittingImage, 서버)를 신설했다.
+  // "범용 중계기라 전용 함수가 필요 없다"는 판단 자체는 여전히 맞지만
+  // (callGeminiText는 안 바뀜, 모델 불문 중계 원칙 보존), 가상 피팅만은
+  // 캐시·소유권 검증이 필요해 예외가 됐다 — 근거는
+  // docs/task_fitting_server_cache_v1.md §0. serverFittingCacheEnabled
+  // 플래그가 꺼져 있으면(기본값) 이 함수 아래 서술 그대로 동작한다.
   static Future<Uint8List> generateFittingImage({
     required String userPhotoId,
     required String userPhotoUrl,
@@ -220,7 +266,16 @@ class GeminiService {
       'generationConfig': {'responseModalities': ['IMAGE', 'TEXT']},
     };
 
-    final responseBody = await _callProxyText(model: _imageModel, requestBody: requestBody);
+    // serverFittingCacheEnabled가 꺼져 있으면(기본값) 기존 경로 그대로 —
+    // 이 분기 자체가 기존 동작을 한 비트도 안 바꾼다는 걸 보장하는
+    // 지점이다(docs/task_fitting_server_cache_v1.md §3.2/§6).
+    final responseBody = serverFittingCacheEnabled
+        ? await _callFittingProxy(
+            userPhotoId: userPhotoId,
+            clothingItemIds: clothingItemIds,
+            requestBody: requestBody,
+          )
+        : await _callProxyText(model: _imageModel, requestBody: requestBody);
     return _extractImageFromResponse(responseBody);
   }
 
