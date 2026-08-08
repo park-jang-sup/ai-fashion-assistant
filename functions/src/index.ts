@@ -65,17 +65,6 @@ const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 // 반드시 그 근거(측정한 분포)를 이 주석 옆에 남길 것.**
 const UPSTREAM_TIMEOUT_MS = 300_000;
 
-// [2026-08-08 진단용 임시 우회 — 반드시 확인 직후 되돌릴 것] 96d61f2
-// (페이로드 크기 상한 추가) 배포가 8/8 업스트림 지연의 원인일 가능성을
-// 마지막으로 배제하기 위한 스위치. true면 아래 페이로드 상한 검사
-// 자체를 건너뛴다(검사 코드는 지우지 않음 - 결과 확인 후 바로 false로
-// 되돌리기 위해). 현재 실제 요청은 전부 상한 안쪽이라 이 스위치가
-// 켜져도 정상 요청의 동작은 안 바뀐다 - 그래도 소요시간이 그대로
-// 75~300초대면 96d61f2는 배제 확정, 정상(20~30초대)으로 돌아오면
-// 원인이 이 커밋으로 되돌아간다. handoff_2026-08-07.md에 결과 기록 후
-// false로 원복.
-const BYPASS_PAYLOAD_LIMIT_DIAGNOSTIC = true;
-
 function extractUpstreamErrorMessage(rawBody: string): string {
   try {
     const parsed = JSON.parse(rawBody);
@@ -272,7 +261,7 @@ export const callGeminiText = onCall(
     // timeoutSeconds뿐) - 이 트레이드오프의 다른 절반이 아직 안 닫혀
     // 있다는 뜻이며, 별도 항목으로 남긴다(이번 범위 아님).
     const payloadDecision = evaluatePayloadLimit(requestBytes, kind, PAYLOAD_LIMIT_CONFIG);
-    if (!BYPASS_PAYLOAD_LIMIT_DIAGNOSTIC && !payloadDecision.allowed) {
+    if (!payloadDecision.allowed) {
       console.log(
         `[payloadLimit] 초과 uid=${request.auth.uid} kind=${kind} ` +
           `requestBytes=${requestBytes} limitBytes=${payloadDecision.limitBytes}`
