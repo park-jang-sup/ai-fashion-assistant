@@ -478,11 +478,37 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     );
     if (confirmed != true || !mounted) return;
 
+    // [지혈, 2026-08-08] 여기서 Storage 원본/컷아웃을 지우던 코드를
+    // 걷어냈다 - Firestore 문서 삭제만 한다. 이유는 삭제가 아니라
+    // 공유 구조에 있다: tools/seed_demo_wardrobe/seed.py와
+    // FirestoreService.seedDemoWardrobe는 파일을 복사하지 않고
+    // imageUrl/cutoutImageUrl 문자열만 그대로 옮긴다 - 즉 본인
+    // wardrobe 문서, demo_wardrobe 원본, 그리고 "데모 옷장
+    // 불러오기"로 생긴 다른 사용자의 사본까지 전부 같은 Storage
+    // 객체를 가리킨다. 이 함수는 소유자 확인 없이 URL로 바로
+    // 지우므로, 본인이 자기 옷 하나를 지우면 demo_wardrobe와 그걸
+    // 이미 시드해간 사용자의 사본까지 같이 깨진다 - 실제로
+    // task_signed_urls_v1.md §8-3에서 같은 공유 구조 때문에 전신
+    // 사진 12건(wardrobe 8 + demo_wardrobe 4)이 이미지 소실로
+    // 문서째 삭제된 전례가 있다(원인은 이 함수가 아니라 다른 삭제
+    // 스크립트였지만, 전파 경로는 동일한 공유 구조였다).
+    //
+    // 대가: 고아 Storage 파일이 쌓인다(handoff_2026-08-07.md §4에
+    // 등록). 하지만 서명 URL 이행 이후 문서가 없으면 서명 대상도
+    // 없어 고아 파일은 사실상 도달 불가능하다 - 남겨도 노출
+    // 위험이 아니라 저장 공간 문제일 뿐이고, 되돌릴 수 있다(대조
+    // 후 나중에 지우면 됨). 반대로 잘못 지운 사진은 못 되돌린다 -
+    // 이 비대칭이 "지운다"보다 "안 지운다"를 기본값으로 택한 근거다.
+    //
+    // 근본 해결은 시드 시 파일을 복사해 demo 전용 경로(예:
+    // demo_images/)로 참조를 분리하는 것 - 그러면 원본과 데모가
+    // 다른 객체를 가리켜 이 문제 자체가 없어진다. 이건 별도
+    // 작업이라 여기서 하지 않는다(handoff_2026-08-07.md §4).
+    //
+    // StorageService.deleteWardrobeImage 함수 자체는 지우지 않는다
+    // - 근본 해결(파일 복사 + 경로 분리) 이후에는 데모 전용 경로의
+    // 파일을 안전하게 지울 때 다시 쓸 수 있다.
     try {
-      await StorageService.deleteWardrobeImage(item.imageUrl);
-      if (item.cutoutImageUrl != null) {
-        await StorageService.deleteWardrobeImage(item.cutoutImageUrl!);
-      }
       await FirestoreService.deleteWardrobeItem(item.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
