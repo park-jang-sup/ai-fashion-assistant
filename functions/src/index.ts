@@ -18,6 +18,8 @@ import {
   SignedUrlCollection,
   SignedUrlRequestItem,
 } from "./signed_url_policy";
+import {buildFittingCacheKey} from "./fitting_cache_key";
+import {verifyFittingOwnership} from "./fitting_ownership_policy";
 
 // firebase-admin 14.x부터 admin.firestore()/admin.messaging() 같은
 // 네임스페이스 호환 API가 최상위 export에서 빠졌다 - getFirestore()/
@@ -419,6 +421,228 @@ export const callGeminiText = onCall(
       const message = err instanceof Error ? err.message : String(err);
       console.log(
         `[callGeminiText] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
+          `outcome=error code=${code} message=${message}`
+      );
+      throw err;
+    }
+  }
+);
+
+// ── 가상 피팅 전용 콜러블(docs/task_fitting_server_cache_v1.md) ─────
+// callGeminiText와 분리한 이유(§0): callGeminiText는 모델 불문 중계
+// 원칙을 지켜야 논문 5.16류 모델 교체 사전 검증이 서버 무변경으로
+// 가능하다 - 가상 피팅 전용 로직(캐시 키·소유권 검증·Storage 쓰기)을
+// 그 안에 넣으면 이 원칙이 깨진다. 가상 피팅은 이미지 개수 가변·
+// 유일한 캐시 필요·유일한 100초대 응답이라는 점에서도 성격이 다르다.
+//
+// UPSTREAM_TIMEOUT_MS/fetchUpstream은 callGeminiText와 공유(중복 방지,
+// §0 "(a)가 나을 수 있는 유일한 지점" 대응).
+const FITTING_RESULTS_FOLDER = "fitting_results";
+const FITTING_CACHE_COL = "fitting_cache";
+const WARDROBE_COL = "wardrobe";
+
+// Gemini 이미지 응답에서 base64 이미지 데이터를 꺼낸다 - 클라이언트의
+// _extractImageFromResponse(gemini_service.dart)와 같은 파싱 규칙
+// (candidates[0].content.parts[].inlineData.data)만 서버가 캐시 쓰기
+// 목적으로 한 번 더 수행하는 것. 클라이언트 파싱 로직은 안 바뀐다 -
+// 이 함수는 원본 응답을 그대로 반환하고, 클라이언트는 지금처럼 자기가
+// 직접 파싱해서 화면에 쓴다.
+function extractImageBytes(response: unknown): Buffer | null {
+  const candidates = (response as {candidates?: unknown} | null)?.candidates;
+  if (!Array.isArray(candidates) || candidates.length === 0) return null;
+  const content = (candidates[0] as {content?: unknown} | null)?.content;
+  const parts = (content as {parts?: unknown} | null)?.parts;
+  if (!Array.isArray(parts)) return null;
+  for (const part of parts) {
+    const inlineData = (part as {inlineData?: unknown} | null)?.inlineData;
+    const data = (inlineData as {data?: unknown} | null)?.data;
+    if (typeof data === "string" && data.length > 0) {
+      return Buffer.from(data, "base64");
+    }
+  }
+  return null;
+}
+
+// StorageService.uploadFittingResult + FirestoreService.cacheFittingResult
+// (둘 다 Dart)를 서버 쪽에서 대응하는 구현. 클라이언트가 만드는
+// getDownloadURL() 형식과 같은 모양의 imageUrl을 Admin SDK로 직접
+// 구성한다(다운로드 토큰을 파일 메타데이터에 심고 표준 URL 포맷 조립 -
+// Admin SDK엔 getDownloadURL() 상당 메서드가 없어 이 방식이 표준
+// 우회로다). imageUrl은 기존 관례대로 "업로드 직후 revokeTokenOnUpload가
+// 토큰을 회수하기 전까지만 유효한 잔여물"이고(firestore_service.dart의
+// 기존 주석과 동일 성격), 정식 접근 경로는 여전히 fitting_cache 문서
+// id + getSignedImageUrls다. imagePath는 서버가 경로를 이미 알고
+// 있으므로 함께 저장해 signed_url_policy.ts의 URL 역산 폴백을 안
+// 타게 한다(기존 클라이언트 쓰기 경로엔 없던 필드지만, 있으면 더
+// 정확할 뿐 기존 판정 로직과 충돌 없음).
+async function writeFittingCacheServerSide(
+  cacheKey: string,
+  imageBytes: Buffer,
+  ownerUid: string
+): Promise<void> {
+  const bucket = getStorage().bucket();
+  const path = `${FITTING_RESULTS_FOLDER}/${cacheKey}.jpg`;
+  const token = randomUUID();
+  await bucket.file(path).save(imageBytes, {
+    contentType: "image/jpeg",
+    metadata: {metadata: {firebaseStorageDownloadTokens: token}},
+  });
+  const imageUrl =
+    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
+    `${encodeURIComponent(path)}?alt=media&token=${token}`;
+
+  await getFirestore().collection(FITTING_CACHE_COL).doc(cacheKey).set({
+    imageUrl,
+    imagePath: path,
+    ownerUid,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+}
+
+export const generateFittingImage = onCall(
+  {secrets: [geminiApiKey], region: "asia-northeast3", timeoutSeconds: 320},
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    }
+    const uid = request.auth.uid;
+    const reqId = randomUUID().slice(0, 8);
+    const startedAt = Date.now();
+
+    const {userPhotoId, clothingItemIds, requestBody} = (request.data ?? {}) as {
+      userPhotoId?: unknown;
+      clothingItemIds?: unknown;
+      requestBody?: unknown;
+    };
+    if (typeof userPhotoId !== "string" || userPhotoId === "") {
+      throw new HttpsError("invalid-argument", "userPhotoId가 필요합니다.");
+    }
+    if (
+      !Array.isArray(clothingItemIds) ||
+      clothingItemIds.length === 0 ||
+      !clothingItemIds.every((id) => typeof id === "string" && id !== "")
+    ) {
+      throw new HttpsError("invalid-argument", "clothingItemIds가 필요합니다.");
+    }
+    if (requestBody === null || typeof requestBody !== "object") {
+      throw new HttpsError("invalid-argument", "requestBody가 필요합니다.");
+    }
+    const clothingIds = clothingItemIds as string[];
+
+    console.log(
+      `[generateFittingImage] start reqId=${reqId} uid=${uid} ` +
+        `userPhotoId=${userPhotoId} clothingCount=${clothingIds.length}`
+    );
+
+    // 소유권 검증(§1.4, signed_url_policy.ts와 같은 원칙) - 캐시 키
+    // 계산보다 먼저. 신뢰 안 되는 id로 캐시를 오염시키지 않기 위해
+    // 검증이 먼저, 계산이 나중이다.
+    const db = getFirestore();
+    const allIds = [userPhotoId, ...clothingIds];
+    const ownerDocs = await Promise.all(
+      allIds.map(async (id) => {
+        const snap = await db.collection(WARDROBE_COL).doc(id).get();
+        const data = snap.data();
+        return {id, exists: snap.exists, ownerUid: data?.ownerUid as string | undefined};
+      })
+    );
+    const ownership = verifyFittingOwnership(ownerDocs, uid);
+    if (!ownership.allowed) {
+      console.log(
+        `[generateFittingImage] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
+          `outcome=rejected reason=ownership:${ownership.reason} deniedId=${ownership.deniedId}`
+      );
+      throw new HttpsError("permission-denied", "옷장 아이템 소유권을 확인할 수 없습니다.");
+    }
+
+    const cacheKey = buildFittingCacheKey(userPhotoId, clothingIds);
+
+    const requestBodyJson = JSON.stringify(requestBody);
+    const requestBytes = Buffer.byteLength(requestBodyJson, "utf8");
+    // kind는 항상 "image" - 이 함수는 가상 피팅 전용이라 kindForModel
+    // 파생이 필요 없다(callGeminiText는 model 화이트리스트가 여러
+    // 종류라 파생이 필요했지만, 여긴 처음부터 이미지 하나뿐).
+    const payloadDecision = evaluatePayloadLimit(requestBytes, "image", PAYLOAD_LIMIT_CONFIG);
+    if (!payloadDecision.allowed) {
+      console.log(
+        `[generateFittingImage] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
+          "outcome=rejected reason=payload_limit"
+      );
+      throw new HttpsError("invalid-argument", "요청 페이로드가 너무 큽니다.", {
+        requestBytes,
+        limitBytes: payloadDecision.limitBytes,
+      });
+    }
+
+    await checkAndRecordRateLimit(uid, "image");
+
+    try {
+      const key = geminiApiKey.value();
+      const endpoint =
+        `${GEMINI_BASE_URL}/models/gemini-3.1-flash-image:generateContent?key=${key}`;
+      const upstream = await fetchUpstream(endpoint, requestBodyJson, reqId, startedAt);
+
+      let text: string;
+      try {
+        text = await upstream.text();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new HttpsError(
+          "data-loss",
+          `업스트림 응답 본문을 읽는 중 연결이 끊겼습니다: ${message}`
+        );
+      }
+      if (!upstream.ok) {
+        const message = extractUpstreamErrorMessage(text);
+        throw new HttpsError("internal", message, {
+          upstreamStatus: upstream.status,
+          upstreamMessage: message,
+        });
+      }
+
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(text);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new HttpsError(
+          "internal",
+          `Gemini 응답이 유효한 JSON이 아닙니다: ${message}`,
+          {reason: "invalid-json"}
+        );
+      }
+
+      // 캐시 쓰기 실패는 이 호출 자체를 실패로 만들지 않는다 - Gemini
+      // 생성 자체는 이미 성공했으므로, 클라이언트가 응답을 받으면 기존
+      // _cacheFittingResultSilently가 어차피 한 번 더 쓴다(§1.5, 중복
+      // 허용 - 멱등이라 안전). 여기서 던지면 "생성은 됐는데 캐시
+      // 저장을 못 했다"는 이유로 정상 응답이 에러로 뒤집히는 게 더
+      // 나쁘다.
+      let cached = false;
+      const imageBytes = extractImageBytes(parsed);
+      if (imageBytes) {
+        try {
+          await writeFittingCacheServerSide(cacheKey, imageBytes, uid);
+          cached = true;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.log(
+            `[generateFittingImage] reqId=${reqId} 캐시 쓰기 실패(생성은 성공, 무시): ${message}`
+          );
+        }
+      }
+
+      console.log(
+        `[generateFittingImage] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
+          `outcome=success upstreamStatus=${upstream.status} ` +
+          `responseBytes=${Buffer.byteLength(text, "utf8")} cached=${cached}`
+      );
+      return parsed;
+    } catch (err) {
+      const code = err instanceof HttpsError ? err.code : "unknown";
+      const message = err instanceof Error ? err.message : String(err);
+      console.log(
+        `[generateFittingImage] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
           `outcome=error code=${code} message=${message}`
       );
       throw err;
