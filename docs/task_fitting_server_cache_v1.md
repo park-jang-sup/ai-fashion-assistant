@@ -237,4 +237,11 @@ export function buildFittingCacheKey(userPhotoId: string, clothingItemIds: strin
 
 ---
 
-**상태**: 착수 승인됨(2026-08-08). 위 순서대로 구현 진행.
+**상태**: **[구현 완료 2026-08-08]** 위 순서대로 4단계 커밋 완료 —
+① `fitting_cache_key`(Dart↔TS 고정 벡터 테스트 통과, `993f22f`)
+② `generateFittingImage` 서버 콜러블 + `fitting_ownership_policy`(빌드·전체
+유닛테스트 통과, `0478c1d`) ③ 클라이언트 `SERVER_FITTING_CACHE` 플래그
+배선(기본 꺼짐, `flutter analyze` 무이슈·`flutter test` 166개 통과,
+`ea8157e`). **배포(`firebase deploy`)·실기기 검증은 아직 안 함 — 별도
+승인 대기.** 플래그가 기본 꺼짐이라 지금 상태로 배포해도 기존 동작은
+안 바뀐다(검증되지 않은 새 함수만 추가로 존재).
