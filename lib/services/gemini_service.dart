@@ -136,6 +136,22 @@ class GeminiService {
     }
   }
 
+  // ── 순차 합성 피팅 단위 상한 (docs/task_sequential_fitting_v1.md §d) ──
+  // beginFittingAttempt(functions/src/index.ts)는 "fitting" 카운트만
+  // 1회 소비하고 끝나는 소형 콜러블 — 순차 루프 진입 직전 딱 한 번
+  // 호출한다. 짧은 호출이라 별도 긴 시한 불필요(_callProxyText와 같은
+  // 60초로 충분).
+  static Future<void> _beginFittingAttempt() async {
+    try {
+      await _functions
+          .httpsCallable('beginFittingAttempt',
+              options: HttpsCallableOptions(timeout: const Duration(seconds: 60)))
+          .call();
+    } on FirebaseFunctionsException catch (e) {
+      throw _mapProxyException(e);
+    }
+  }
+
   static Stream<String> _callProxyTextStream({
     required String model,
     required Map<String, dynamic> requestBody,
@@ -369,6 +385,12 @@ class GeminiService {
         if (normA != normB) return normA.compareTo(normB);
         return a.compareTo(b);
       });
+
+    // 루프 시작 전 피팅 단위 상한을 1회 소비한다(§d) — 여기서
+    // resource-exhausted면 루프를 아예 시작하지 않는다(순차 호출을
+    // 몇 개 날린 뒤 중간에 걸리는 것보다 낫다). 재시도 대상 아님 —
+    // 상한 초과는 결정론적 실패라 그대로 던진다.
+    await _beginFittingAttempt();
 
     var currentBytes =
         await _downloadViaResolverOrFallback(id: userPhotoId, fallbackUrl: userPhotoUrl);

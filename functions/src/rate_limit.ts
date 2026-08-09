@@ -8,13 +8,21 @@
 // "sign"은 getSignedImageUrls(docs/task_signed_urls_v1.md A-2) 호출 계측용
 // — textCount/imageCount와 섞이지 않게 signCount를 별도 필드로 둔다
 // (표본 오염 금지 원칙의 연장, §3-3).
-export type RateLimitKind = "text" | "image" | "sign";
+// "fitting"은 순차 합성(docs/task_sequential_fitting_v1.md §d) 도입으로
+// 피팅 1회가 이미지 호출 여러 건이 되면서 추가됐다 — "image" 카운트는
+// (비용 가시성을 위해) 순차 루프의 개별 호출마다 여전히 그대로 세지만,
+// "fitting"은 beginFittingAttempt(functions/src/index.ts)가 피팅 시도
+// 하나당 정확히 1회만 센다. 상한의 목적(비용 통제)은 "image"가 계속
+// 지키고, "fitting"은 정상 사용자 체감("옷 몇 번 입혀봤나")과 상한을
+// 맞추기 위한 별도 축이다.
+export type RateLimitKind = "text" | "image" | "sign" | "fitting";
 
 export interface RateLimitState {
   bucket: string; // UTC 시간 버킷 "yyyymmddHH"
   textCount: number;
   imageCount: number;
   signCount: number;
+  fittingCount: number;
   rejectedCount: number;
 }
 
@@ -22,6 +30,7 @@ export interface RateLimitConfig {
   textLimit: number;
   imageLimit: number;
   signLimit: number;
+  fittingLimit: number;
 }
 
 export interface RateLimitDecision {
@@ -40,7 +49,7 @@ export function utcHourBucket(date: Date): string {
 }
 
 function emptyState(bucket: string): RateLimitState {
-  return {bucket, textCount: 0, imageCount: 0, signCount: 0, rejectedCount: 0};
+  return {bucket, textCount: 0, imageCount: 0, signCount: 0, fittingCount: 0, rejectedCount: 0};
 }
 
 // current가 있어도 같은 버킷 안이라면 그대로 이어받는다 — 다만 카운트
@@ -54,19 +63,24 @@ function carryOver(current: RateLimitState, bucket: string): RateLimitState {
     textCount: current.textCount ?? 0,
     imageCount: current.imageCount ?? 0,
     signCount: current.signCount ?? 0,
+    fittingCount: current.fittingCount ?? 0,
     rejectedCount: current.rejectedCount ?? 0,
   };
 }
 
-function countField(kind: RateLimitKind): "textCount" | "imageCount" | "signCount" {
+function countField(
+  kind: RateLimitKind
+): "textCount" | "imageCount" | "signCount" | "fittingCount" {
   if (kind === "text") return "textCount";
   if (kind === "image") return "imageCount";
+  if (kind === "fitting") return "fittingCount";
   return "signCount";
 }
 
 function limitFor(kind: RateLimitKind, config: RateLimitConfig): number {
   if (kind === "text") return config.textLimit;
   if (kind === "image") return config.imageLimit;
+  if (kind === "fitting") return config.fittingLimit;
   return config.signLimit;
 }
 

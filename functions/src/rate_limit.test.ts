@@ -5,7 +5,7 @@
 import * as assert from "node:assert";
 import {evaluateRateLimit, utcHourBucket, RateLimitState} from "./rate_limit";
 
-const CONFIG = {textLimit: 3, imageLimit: 2, signLimit: 2};
+const CONFIG = {textLimit: 3, imageLimit: 2, signLimit: 2, fittingLimit: 2};
 
 function run(name: string, fn: () => void): void {
   try {
@@ -30,7 +30,7 @@ run("첫 호출 — 상태 없음이면 카운트 1로 시작하고 허용", () 
 
 run("한도 미만 — 계속 허용하며 카운트만 누적", () => {
   const now = new Date("2026-08-06T10:15:00Z");
-  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 1, imageCount: 0, signCount: 0, rejectedCount: 0};
+  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 1, imageCount: 0, signCount: 0, fittingCount: 0, rejectedCount: 0};
   const decision = evaluateRateLimit(state, now, "text", CONFIG);
   assert.strictEqual(decision.allowed, true);
   assert.strictEqual(decision.nextState.textCount, 2);
@@ -38,7 +38,7 @@ run("한도 미만 — 계속 허용하며 카운트만 누적", () => {
 
 run("한도 직전(count == limit-1) — 허용하고 카운트가 한도에 도달", () => {
   const now = new Date("2026-08-06T10:15:00Z");
-  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 2, imageCount: 0, signCount: 0, rejectedCount: 0};
+  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 2, imageCount: 0, signCount: 0, fittingCount: 0, rejectedCount: 0};
   const decision = evaluateRateLimit(state, now, "text", CONFIG);
   assert.strictEqual(decision.allowed, true);
   assert.strictEqual(decision.nextState.textCount, 3);
@@ -46,7 +46,7 @@ run("한도 직전(count == limit-1) — 허용하고 카운트가 한도에 도
 
 run("한도 도달(count == limit) — 거부하고 rejectedCount만 증가, textCount는 그대로", () => {
   const now = new Date("2026-08-06T10:15:00Z");
-  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 3, imageCount: 0, signCount: 0, rejectedCount: 0};
+  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 3, imageCount: 0, signCount: 0, fittingCount: 0, rejectedCount: 0};
   const decision = evaluateRateLimit(state, now, "text", CONFIG);
   assert.strictEqual(decision.allowed, false);
   assert.strictEqual(decision.nextState.textCount, 3);
@@ -55,7 +55,7 @@ run("한도 도달(count == limit) — 거부하고 rejectedCount만 증가, tex
 
 run("한도 초과 직후 연속 거부 — rejectedCount가 계속 누적", () => {
   const now = new Date("2026-08-06T10:15:00Z");
-  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 3, imageCount: 0, signCount: 0, rejectedCount: 4};
+  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 3, imageCount: 0, signCount: 0, fittingCount: 0, rejectedCount: 4};
   const decision = evaluateRateLimit(state, now, "text", CONFIG);
   assert.strictEqual(decision.allowed, false);
   assert.strictEqual(decision.nextState.rejectedCount, 5);
@@ -63,7 +63,7 @@ run("한도 초과 직후 연속 거부 — rejectedCount가 계속 누적", () 
 
 run("텍스트/이미지/서명 카운트는 독립 — 이미지가 한도여도 텍스트는 영향 없음", () => {
   const now = new Date("2026-08-06T10:15:00Z");
-  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 0, imageCount: 2, signCount: 0, rejectedCount: 0};
+  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 0, imageCount: 2, signCount: 0, fittingCount: 0, rejectedCount: 0};
   const decision = evaluateRateLimit(state, now, "text", CONFIG);
   assert.strictEqual(decision.allowed, true);
   assert.strictEqual(decision.nextState.textCount, 1);
@@ -73,7 +73,7 @@ run("텍스트/이미지/서명 카운트는 독립 — 이미지가 한도여�
 
 run("이미지 한도 도달 — 거부", () => {
   const now = new Date("2026-08-06T10:15:00Z");
-  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 0, imageCount: 2, signCount: 0, rejectedCount: 0};
+  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 0, imageCount: 2, signCount: 0, fittingCount: 0, rejectedCount: 0};
   const decision = evaluateRateLimit(state, now, "image", CONFIG);
   assert.strictEqual(decision.allowed, false);
   assert.strictEqual(decision.nextState.imageCount, 2);
@@ -82,7 +82,7 @@ run("이미지 한도 도달 — 거부", () => {
 
 run("서명(sign) 카운트 — 독립적으로 누적되고 한도에서 거부", () => {
   const now = new Date("2026-08-06T10:15:00Z");
-  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 5, imageCount: 5, signCount: 1, rejectedCount: 0};
+  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 5, imageCount: 5, signCount: 1, fittingCount: 0, rejectedCount: 0};
   const ok = evaluateRateLimit(state, now, "sign", CONFIG);
   assert.strictEqual(ok.allowed, true);
   assert.strictEqual(ok.nextState.signCount, 2);
@@ -91,6 +91,29 @@ run("서명(sign) 카운트 — 독립적으로 누적되고 한도에서 거부
   assert.strictEqual(denied.allowed, false);
   assert.strictEqual(denied.nextState.signCount, 2);
   assert.strictEqual(denied.nextState.rejectedCount, 1);
+});
+
+run("피팅(fitting) 카운트 — image와 독립적으로 누적되고 한도에서 거부", () => {
+  const now = new Date("2026-08-06T10:15:00Z");
+  const state: RateLimitState = {bucket: utcHourBucket(now), textCount: 0, imageCount: 5, signCount: 0, fittingCount: 1, rejectedCount: 0};
+  const ok = evaluateRateLimit(state, now, "fitting", CONFIG);
+  assert.strictEqual(ok.allowed, true);
+  assert.strictEqual(ok.nextState.fittingCount, 2);
+  assert.strictEqual(ok.nextState.imageCount, 5); // 순차 루프의 개별 image 카운트는 fitting과 별개
+  const denied = evaluateRateLimit(ok.nextState, now, "fitting", CONFIG);
+  assert.strictEqual(denied.allowed, false);
+  assert.strictEqual(denied.nextState.fittingCount, 2);
+  assert.strictEqual(denied.nextState.rejectedCount, 1);
+});
+
+run("레거시 문서(fittingCount 필드 없음)도 같은 버킷이면 0으로 취급 — NaN 오염 방지", () => {
+  const now = new Date("2026-08-06T10:15:00Z");
+  // 스키마 확장 전(fitting 도입 전)에 저장된 문서를 흉내낸다.
+  const legacyState = {bucket: utcHourBucket(now), textCount: 1, imageCount: 0, signCount: 0, rejectedCount: 0} as RateLimitState;
+  const decision = evaluateRateLimit(legacyState, now, "fitting", CONFIG);
+  assert.strictEqual(decision.allowed, true);
+  assert.strictEqual(decision.nextState.fittingCount, 1);
+  assert.ok(!Number.isNaN(decision.nextState.fittingCount));
 });
 
 run("레거시 문서(signCount 필드 없음)도 같은 버킷이면 0으로 취급 — NaN 오염 방지", () => {
@@ -106,7 +129,7 @@ run("레거시 문서(signCount 필드 없음)도 같은 버킷이면 0으로 �
 run("버킷 전환(같은 날 다음 시간) — 카운트·거부수 전부 리셋 후 1로 시작", () => {
   const prevHour = new Date("2026-08-06T10:59:59Z");
   const nextHour = new Date("2026-08-06T11:00:00Z");
-  const state: RateLimitState = {bucket: utcHourBucket(prevHour), textCount: 3, imageCount: 2, signCount: 1, rejectedCount: 9};
+  const state: RateLimitState = {bucket: utcHourBucket(prevHour), textCount: 3, imageCount: 2, signCount: 1, fittingCount: 0, rejectedCount: 9};
   const decision = evaluateRateLimit(state, nextHour, "text", CONFIG);
   assert.strictEqual(decision.allowed, true);
   assert.strictEqual(decision.nextState.bucket, utcHourBucket(nextHour));
@@ -120,7 +143,7 @@ run("버킷 전환(자정·월·연도 경계) — 문자열 버킷 키가 올�
   const dec31 = new Date("2026-12-31T23:59:59Z");
   const jan1 = new Date("2027-01-01T00:00:00Z");
   assert.notStrictEqual(utcHourBucket(dec31), utcHourBucket(jan1));
-  const state: RateLimitState = {bucket: utcHourBucket(dec31), textCount: 3, imageCount: 0, signCount: 0, rejectedCount: 1};
+  const state: RateLimitState = {bucket: utcHourBucket(dec31), textCount: 3, imageCount: 0, signCount: 0, fittingCount: 0, rejectedCount: 1};
   const decision = evaluateRateLimit(state, jan1, "text", CONFIG);
   assert.strictEqual(decision.allowed, true);
   assert.strictEqual(decision.nextState.textCount, 1);
@@ -130,7 +153,7 @@ run("같은 버킷 안에서는 리셋되지 않는다(경계 오탐 방지)", (
   const t1 = new Date("2026-08-06T10:00:00Z");
   const t2 = new Date("2026-08-06T10:59:59Z");
   assert.strictEqual(utcHourBucket(t1), utcHourBucket(t2));
-  const state: RateLimitState = {bucket: utcHourBucket(t1), textCount: 3, imageCount: 0, signCount: 0, rejectedCount: 0};
+  const state: RateLimitState = {bucket: utcHourBucket(t1), textCount: 3, imageCount: 0, signCount: 0, fittingCount: 0, rejectedCount: 0};
   const decision = evaluateRateLimit(state, t2, "text", CONFIG);
   assert.strictEqual(decision.allowed, false);
   assert.strictEqual(decision.nextState.textCount, 3);

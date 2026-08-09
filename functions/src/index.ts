@@ -154,7 +154,17 @@ async function fetchUpstream(
 //     순회)이 낮은 상한(30 등)에는 실제로 닿을 수 있다. (3) Phase C
 //     이후에는 초과 시 레거시 URL 폴백이 없어(토큰 회수로 구 URL 자체가
 //     죽음) 이미지가 시간 단위로 깨진다 — 오발 거부의 비용이 크다.
-const RATE_LIMIT_CONFIG: RateLimitConfig = {textLimit: 60, imageLimit: 20, signLimit: 120};
+// imageLimit 20->32(docs/task_sequential_fitting_v1.md §d): 순차 합성이
+// 피팅 1회당 옷 개수만큼 image 호출을 쓰므로, fittingLimit(아래)×실사용
+// 벌 수 여유를 흡수할 만큼 올렸다 — 정확한 코디보드 슬롯 분포 실측은
+// 아님(문서 §d에 한계로 등록), 남용 방지라는 image 상한의 원래 목적은
+// fittingLimit이 "피팅 시도 자체"를 더 촘촘히 제한해 대신 지킨다.
+const RATE_LIMIT_CONFIG: RateLimitConfig = {
+  textLimit: 60,
+  imageLimit: 32,
+  signLimit: 120,
+  fittingLimit: 6,
+};
 
 // rate_limits/{uid} 문서는 firestore.rules에 대응 match 블록이 없어
 // 기본 거부다(의도적 — firestore.rules 주석 참고). 클라이언트가 자기
@@ -666,6 +676,24 @@ export const generateFittingImage = onCall(
       );
       throw err;
     }
+  }
+);
+
+// 순차 합성(docs/task_sequential_fitting_v1.md §d) - 피팅 1회당 정확히
+// 1번만 호출되는 전용 콜러블. 순차 루프의 개별 이미지 호출은
+// callGeminiText(중간 단계)/generateFittingImage(마지막 단계, 조건부)를
+// 그대로 쓰고 "image" 카운트를 그대로 먹는다 - 이 함수는 "이게 피팅
+// 시도 하나의 시작이다"를 세는 것만 담당한다. 클라이언트는 순차 루프
+// 진입 직전 이 콜러블을 1번 호출하고, resource-exhausted가 오면 루프를
+// 시작하지 않는다(재시도 대상 아님 - 상한 초과는 결정론적 실패).
+export const beginFittingAttempt = onCall(
+  {region: "asia-northeast3"},
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    }
+    await checkAndRecordRateLimit(request.auth.uid, "fitting");
+    return {ok: true};
   }
 );
 
