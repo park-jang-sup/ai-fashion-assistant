@@ -282,6 +282,51 @@ export const callGeminiText = onCall(
       });
     }
 
+    // [진단용 임시 계측 2026-08-09 — 확인 끝나면 제거할 것] app이 실제로
+    // 보내는 requestBody 구조를 실물로 확보한다(handoff_2026-08-07.md
+    // "직접 호출 4/4 빠름 vs 앱 느림" 모순 조사) - 지금까지 "요청 내용
+    // 차이 없음"은 전부 requestBytes 역산 추정이었지, 실측이 아니었다.
+    // base64 원본 데이터는 안 찍고 구조(파트 수·타입·길이)·프롬프트
+    // 텍스트·generationConfig만 남긴다. acceptsStreaming도 같이 찍어
+    // 앱이 스트리밍 경로로 잘못 타는지도 함께 확인한다.
+    if (kind === "image") {
+      try {
+        const parsedBody = requestBody as {
+          contents?: {parts?: unknown[]}[];
+          generationConfig?: unknown;
+        };
+        const parts = parsedBody.contents?.[0]?.parts ?? [];
+        const partsSummary = parts.map((p) => {
+          const part = p as {text?: unknown; inlineData?: {mimeType?: unknown; data?: unknown}};
+          if (typeof part.text === "string") {
+            return {type: "text", length: Buffer.byteLength(part.text, "utf8")};
+          }
+          if (part.inlineData) {
+            const data = part.inlineData.data;
+            return {
+              type: "inlineData",
+              mimeType: part.inlineData.mimeType,
+              dataLength: typeof data === "string" ? data.length : null,
+            };
+          }
+          return {type: "unknown"};
+        });
+        const textPart = parts.find((p) => typeof (p as {text?: unknown}).text === "string") as
+          | {text: string}
+          | undefined;
+        console.log(
+          `[callGeminiText] requestStructure reqId=${reqId} acceptsStreaming=${request.acceptsStreaming} ` +
+            `partsCount=${parts.length} parts=${JSON.stringify(partsSummary)} ` +
+            `generationConfig=${JSON.stringify(parsedBody.generationConfig)}`
+        );
+        if (textPart) {
+          console.log(`[callGeminiText] promptText reqId=${reqId} text=${JSON.stringify(textPart.text)}`);
+        }
+      } catch (err) {
+        console.log(`[callGeminiText] requestStructure reqId=${reqId} 파싱 실패(무해, 무시): ${err}`);
+      }
+    }
+
     // 이 아래(호출량 상한 이후)는 outcome을 아직 모른 채로 여러 실패 지점
     // (rate limit/data-loss/internal/invalid-json/성공)으로 갈라지므로,
     // 하나의 try/catch로 감싸 완료 로그 한 줄을 반드시 남긴다 - 어느
