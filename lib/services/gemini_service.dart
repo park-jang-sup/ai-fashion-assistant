@@ -139,13 +139,15 @@ class GeminiService {
   // ── 순차 합성 피팅 단위 상한 (docs/task_sequential_fitting_v1.md §d) ──
   // beginFittingAttempt(functions/src/index.ts)는 "fitting" 카운트만
   // 1회 소비하고 끝나는 소형 콜러블 — 순차 루프 진입 직전 딱 한 번
-  // 호출한다. 짧은 호출이라 별도 긴 시한 불필요(_callProxyText와 같은
-  // 60초로 충분).
+  // 호출한다. 시한을 5초로 짧게 둔다 — 이 함수는 min_instances 0이라
+  // 콜드스타트를 타는데, 카운트 하나 때문에 피팅 시작이 수 초씩
+  // 늘어지는 건 손해다(호출부의 fail-open과 짝 — 어차피 시한을
+  // 넘겨도 진행하므로 오래 기다릴 이유가 없다).
   static Future<void> _beginFittingAttempt() async {
     try {
       await _functions
           .httpsCallable('beginFittingAttempt',
-              options: HttpsCallableOptions(timeout: const Duration(seconds: 60)))
+              options: HttpsCallableOptions(timeout: const Duration(seconds: 5)))
           .call();
     } on FirebaseFunctionsException catch (e) {
       throw _mapProxyException(e);
@@ -386,11 +388,22 @@ class GeminiService {
         return a.compareTo(b);
       });
 
-    // 루프 시작 전 피팅 단위 상한을 1회 소비한다(§d) — 여기서
-    // resource-exhausted면 루프를 아예 시작하지 않는다(순차 호출을
-    // 몇 개 날린 뒤 중간에 걸리는 것보다 낫다). 재시도 대상 아님 —
-    // 상한 초과는 결정론적 실패라 그대로 던진다.
-    await _beginFittingAttempt();
+    // 루프 시작 전 피팅 단위 상한을 1회 소비한다(§d). resource-exhausted
+    // (진짜 상한 초과, RateLimitExceededException)만 그대로 막는다 —
+    // 순차 호출을 몇 개 날린 뒤 중간에 걸리는 것보다 낫고, 재시도
+    // 대상도 아니다(결정론적 실패). **그 외 모든 실패(콜드스타트
+    // 지연·네트워크 오류·서버 일시 오류 등)는 로그만 남기고 피팅을
+    // 계속 진행한다** — 계측 실패로 카운트가 누락되는 것보다 피팅
+    // 자체가 막히는 게 더 나쁘다. 상한의 목적은 남용 차단이지 정상
+    // 사용 차단이 아니다(fail-open, 서버 checkAndRecordRateLimit이
+    // 이미 트랜잭션 실패 시 이렇게 동작한다 — 같은 원칙).
+    try {
+      await _beginFittingAttempt();
+    } on RateLimitExceededException {
+      rethrow;
+    } catch (e) {
+      debugPrint('[GeminiService] beginFittingAttempt 실패(무시, fail-open): $e');
+    }
 
     var currentBytes =
         await _downloadViaResolverOrFallback(id: userPhotoId, fallbackUrl: userPhotoUrl);
