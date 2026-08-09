@@ -32,6 +32,10 @@ class FittingJobController extends ChangeNotifier {
   String? fittingCacheKey;
   bool isFittingFromCache = false;
   String? fittingError;
+  // 순차 합성(docs/task_sequential_fitting_v1.md §e)에서 재시도까지
+  // 실패한 단계가 있으면 그 카테고리들이 여기 남는다 - 빈 리스트면
+  // 완전한 결과(한 번에 방식은 항상 빈 리스트).
+  List<String> fittingMissingCategories = [];
 
   bool get isBusy => isAnalyzing || isGeneratingFitting;
 
@@ -239,6 +243,7 @@ class FittingJobController extends ChangeNotifier {
     fittingCacheKey = null;
     isFittingFromCache = false;
     fittingError = null;
+    fittingMissingCategories = [];
     notifyListeners();
 
     try {
@@ -255,22 +260,42 @@ class FittingJobController extends ChangeNotifier {
         }
       }
 
-      final bytes = await _withRetry(
-        () => GeminiService.generateFittingImage(
-          userPhotoId: userPhoto.id,
-          userPhotoUrl: userPhoto.imageUrl,
-          clothingItemIds: clothingItems.map((i) => i.id).toList(),
-          clothingImageUrls: clothingItems.map((i) => i.imageUrl).toList(),
-          clothingNames: clothingItems.map((i) => i.category).toList(),
-        ),
-      );
-      fittingImage = bytes;
+      // 순차 합성(sequentialFittingEnabled)은 단계별 재시도를
+      // GeminiService 내부에서 이미 처리한다(task_sequential_fitting_v1.md
+      // §e) - 여기서 또 _withRetry로 감싸면 실패한 루프 전체를 처음부터
+      // 다시 돌게 되어 이미 성공한 단계까지 버려진다. 한 번에 방식(기존)만
+      // _withRetry로 감싼다.
+      final result = sequentialFittingEnabled
+          ? await GeminiService.generateFittingImage(
+              userPhotoId: userPhoto.id,
+              userPhotoUrl: userPhoto.imageUrl,
+              clothingItemIds: clothingItems.map((i) => i.id).toList(),
+              clothingImageUrls: clothingItems.map((i) => i.imageUrl).toList(),
+              clothingNames: clothingItems.map((i) => i.category).toList(),
+            )
+          : await _withRetry(
+              () => GeminiService.generateFittingImage(
+                userPhotoId: userPhoto.id,
+                userPhotoUrl: userPhoto.imageUrl,
+                clothingItemIds: clothingItems.map((i) => i.id).toList(),
+                clothingImageUrls: clothingItems.map((i) => i.imageUrl).toList(),
+                clothingNames: clothingItems.map((i) => i.category).toList(),
+              ),
+            );
+      fittingImage = result.imageBytes;
+      fittingMissingCategories = result.missingCategories;
 
       // 캐시 저장은 이미 화면에 이미지가 표시된 뒤의 부가 작업이라
       // 실패해도 조용히 무시한다 (_resolveAttributes의 백필과 동일 패턴).
       // 히스토리에 남길 URL은 이 업로드가 끝나야만 생기므로, 로깅도
       // 함께 그 성공 콜백 안에서 처리한다(실패하면 URL이 없으니 로깅도 스킵).
-      unawaited(_cacheFittingResultSilently(cacheKey, bytes, clothingItems));
+      // missingCategories가 비어있지 않으면(부분 결과) 캐시에 쓰지 않는다
+      // (task_sequential_fitting_v1.md §f) - 최종 조합 키로 부분 결과가
+      // 저장되면 다음에 같은 완전한 조합을 요청한 사용자가 부분 결과를
+      // 캐시 히트로 받는 사고가 난다.
+      if (result.missingCategories.isEmpty) {
+        unawaited(_cacheFittingResultSilently(cacheKey, result.imageBytes, clothingItems));
+      }
     } catch (e) {
       fittingError = e.toString();
     } finally {
