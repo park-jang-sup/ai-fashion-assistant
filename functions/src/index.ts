@@ -464,17 +464,41 @@ function extractImageBytes(response: unknown): Buffer | null {
 }
 
 // StorageService.uploadFittingResult + FirestoreService.cacheFittingResult
-// (둘 다 Dart)를 서버 쪽에서 대응하는 구현. 클라이언트가 만드는
-// getDownloadURL() 형식과 같은 모양의 imageUrl을 Admin SDK로 직접
-// 구성한다(다운로드 토큰을 파일 메타데이터에 심고 표준 URL 포맷 조립 -
-// Admin SDK엔 getDownloadURL() 상당 메서드가 없어 이 방식이 표준
-// 우회로다). imageUrl은 기존 관례대로 "업로드 직후 revokeTokenOnUpload가
-// 토큰을 회수하기 전까지만 유효한 잔여물"이고(firestore_service.dart의
-// 기존 주석과 동일 성격), 정식 접근 경로는 여전히 fitting_cache 문서
-// id + getSignedImageUrls다. imagePath는 서버가 경로를 이미 알고
-// 있으므로 함께 저장해 signed_url_policy.ts의 URL 역산 폴백을 안
-// 타게 한다(기존 클라이언트 쓰기 경로엔 없던 필드지만, 있으면 더
-// 정확할 뿐 기존 판정 로직과 충돌 없음).
+// (둘 다 Dart)를 서버 쪽에서 대응하는 구현.
+//
+// [정정 2026-08-08, 배포 전] 최초 구현은 firebaseStorageDownloadTokens를
+// 명시 생성했었다 — 틀렸다. fitting_results/는 TOKEN_REVOKE_PREFIXES에
+// 있어 revokeTokenOnUpload가 이 업로드를 그대로 잡아 곧바로 토큰을
+// 회수한다. 즉 토큰을 만들어봤자 즉시 죽고, 회수되기 전 짧은 창(트리거가
+// 실행되기까지의 시간) 동안만 실제로 유효한 다운로드 URL이 존재하는
+// 상태가 된다 — 3.12절이 닫으려 했던 "토큰 있는 URL이 잠깐이라도
+// 살아있는 창"을 새 경로로 다시 여는 것이었다. 배경 제거 트리거
+// (functions_bg_removal/main.py의 _legacy_download_url)와 같은 방식으로
+// 바꾼다 — **토큰을 아예 만들지 않는다.** 업로드는 메타데이터 없이 plain
+// save, imageUrl은 token 파라미터가 처음부터 빈 문자열인 "죽은 채로
+// 시작하는" URL이다(경로 역산용 모양만 유지 — pathFromDownloadUrl의
+// 정규식은 token 값과 무관하게 경로만 뽑으므로 정상 동작).
+// 정식 접근 경로는 여전히 fitting_cache 문서 id + getSignedImageUrls다
+// (firestore_service.dart의 기존 주석과 동일 성격).
+//
+// 확인(§1.4a, 배포 전): 이 토큰 없는 imageUrl은 fitting_room_screen.dart의
+// 실제 표시 경로 3곳(973/980/1004행 부근)에서 전부 SignedNetworkImage의
+// fallbackUrl로만 쓰인다(973행 fittingImage!=null 분기는 imageUrl 자체를
+// 안 씀) — 신선한 결과는 메모리 바이트로, 캐시 히트는 서명 URL 리졸버로
+// 그린다. imageUrl을 직접 fetch하는 경로(raw CachedNetworkImage, 1030행)는
+// fittingCacheKey가 없는 예외 케이스 전용인데, 서버 경로는 uid가 항상
+// 있어(onCall 인증 필수) 캐시 키가 항상 계산되므로 이 예외 분기에 안
+// 걸린다 — 무해함 확인.
+//
+// 필드 구성(§1.4b, 배포 전): cacheFittingResult(Dart)와 정확히 같은 3필드
+// (imageUrl/ownerUid/createdAt)만 쓴다 — imagePath를 추가로 넣었던 최초
+// 구현은 되돌렸다. 이유: 플래그 꺼짐 구간(지금)에도, 켜진 뒤에도 클라이언트
+// 응답을 받으면 기존 _cacheFittingResultSilently가 같은 문서를 merge
+// 없이 .set()으로 다시 쓴다(§1.5) — 그 쓰기엔 imagePath가 없으므로 서버가
+// 넣은 값이 그대로 지워진다. 필드가 없어져도 기능은 안 깨진다
+// (pathFromDownloadUrl 역산 폴백이 그대로 동작) 하지만 "쓰기 순서에 따라
+// 필드가 있다 없다 하는" 스키마 드리프트를 만들 이유가 없어 아예 넣지
+// 않는 쪽으로 정리했다 — 두 경로가 항상 같은 모양의 문서를 만든다.
 async function writeFittingCacheServerSide(
   cacheKey: string,
   imageBytes: Buffer,
@@ -482,18 +506,13 @@ async function writeFittingCacheServerSide(
 ): Promise<void> {
   const bucket = getStorage().bucket();
   const path = `${FITTING_RESULTS_FOLDER}/${cacheKey}.jpg`;
-  const token = randomUUID();
-  await bucket.file(path).save(imageBytes, {
-    contentType: "image/jpeg",
-    metadata: {metadata: {firebaseStorageDownloadTokens: token}},
-  });
+  await bucket.file(path).save(imageBytes, {contentType: "image/jpeg"});
   const imageUrl =
     `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
-    `${encodeURIComponent(path)}?alt=media&token=${token}`;
+    `${encodeURIComponent(path)}?alt=media&token=`;
 
   await getFirestore().collection(FITTING_CACHE_COL).doc(cacheKey).set({
     imageUrl,
-    imagePath: path,
     ownerUid,
     createdAt: FieldValue.serverTimestamp(),
   });

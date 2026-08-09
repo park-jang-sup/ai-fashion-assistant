@@ -132,6 +132,54 @@ export function buildFittingCacheKey(userPhotoId: string, clothingItemIds: strin
    하는 최적화는 **범위 밖(나중 후보)**로 남긴다 — 지금 범위를
    "호출 대상 이름 + 필드 2개 추가"로 최소화하는 게 우선.
 
+### 1.6 배포 전 검토로 발견·수정한 것 (2026-08-08, 배포 전)
+
+구현 완료 후 배포 승인 전 재검토에서 세 가지를 고치거나 명시적으로
+결정했다 — 전부 코드 수정 후 재빌드·재테스트 통과 확인.
+
+**(a) 토큰 생성 제거.** 최초 구현은 `writeFittingCacheServerSide`가
+`firebaseStorageDownloadTokens`를 명시 생성했다 — 틀렸다.
+`fitting_results/`는 `TOKEN_REVOKE_PREFIXES`에 있어 `revokeTokenOnUpload`가
+곧바로 회수하므로, 토큰을 만드는 순간 "회수되기 전까지 짧게라도 실제로
+유효한 다운로드 URL이 존재하는 창"이 다시 열린다 — 3.12절이 닫으려던
+바로 그 구멍을 새 경로로 재현하는 것이었다. 배경 제거 트리거
+(`functions_bg_removal/main.py`의 `_legacy_download_url`)와 같은 방식으로
+바꿨다 — **토큰을 아예 만들지 않는다**(plain save, `imageUrl`은
+`token=`이 처음부터 빈 문자열인 "죽은 채로 시작하는" URL). 확인:
+이 `imageUrl`은 `fitting_room_screen.dart`의 표시 경로 3곳에서 전부
+`SignedNetworkImage`의 `fallbackUrl`로만 쓰이거나(970/980행대), 신선한
+결과는 `Image.memory`로 메모리 바이트를 직접 그린다(973행,
+`fittingImage != null` 분기 — `imageUrl` 자체를 안 씀). 원시 URL을
+직접 fetch하는 유일한 분기(1030행 `CachedNetworkImage`)는
+`fittingCacheKey`가 없는 예외 케이스 전용인데, 서버 경로는 `onCall`
+인증이 필수라 `uid`가 항상 있고 캐시 키도 항상 계산되므로 이 분기에
+안 걸린다 — **무해함 확인 완료.**
+
+**(b) `fitting_cache` 문서 필드 구성을 클라이언트와 동일하게 맞춤.**
+최초 구현은 `imageUrl`/`ownerUid`/`createdAt`에 더해 `imagePath`도
+같이 썼다(서버가 경로를 이미 알아서 역산이 필요 없다는 이유였음).
+문제: 플래그가 켜진 뒤에도 클라이언트가 응답을 받으면 기존
+`_cacheFittingResultSilently`(Dart)가 같은 문서를 merge 없이
+`.set()`으로 다시 쓴다(§1.5) — 그 쓰기엔 `imagePath`가 없으므로
+서버가 넣은 값이 나중에 지워진다. 필드가 사라져도 기능은 안 깨지지만
+(`pathFromDownloadUrl` 역산 폴백이 그대로 동작) "쓰기 순서에 따라
+필드가 있다 없다 하는" 스키마 드리프트를 만들 이유가 없어 **`imagePath`를
+빼고 클라이언트와 정확히 같은 3필드만 쓰도록 되돌렸다** — 두 경로가
+항상 같은 모양의 문서를 만든다. (나중에 클라이언트의 중복 쓰기를
+없애기로 결정하면 — §1.5의 "나중 후보" — 그때 `imagePath`를 다시
+넣는 걸 재검토할 수 있다.)
+
+**(c) 레거시 캐시 정책과의 관계 — 새로운 결정 아님, 기존 정책과 일치
+확인.** `signed_url_policy.ts`의 `fitting_cache` 정책은 "`ownerUid`
+필드가 있으면 대조, 없으면(레거시) 인증만"이다(3.12.2). 서버가 새로
+쓰는 문서도 `ownerUid`를 포함하므로 소유자 대조 대상이 되는데,
+**이건 기존 클라이언트 쓰기 경로(`cacheFittingResult`)가 처음부터
+`ownerUid`를 항상 써온 것과 동일**하다 — 서버 경로 추가로 새로
+생기는 구분이 아니다. "레거시(인증만) 문서"는 `ownerUid` 필드
+자체가 없던 더 오래된 문서 집합(다중 사용자 격리 이전)을 가리키는
+것이고, 이번 작업은 그 집합을 건드리지 않는다. **명시적 결정: 서버
+경로는 기존 정책을 그대로 따른다 — 새 예외를 만들지 않는다.**
+
 ## 2. 클라이언트 시한 — 150초, 3과 함께만
 
 **표본 갱신(96d61f2 배제 테스트 4건 포함, 서버 300초 상한 배포 이후
@@ -242,6 +290,9 @@ export function buildFittingCacheKey(userPhotoId: string, clothingItemIds: strin
 ② `generateFittingImage` 서버 콜러블 + `fitting_ownership_policy`(빌드·전체
 유닛테스트 통과, `0478c1d`) ③ 클라이언트 `SERVER_FITTING_CACHE` 플래그
 배선(기본 꺼짐, `flutter analyze` 무이슈·`flutter test` 166개 통과,
-`ea8157e`). **배포(`firebase deploy`)·실기기 검증은 아직 안 함 — 별도
-승인 대기.** 플래그가 기본 꺼짐이라 지금 상태로 배포해도 기존 동작은
-안 바뀐다(검증되지 않은 새 함수만 추가로 존재).
+`ea8157e`). **[배포 전 검토 2026-08-08]** 배포 승인 전 재검토에서
+§1.6의 세 가지(토큰 생성 제거, 문서 필드 구성 일치, 레거시 정책과의
+관계 확인)를 반영 — 재빌드·재테스트 통과 확인 후 커밋. **배포
+(`firebase deploy`)·실기기 검증은 아직 안 함 — 별도 승인 대기.**
+플래그가 기본 꺼짐이라 지금 상태로 배포해도 기존 동작은 안 바뀐다
+(검증되지 않은 새 함수만 추가로 존재).
