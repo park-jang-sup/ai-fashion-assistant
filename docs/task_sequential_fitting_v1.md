@@ -363,3 +363,22 @@ export const beginFittingAttempt = onCall(
 각 단계 후 `flutter analyze`/`flutter test`(Dart 변경) 또는
 `npm run build`/`npm test`(functions 변경) 통과 확인. **배포·실기기
 검증은 이 문서의 범위 밖 — 구현 완료 후 별도 승인.**
+
+## 상태 — **[구현 완료 2026-08-10]**
+
+세 단계 전부 구현·커밋 완료(각 커밋 flutter analyze/test 또는
+functions npm test 통과 확인됨):
+1. 순차 루프 — `0b99f76`(`GeminiService._generateFittingImageSequential`,
+   `FittingGenerationResult`, `SEQUENTIAL_FITTING` 플래그 기본 꺼짐,
+   단계별 재시도, 부분 결과 + missingCategories, 부분 결과 캐시 안 함).
+2. 진행 표시 — `627b8cb`(`FittingProgressCallback`, 컨트롤러
+   `fittingProgressStep`/`Total`/`Category`, UI 진행 라벨 + 부분
+   성공 배지).
+3. 호출량 상한 피팅 축 — `dc46ce2`(`rate_limit.ts` `fitting` kind,
+   `beginFittingAttempt` 콜러블, `imageLimit` 20→32/`fittingLimit`=6).
+
+**배포·실기기 검증 미착수 — 별도 승인 필요.** 플래그가 기본
+꺼짐이라 배포해도 지금 당장은 기존 동작(한 번에 호출)이 그대로
+유지된다는 점은 확인됨(코드 리뷰 — `sequentialFittingEnabled`가
+false면 `_generateFittingImageOneShot`으로 위임하는 경로 외에는
+아무 데도 안 걸림).
