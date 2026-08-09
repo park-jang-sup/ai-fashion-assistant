@@ -23,11 +23,15 @@ const bool serverFittingCacheEnabled =
 // 한 벌씩 순차로 입혀 매 호출을 "옷 1벌 추가" 형태로 만드는 우회.
 // 업스트림(Gemini) 회귀가 옷 총 개수 1↔2 문턱에서 나는 것으로 확정됐고
 // (handoff_2026-08-07.md §4 "정정 3") 우리가 고칠 수 없어 채택한 회피책.
-// SERVER_FITTING_CACHE와 같은 원칙 - 기본 꺼짐, 켜지 않으면 기존 한 번에
-// 호출 그대로 동작한다.
-//   flutter run --dart-define=SEQUENTIAL_FITTING=true
+// [기본값 전환 2026-08-10] 검증 통과(실기기 로그로 N벌=N회 호출 확인,
+// 단계별 재시도가 실제 업스트림 오류로 실전 검증됨) 후 기본 켜짐으로
+// 전환 — SERVER_FITTING_CACHE와 달리 **이 플래그는 더 이상 "켜지 않으면
+// 안전한 옛 경로"가 아니다**. false로 되돌리면 한 번에 방식(회귀 구간에
+// 그대로 노출)으로 돌아간다 — 이건 롤백이 아니라 회귀로의 복귀다.
+// 킬 스위치는 순차 코드 자체에 결함이 발견됐을 때만 쓴다.
+//   flutter run --dart-define=SEQUENTIAL_FITTING=false  # 회귀 구간 재노출(비상용, 롤백 아님)
 const bool sequentialFittingEnabled =
-    bool.fromEnvironment('SEQUENTIAL_FITTING', defaultValue: false);
+    bool.fromEnvironment('SEQUENTIAL_FITTING', defaultValue: true);
 
 // 순차 합성 시 옷을 입히는 고정 순서(task_sequential_fitting_v1.md §b -
 // 큰 면적을 먼저 확정하고 작은 것을 얹는 쪽이 재해석 여지가 적다는 판단,
