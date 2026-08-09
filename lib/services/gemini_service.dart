@@ -38,6 +38,11 @@ const List<String> fittingOrder = ['상의', '하의', '아우터', '신발', '�
 // 순차 합성의 결과 - 일부 단계가 재시도까지 실패하면 missingCategories에
 // 못 입힌 옷의 카테고리가 남는다(task_sequential_fitting_v1.md §e).
 // 한 번에 호출(기존) 경로는 항상 missingCategories가 빈 리스트다.
+// 순차 합성 진행 콜백(§c 진행 표시) — 단계 시작 시점(호출 전)에
+// 1-based step/total/이번 단계에서 입히는 카테고리를 알린다. 한 번에
+// 방식(one-shot)에서는 호출되지 않는다 - 단계 개념이 없다.
+typedef FittingProgressCallback = void Function(int step, int total, String category);
+
 class FittingGenerationResult {
   final Uint8List imageBytes;
   final List<String> missingCategories;
@@ -269,6 +274,7 @@ class GeminiService {
     required List<String> clothingItemIds,
     required List<String> clothingImageUrls,
     required List<String> clothingNames,
+    FittingProgressCallback? onProgress,
   }) async {
     if (sequentialFittingEnabled) {
       return _generateFittingImageSequential(
@@ -277,6 +283,7 @@ class GeminiService {
         clothingItemIds: clothingItemIds,
         clothingImageUrls: clothingImageUrls,
         clothingNames: clothingNames,
+        onProgress: onProgress,
       );
     }
     final bytes = await _generateFittingImageOneShot(
@@ -348,6 +355,7 @@ class GeminiService {
     required List<String> clothingItemIds,
     required List<String> clothingImageUrls,
     required List<String> clothingNames,
+    FittingProgressCallback? onProgress,
   }) async {
     // fittingOrder 기준으로 정렬한 인덱스 순서 — 목록에 없는 카테고리는
     // fittingOrder.length로 취급해 끝으로 밀리되, 서로간 상대 순서는
@@ -369,6 +377,7 @@ class GeminiService {
     for (var step = 0; step < order.length; step++) {
       final idx = order[step];
       final category = clothingNames[idx];
+      onProgress?.call(step + 1, order.length, category);
       final itemBytes = await _downloadViaResolverOrFallback(
         id: clothingItemIds[idx],
         fallbackUrl: clothingImageUrls[idx],

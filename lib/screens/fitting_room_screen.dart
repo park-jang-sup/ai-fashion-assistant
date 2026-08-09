@@ -1176,25 +1176,69 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
           else if (isGeneratingFitting)
             // 아직 이미지는 없지만 생성 중 — 같은 자리에 순환 팁을 보여주고,
             // 완료되면 위 분기(hasRealFittingResult)로 자연스럽게 전환된다.
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Container(
-                width: double.infinity,
-                height: 320,
-                color: AppColors.background,
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                child: Center(
-                  child: Text(
-                    fittingStyleTips[_loadingTextIndex % fittingStyleTips.length],
-                    textAlign: TextAlign.center,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        height: 1.6),
+            // 순차 합성(docs/task_sequential_fitting_v1.md §c) 중이면 진행
+            // 단계("{카테고리} 입히는 중… (n/총)")로 대체 — 43초 대기 체감을
+            // 낮추려는 목적, 순차가 가능해서 얻은 정보라 한 번에 방식엔 없다.
+            Builder(builder: (context) {
+              final step = widget.jobController.fittingProgressStep;
+              final total = widget.jobController.fittingProgressTotal;
+              final category = widget.jobController.fittingProgressCategory;
+              final progressLabel = (step != null && total != null && category != null)
+                  ? '$category 입히는 중… ($step/$total)'
+                  : null;
+              return ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                child: Container(
+                  width: double.infinity,
+                  height: 320,
+                  color: AppColors.background,
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Center(
+                    child: Text(
+                      progressLabel ??
+                          fittingStyleTips[_loadingTextIndex % fittingStyleTips.length],
+                      textAlign: TextAlign.center,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          height: 1.6),
+                    ),
                   ),
+                ),
+              );
+            }),
+          // 순차 합성 부분 성공(docs/task_sequential_fitting_v1.md §e) - 일부
+          // 단계가 재시도까지 실패해 옷 일부가 안 들어간 채로 결과를 받은
+          // 경우에만 뜬다. 캐시되지 않은 결과이므로 "새로 생성하기"를 눌러
+          // 다시 시도하도록 유도.
+          if (widget.jobController.fittingMissingCategories.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.amber.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.amber.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: AppColors.amber, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '일부 옷을 반영하지 못했습니다: '
+                        '${widget.jobController.fittingMissingCategories.join(", ")}',
+                        style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

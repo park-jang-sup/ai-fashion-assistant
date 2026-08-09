@@ -36,6 +36,12 @@ class FittingJobController extends ChangeNotifier {
   // 실패한 단계가 있으면 그 카테고리들이 여기 남는다 - 빈 리스트면
   // 완전한 결과(한 번에 방식은 항상 빈 리스트).
   List<String> fittingMissingCategories = [];
+  // 순차 합성 진행 표시(§c) - 한 번에 방식이거나 아직 첫 단계 전이면
+  // null. UI는 null이면 기존 순환 팁을, 아니면 "{카테고리} 입히는
+  // 중… ({step}/{total})"을 보여준다.
+  int? fittingProgressStep;
+  int? fittingProgressTotal;
+  String? fittingProgressCategory;
 
   bool get isBusy => isAnalyzing || isGeneratingFitting;
 
@@ -244,6 +250,9 @@ class FittingJobController extends ChangeNotifier {
     isFittingFromCache = false;
     fittingError = null;
     fittingMissingCategories = [];
+    fittingProgressStep = null;
+    fittingProgressTotal = null;
+    fittingProgressCategory = null;
     notifyListeners();
 
     try {
@@ -272,6 +281,12 @@ class FittingJobController extends ChangeNotifier {
               clothingItemIds: clothingItems.map((i) => i.id).toList(),
               clothingImageUrls: clothingItems.map((i) => i.imageUrl).toList(),
               clothingNames: clothingItems.map((i) => i.category).toList(),
+              onProgress: (step, total, category) {
+                fittingProgressStep = step;
+                fittingProgressTotal = total;
+                fittingProgressCategory = category;
+                notifyListeners();
+              },
             )
           : await _withRetry(
               () => GeminiService.generateFittingImage(
