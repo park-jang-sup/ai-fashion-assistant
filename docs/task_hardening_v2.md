@@ -1274,18 +1274,35 @@ skip — 지금까지와 같은 패턴).
 5경로 재실행 + 실제 위반 요청으로 거부 확인)은 실기기 조작이
 필요하므로 별도 사건으로 진행한다.
 
-### 전환 후 검증 — 실행 절차 (등록만, 실행은 실기기 확보 후)
+### 전환 후 검증 — 실행 절차 (1·2·5 완료, 3·4는 실기기 확보 후)
 
 1. `cd functions && npx tsc --noEmit && npm test` — 배포 전 정적
-   확인(완료, §4-4 커밋에서 통과 확인).
-2. 배포(`--project ai-fashion-assistant-personal` 명시).
+   확인(**완료**, §4-4 커밋 `4a9cc11`에서 통과 확인).
+2. 배포(`--project ai-fashion-assistant-personal` 명시) — **완료**,
+   커밋 `166fbc4` 배포(2026-08-11, `firebase deploy --only functions`,
+   `callGeminiText`/`generateFittingImage` 등 9개 함수 갱신 성공).
 3. 실기기에서 5경로 전부 재실행 — 가상 피팅은 오늘 관측 최댓값과
-   맞춰 옷 7벌로 진행한다.
+   맞춰 옷 7벌로 진행한다. **미실행 — 실기기 조작 필요, 별도
+   사건으로 진행.**
 4. 성공 기준: 5경로 전부 정상 완주 **AND** `[requestShape]
-   allowed=true` 100%.
+   allowed=true` 100%. **미확인 — 3번 완료 후 판정.**
 5. 실제로 스키마를 위반하는 요청을 하나 구성해 보내고, **실제로
    거부되는지** 확인한다(코드가 그렇게 되어 있다는 것과 다른 근거 —
-   논문 §3.11.6/§3.12.5와 같은 증거 기준).
+   논문 §3.11.6/§3.12.5와 같은 증거 기준). **완료(2026-08-11)** —
+   익명 로그인(Identity Toolkit REST) 후 배포된 `callGeminiText`
+   HTTPS 엔드포인트에 top-level에 없는 `tools` 키를 포함한 요청을
+   직접 보냈다. 응답: HTTP 400, `INVALID_ARGUMENT`,
+   `violations:["top_level_unknown_key"]`. 같은 시각 서버 로그에서도
+   확인됨: `[requestShape] fn=callGeminiText reqId=fcc987e3
+   uid=AF8ppJ2FOVMqlmKcMGJP8qSu7Kt1 allowed=false
+   violations=top_level_unknown_key`. **응답과 로그 양쪽에서 실제
+   거부를 확인했다** — "코드가 그렇게 되어 있다"가 아니라 "실제로
+   거부되더라"를 근거로 삼는다. 정상 요청 대조군은 만들지 않았다 —
+   실제 Gemini API를 호출해 비용이 발생하며, "정상 경로가 막히지
+   않는다"는 검증은 3번(실기기 5경로 재실행)이 이미 그 역할을 한다.
+   사용한 uid(`AF8ppJ2FOVMqlmKcMGJP8qSu7Kt1`)는 이 검증 전용 익명
+   계정이며 이후 데이터가 남지 않는다(이 호출이 거부되어 Firestore
+   쓰기까지 가지 않았다).
 6. **중단 규칙**: 정상 경로 중 하나라도 막히면 즉시
    `REQUEST_SHAPE_ENFORCE`를 `false`로 되돌리고 재배포한다.
    "설명 가능하니 진행"은 배제한다 — 원인을 안다는 것과 원인을
