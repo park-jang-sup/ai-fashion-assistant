@@ -53,15 +53,29 @@ const ALLOWED_MODELS = [
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
-// 요청 본문 스키마 계측(S3-b, docs/task_hardening_v2.md §4) - 계측 단계,
-// 거부하지 않는다. S2(App Check)가 보류된 상태라 이 스키마 검증이 요청
-// 본문에 대한 현재 유일한 방어인데, 상한값(request_shape.ts)이 아직
-// 실측이 아니라 추정(3~5배 여유)이라 지금 강제로 전환하면 정상 경로가
-// 조용히 막힐 수 있다 - 이 실패 모드는 이 트랙에서 이미 두 번 나왔다
-// (§3-3 정정, §3-3-1). 전환 조건은 §4에 사전 등록되어 있다(사건 기준 -
-// 6개 실제 진입점을 릴리스에서 각 1회 이상 실행 + allowed=false 0건 +
-// evaluator_failed 0건 + 6경로 전부 로그 관측).
-const REQUEST_SHAPE_ENFORCE = false;
+// 요청 본문 스키마 강제(S3-c, docs/task_hardening_v2.md §4) - 2026-08-11,
+// §4-3의 전환 조건 4가지(5경로 실행·allowed=false 0건·evaluator_failed
+// 0건·5경로 전부 로그 관측)를 확인한 뒤 true로 전환했다. 상한값
+// (request_shape.ts)은 이번 전환에서 실측 최댓값이 아니라 "코드가
+// 만들 수 있는 최댓값"(한 번에 방식 가상 피팅 등 미실행 경로 포함)
+// 기준으로 재산정했다 - request_shape.ts 상단 주석 참고.
+//
+// 거부 위치는 여전히 checkAndRecordRateLimit보다 앞이다 - 형식이
+// 틀린 요청 때문에 정상 사용자의 시간당 할당량이 깎이면 안 된다는
+// 원칙은 바뀌지 않았다. 이 트레이드오프(값싼 거부의 반복)의 천장은
+// S1의 maxInstances가 잡는다.
+//
+// 롤백 경로: 이 플래그는 코드 상수이므로 되돌리려면 재배포가
+// 필요하다 - S2-b(App Check 강제)와 같은 제약이다. 다만 실패
+// 방향은 다르다 - App Check 강제가 잘못되면 6개 onCall 전부가
+// 한꺼번에 막히지만(§1 순서 근거, "앱 전면 정지"), 이 스키마
+// 강제가 잘못되면 특정 요청 형태(위반으로 오판된 경로)만 막히고
+// 나머지는 산다 - 장애 범위가 좁다는 뜻이지, 검증을 건너뛰어도
+// 된다는 뜻은 아니다. 그래서 전환 후 검증에서 5경로를 전부 다시
+// 돌아야 한다(§4-3 "전환 후 검증" 참고) - 국소 장애는 사용자가
+// "그 기능만" 이상하다고 느끼는 형태라 오히려 원인 추적이 늦어질
+// 수 있다.
+const REQUEST_SHAPE_ENFORCE = true;
 
 // callGeminiText/generateFittingImage 두 곳에서 동일한 형식으로 로그를
 // 남긴다 - [appCheck] 계측에서 reqId 유무로 형식이 갈렸던 것과 달리
