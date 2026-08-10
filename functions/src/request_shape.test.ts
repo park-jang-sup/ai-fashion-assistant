@@ -136,6 +136,134 @@ const FIXTURE_FITTING_STEP = {
   generationConfig: {responseModalities: ["IMAGE", "TEXT"]},
 };
 
+// (g) 주간 플랜 — planWeeklyOutfits, gemini_service.dart:696-744
+// (조립부는 agent_planner.dart:690-728). contents: [{parts: [{text}]}] -
+// 텍스트 하나, 이미지 없음. 시스템에서 가장 큰 텍스트 페이로드를
+// 만드는 경로다 - 옷장 카탈로그 전체 + 7일 일정 + 최근 피드백을
+// 프롬프트에 그대로 싣는다.
+//
+// [등록 2026-08-11, S3-c 잔여] 이 경로는 S3-b 계측 창(§4-3의 5경로)에
+// 한 번도 실행되지 않았고, 지금까지 이 파일의 6종 픽스처에도 없었다 -
+// 진짜 커버리지 공백이었다(docs/task_hardening_v2.md §4-4 "planWeeklyOutfits
+// 커버리지 공백" 참고 - 사이즈표 OCR의 "귀속 공백"과는 성격이 다르다,
+// 그쪽은 형태가 같아 이미 검증돼 있었다). 아래는 그 공백을 메우는
+// 픽스처 - gemini_service.dart:705-724의 프롬프트 템플릿을 그대로
+// 재현하고, 대표값은 코드가 실제로 쓰는 어휘(TpoTags.labels,
+// ClothingAttributes.toPromptLine 필드 형태)에서만 뽑는다. 옷장
+// 규모(118벌)는 임의 숫자가 아니라 이 저장소가 반복 인용해 온 실제
+// 개발 계정 규모다(docs/DOT_paper_rev8.md, docs/HANDOFF.md).
+const PLAN_CATEGORIES = ["상의", "하의", "아우터", "신발", "액세서리"];
+const PLAN_COLORS = ["네이비", "블랙", "화이트", "베이지", "그레이", "카키", "브라운", "아이보리"];
+const PLAN_STYLES = ["캐주얼", "미니멀", "스트릿", "클래식", "스포티"];
+const PLAN_PATTERNS = ["무지", "스트라이프", "체크", "도트"];
+const PLAN_FORMALITIES = ["캐주얼", "세미포멀", "포멀"];
+const PLAN_FITS = ["슬림", "레귤러", "오버사이즈"];
+const PLAN_TAGS = ["봄", "가을", "데일리", "출근룩", "포인트", "베이직"];
+// Firestore 자동 생성 문서 ID와 같은 자릿수(20)의 대역값 - 실제 id
+// 문자열은 판정에 영향을 주지 않는다(길이만 형태에 반영된다).
+const PLAN_ID_PLACEHOLDER = "x".repeat(20);
+
+function buildWardrobeCatalog(itemCount: number): string {
+  const lines: string[] = [];
+  for (let i = 0; i < itemCount; i++) {
+    const category = PLAN_CATEGORIES[i % PLAN_CATEGORIES.length];
+    const color = PLAN_COLORS[i % PLAN_COLORS.length];
+    const style = PLAN_STYLES[i % PLAN_STYLES.length];
+    const pattern = PLAN_PATTERNS[i % PLAN_PATTERNS.length];
+    const formality = PLAN_FORMALITIES[i % PLAN_FORMALITIES.length];
+    const fit = PLAN_FITS[i % PLAN_FITS.length];
+    const tags = [PLAN_TAGS[i % PLAN_TAGS.length], PLAN_TAGS[(i + 1) % PLAN_TAGS.length]];
+    // ClothingAttributes.toPromptLine() 형식(lib/models/clothing_attributes.dart:39-42)
+    const attrLine =
+      `색상 ${color}, 스타일 ${style}, 패턴 ${pattern}, 격식 ${formality}, ` +
+      `핏 ${fit}, 태그: ${tags.join(", ")}`;
+    // agent_planner.dart:705-707 형식
+    lines.push(`- id=${PLAN_ID_PLACEHOLDER} | ${category} | ${attrLine}`);
+  }
+  return lines.join("\n");
+}
+
+const PLAN_TPO_LABELS = ["출근", "데이트", "여행", "운동", "모임", "결혼식", "면접", "경조사", "일상"];
+const PLAN_WEATHER_NOTES = [
+  " — 비 예보(강수확률 80%) — 밝은 색/니트류 회피, 방수 소재나 어두운 톤 우선",
+  " — 추운 날(최저 -5°C) — 두꺼운 아우터 우선",
+];
+const PLAN_WEEKDAYS_KO = ["월", "화", "수", "목", "금", "토", "일"];
+
+function buildScheduleLines(dayCount: number): string {
+  const lines: string[] = [];
+  for (let i = 0; i < dayCount; i++) {
+    const tpo = PLAN_TPO_LABELS[i % PLAN_TPO_LABELS.length];
+    const formality =
+      tpo === "결혼식" || tpo === "면접" || tpo === "경조사"
+        ? "포멀"
+        : tpo === "일상" || tpo === "여행" || tpo === "운동"
+          ? "캐주얼"
+          : "세미포멀";
+    const weatherNote = PLAN_WEATHER_NOTES[i % PLAN_WEATHER_NOTES.length];
+    // agent_planner.dart:701-702 형식
+    lines.push(
+      `${i + 1}. 2026-08-${10 + i} (${PLAN_WEEKDAYS_KO[i]}) — ${tpo} — 요구 격식: ${formality}${weatherNote}`
+    );
+  }
+  return lines.join("\n");
+}
+
+function buildFeedbackSection(feedbackLineCount: number): string {
+  if (feedbackLineCount === 0) return "";
+  const lines: string[] = [];
+  for (let i = 0; i < feedbackLineCount; i++) {
+    lines.push(`- 2026-08-0${i + 1}: 상의 A + 하의 B 추천 → 실제 착용 상의 A + 하의 C (하의 불일치)`);
+  }
+  // gemini_service.dart:702-704 형식
+  return `\n[취향 피드백 - 반영하세요]\n${lines.join("\n")}\n`;
+}
+
+// gemini_service.dart:705-724의 프롬프트 템플릿을 그대로 재현한다.
+function buildPlanPrompt(wardrobeCatalog: string, scheduleLines: string, feedbackSection: string): string {
+  return `당신은 전문 패션 스타일리스트입니다. 아래 옷장 아이템만 사용해 요청된 날짜별 코디를 계획하세요.
+
+[옷장 아이템] (반드시 이 id만 사용, 목록에 없는 id는 절대 만들지 마세요)
+${wardrobeCatalog}
+
+[계획할 날짜]
+${scheduleLines}
+${feedbackSection}
+[제약 조건 - 반드시 지키세요]
+- 각 날짜에 상의 1개 + 하의 1개를 기본으로 배정하고, 필요하면 아우터/신발을 더하세요.
+- 같은 상의 또는 같은 하의를 이틀 연속 배치하지 마세요(중복 회피).
+- 격식이 높은 조합(포멀/세미포멀 아이템)은 출근·데이트·모임처럼 격식이 필요한 날에 우선 배분하세요.
+- 어떤 날짜에 그 격식에 딱 맞는 아이템이 옷장에 없더라도 그 날을 건너뛰지 말고, 가장 가까운 차선 조합을 배정한 뒤 reason에 "딱 맞는 조합이 없어 가장 가까운 조합"임을 밝히세요.
+- itemIds는 위 옷장에 실제로 존재하는 id만 사용하세요.
+
+[출력 형식 - 반드시 지키세요]
+순수 JSON 배열만 출력하세요. 설명 문구·마크다운·코드블록을 절대 붙이지 마세요. 응답의 첫 문자는 '[' 여야 합니다.
+각 원소는 {"date":"YYYY-MM-DD","itemIds":["id1","id2"],"reason":"한 줄 이유(한국어)"} 형식입니다.
+`;
+}
+
+function planWeeklyOutfitsRequestBody(prompt: string): unknown {
+  return {
+    contents: [{parts: [{text: prompt}]}],
+    generationConfig: {
+      temperature: 0.4,
+      maxOutputTokens: 2000,
+      responseMimeType: "application/json",
+      thinkingConfig: {thinkingBudget: 0},
+    },
+  };
+}
+
+// 현재 옷장 규모(118벌) 기준 실제 요청 형태 - 7일 일정 + 피드백 5건.
+// 측정값: textChars ≈ 11,539(카탈로그 10,093 + 일정 533 + 피드백
+// 308 + 템플릿 boilerplate 605) - 상한 30,000의 약 38% - request_shape.ts
+// 상단 주석의 추정치(10,000~12,000)와 방향이 맞는다(부분 확정 표기의
+// 근거가 여기서 일부 회수된다 - 다만 이건 대표값 계산이지 실기기
+// 실측은 아니다, §4-3 "전환 후 검증"에 실기기 실측 항목으로 등록).
+const FIXTURE_PLAN_WEEKLY_OUTFITS = planWeeklyOutfitsRequestBody(
+  buildPlanPrompt(buildWardrobeCatalog(118), buildScheduleLines(7), buildFeedbackSection(5))
+);
+
 const REAL_FIXTURES: Array<[string, unknown]> = [
   ["(a) 속성 추출", FIXTURE_EXTRACT_ATTRIBUTES],
   ["(b) 사이즈표 OCR", FIXTURE_SIZE_CHART_OCR],
@@ -143,6 +271,7 @@ const REAL_FIXTURES: Array<[string, unknown]> = [
   ["(d) 코디 분석(프로필 기반, 사진 미첨부)", FIXTURE_OUTFIT_ANALYSIS_WITH_PROFILE],
   ["(e) 자기 평가", FIXTURE_SELF_EVALUATION],
   ["(f) 피팅", FIXTURE_FITTING_STEP],
+  ["(g) 주간 플랜(현재 옷장 규모 118벌)", FIXTURE_PLAN_WEEKLY_OUTFITS],
 ];
 
 for (const [label, fixture] of REAL_FIXTURES) {
@@ -431,6 +560,34 @@ run("실제 상한 — maxTotalTextChars 경계값(==30000) 허용, 초과(==300
   const over = evaluateRequestShape(overLimit, "text", REQUEST_SHAPE_CONFIG);
   assert.strictEqual(over.allowed, false);
   assert.ok(over.violations.includes("text_too_long"));
+});
+
+// 위 경계값 테스트는 순수 텍스트("a" 반복)로 판정 로직 자체만 본다.
+// 아래는 같은 경계를 **주간 플랜의 실제 와이어 형태**(generationConfig에
+// responseMimeType/thinkingConfig 포함, contents 하나·parts 하나)로 다시
+// 확인한다 - "이 상한은 이 경로를 위해 정해졌다"는 §4-4의 근거를 그
+// 경로의 실제 형태로 직접 검증하기 위함이다. 템플릿 boilerplate 길이를
+// 뺀 만큼만 카탈로그를 채워 총 글자 수를 정확히 경계에 맞춘다.
+function planWeeklyOutfitsRequestOfExactLength(targetChars: number): unknown {
+  const boilerplateLength = buildPlanPrompt("", "", "").length;
+  const padLength = targetChars - boilerplateLength;
+  if (padLength < 0) {
+    throw new Error(`targetChars(${targetChars})가 템플릿 자체 길이(${boilerplateLength})보다 작다`);
+  }
+  const prompt = buildPlanPrompt("x".repeat(padLength), "", "");
+  return planWeeklyOutfitsRequestBody(prompt);
+}
+
+run("실제 상한 — 주간 플랜 형태, maxTotalTextChars 경계값(==30000) 허용, 초과(==30001) 거부", () => {
+  const atLimit = planWeeklyOutfitsRequestOfExactLength(30_000);
+  const overLimit = planWeeklyOutfitsRequestOfExactLength(30_001);
+  const atDecision = evaluateRequestShape(atLimit, "text", REQUEST_SHAPE_CONFIG);
+  assert.strictEqual(atDecision.metrics.totalTextChars, 30_000);
+  assert.strictEqual(atDecision.allowed, true, `violations: ${atDecision.violations.join(",")}`);
+  const overDecision = evaluateRequestShape(overLimit, "text", REQUEST_SHAPE_CONFIG);
+  assert.strictEqual(overDecision.metrics.totalTextChars, 30_001);
+  assert.strictEqual(overDecision.allowed, false);
+  assert.ok(overDecision.violations.includes("text_too_long"));
 });
 
 console.log("전부 통과");
