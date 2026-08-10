@@ -1,171 +1,79 @@
-# App Check 검증 실패 로그 원문 — 최초 수집분 (편향 있음)
+# App Check 검증 로그 원문 — 전수 재수집(편향 없는 필터)
 
-> ⚠ **[정정 2026-08-10] 이 파일의 333줄은 편향된 필터로 수집되었다.**
-> 필터가 문자열 `INVALID`에 의존해, `MISSING`+`auth:VALID`
-> 조합("Callable request verification passed", D 레벨, 조용히 통과)이
-> **체계적으로 누락**되어 있다 — 즉 이 파일은 `INVALID`를 과대,
-> `MISSING`을 과소 대표한다. **분석·판정에는 이 파일이 아니라
-> `docs/evidence_appcheck_2026-08-09_full.md`(편향 없는 필터, 367줄)를
-> 쓸 것.** 이 파일은 "최초 수집 당시 실제로 어떤 필터를 썼고 그 결과
-> 무엇을 놓쳤는지"를 보여주는 기록으로만 보존한다 — 원문은 고치지
-> 않는다(고치면 무엇을 놓쳤었는지의 증거 자체가 사라진다).
+## 이 파일의 위치
 
-## 메타데이터 (docs/task_hardening_v2.md §3-2 참고용)
+`docs/evidence_appcheck_2026-08-09.md`(최초 수집분)는 문자열 `INVALID`가
+라인에 있어야 걸리는 필터로 333줄을 모았고, 그 결과 `MISSING`+`auth:VALID`
+조합("Callable request verification passed", D 레벨, 조용히 통과)이
+필터에 걸리지 않아 **체계적으로 누락되었다.** 이 파일은 그 편향을
+없앤 필터(`AppCheck` 또는 `Callable request verification` 문자열 포함
+— 어떤 검증 결과인지에 의존하지 않는다)로 같은 원본을 다시 훑은
+**전수본**이다.
 
-- **수집 시각**: 2026-08-10 (S2-a 계측 배선 커밋 `6cb716c` 배포 직후,
-  실기기 (a)~(e) 실행 **이전**. 조회 명령: `firebase functions:log
-  --project ai-fashion-assistant-personal -n 1000`, 결과를 로컬 파일로
-  저장한 뒤 아래 세 패턴으로 필터링:
-  - `Failed to validate AppCheck token. FirebaseAppCheckError: Decoding App Check token failed.`
-  - `{"verifications":{"auth":"VALID","app":"INVALID"}, ...}` (필드 순서는 라인마다 다름)
-  - `Allowing request with invalid AppCheck token because enforcement is disabled`
-- **관측된 함수**: `callGeminiText`(50건), `getSignedImageUrls`(56건),
-  `beginFittingAttempt`(4건). `generateFittingImage`/`sendTestPush`/
-  `triggerScheduledCheckTest`는 이 조회 창에 해당 패턴이 없었다 — "이
-  함수들은 문제가 없다"는 뜻이 아니라 "이 조회 창에 해당 함수 호출
-  자체가 없었다"는 뜻이다(구분해서 읽을 것).
-- **관측 날짜**: 2026-08-09T04:46:56Z ~ 2026-08-10T04:23:38Z(마지막
-  라인은 S2-a 배포 완료 시각 2026-08-10T04:59:55Z **이전**).
-- **이 로그는 S2-a 계측 배선(커밋 `6cb716c`, `[appCheck] fn=...
-  hasApp=...`) 이전의 것이다.** 즉 우리 커스텀 로그가 아니라
-  firebase-functions v2 프레임워크가 onCall 요청을 처리하며 자체적으로
-  찍는 App Check 검증 로그다 — 우리가 배선하기 전부터, 정상적인 실사용
-  중에 이미 이 패턴이 반복되고 있었다는 근거다.
-- **휘발성 경고**: 이 증거는 재현 불가능하다. Cloud Logging의 보존
-  기간과 `firebase functions:log`의 조회 창(최근 N줄) 때문에, 실기기
-  (a)~(e) 실행 이후 새 로그가 쌓이면 아래 원문과 같은 라인을 다시 볼 수
-  없을 가능성이 높다. 그래서 요약이 아니라 원문 그대로 남긴다.
+- **수집 시각**: 2026-08-10, 최초 수집과 같은 세션·같은 원본
+  (`firebase functions:log -n 1000` 결과, 1869줄, 2026-08-09T04:46 ~
+  2026-08-10T05:00). 원본 자체를 다시 조회하지 않았다 — 같은 원본을
+  다른 필터로 다시 훑은 것이므로 새 데이터가 섞이지 않았다.
+- **필터**: `grep -E "AppCheck|Callable request verification"` — 상태
+  이름(`INVALID`/`MISSING`/`VALID`/`passed`/`rejected`)에 의존하지
+  않는다. 이 필터도 `AppCheck`/`verification` 문자열 자체에 의존하는
+  한계는 있으나(예: 전혀 다른 문구로 로그가 났다면 여전히 놓친다),
+  최소한 "찾으려는 상태의 이름"에 의존하던 최초 필터의 편향은 없앴다.
+- **결과**: 367줄. `Failed to validate AppCheck token` 110 +
+  `Allowing request with invalid AppCheck token` 110 +
+  `"message":"Callable request verification failed: AppCheck token was
+  rejected."` 110(위 110과 같은 사건의 세 번째 줄) +
+  `"message":"Callable request verification passed"` 29 +
+  `"message":"...Auth token was rejected."` 8 = 367.
 
-## [정정 2026-08-10] 아래 원문(333줄)은 실패 패턴 3종만 걸러낸 부분집합이다
+## 왜 이 사건 자체를 기록하는가 — 증거 수집 층위에서 재발한 패턴
 
-처음 이 파일을 만들 때 쓴 grep 필터(`Failed to validate AppCheck
-token` / `verifications.*app.*INVALID` / `Allowing request with
-invalid AppCheck token`)는 문자열 `INVALID`가 라인 어딘가에 있어야
-걸린다. 그런데 `app:"MISSING"`이면서 `auth:"VALID"`인 라인은
-`"message":"Callable request verification passed"`(D 레벨, 조용히
-통과)로 찍혀 `INVALID`라는 문자열이 아예 없다 — 그래서 이 필터가
-그런 라인을 전부 놓쳤다. 163~165행의 `MISSING` 3건이 잡힌 건 그
-줄들에 우연히 `auth:"INVALID"`가 같이 있었기 때문이다(별개 사고,
-아래 참고). 전체 원본(`firebase functions:log -n 1000` 결과, 1869줄)을
-다시 훑은 결과가 아래 "3상태 분포 정리" 절이다 — **아래 333줄 원문
-자체는 고치지 않는다**(원문은 원문대로 보존), 대신 이 정정 블록과
-아래 집계 절로 누락을 메운다.
+**증거 수집 필터가 찾으려는 상태의 이름에 의존해, 다른 상태를
+구조적으로 못 보게 만들었다.** 이것은 이 저장소에서 이미 여러 층위
+에서 반복된 패턴과 같은 형태다:
 
-## 부가 관측 — "MISSING"과 "INVALID"는 다른 상태다 (163~165행)
+- 논문 5.8절 — 코드가 실행되지 않는 경로(도달 불가능한 코드가 존재를
+  숨긴다).
+- 논문 5.15절 — 이관 과정에서 도달 경로가 소실된다(검토 단위가
+  갈라진다).
+- `task_hardening_v2.md` §3-3-1 — 계측(`hasApp` 단일 불리언)이
+  `INVALID`와 `MISSING`을 같은 값으로 뭉갠다.
+- **이 파일 — 증거 수집(grep 필터)이 `MISSING`+`VALID`("passed") 조합
+  전체를 구조적으로 못 보게 만들었다.**
 
-아래 원문 333줄 중 163~165행(`2026-08-09T05:10:17~19Z`,
-`callgeminitext`)은 위 세 패턴과 다른 문구다:
+네 층위(실행·이관·계측·수집) 모두 같은 구조다: **어떤 상태를 찾도록
+설계된 장치는 그 상태의 이름을 알아야 작동하고, 이름을 모르는(또는
+다르게 표현되는) 상태는 장치의 시야 밖에 남는다.** 이번 사례가
+특히 날카로운 이유는, 편향의 방향이 우리 가설과 **반대**였다는
+점이다 — 최초 수집은 축2가 원래 찾던 `MISSING`을 과소평가하고
+`INVALID`만 과대평가하는 쪽으로 편향돼 있었다.
 
-```
-{"message":"Callable request verification failed: Auth token was rejected.","verifications":{"app":"MISSING","auth":"INVALID"}}
-```
+## 값별 · 함수별 · 시각별 재확인 (편향 정정, 위 §3-2/§3-3-1의 표와 동일한 수치)
 
-이 세 줄은 `auth` 토큰 자체가 거부된 별개 사고(익명 인증 세션 만료
-등으로 추정, 이 문서의 범위 밖)이지만, `verifications.app` 필드가
-**`"INVALID"`가 아니라 `"MISSING"`**으로 나온다는 점이 중요하다 —
-프레임워크 자신의 로그는 "토큰이 아예 없었다"(MISSING)와 "토큰은
-왔으나 유효하지 않았다"(INVALID)를 **이미 구분하고 있다.** 우리
-계측(`request.app != null` 단일 판정)은 이 구분을 못 한다는 것이
-§3-3에 등록한 해석 규칙의 근거를 한 번 더 뒷받침한다.
+이 전수본으로 다시 집계한 값은 이전에 이미 등록한 표(`task_hardening_v2.md`
+§3-2 "배선 이전 증거", §3-3-1)와 **일치한다** — 즉 이전 집계가
+결과적으로 옳았던 것은, 그 집계를 만들 때 이미 한 번 전체 원본
+(`raw_functions_log.txt`, 1869줄)으로 돌아가 다시 셌기 때문이다.
+이 파일은 그 재집계의 **원문 근거**를 처음으로 보존하는 파일이다
+(이전 재집계는 수치만 문서에 옮기고 원문 자체는 남기지 않았었다).
 
-## 3상태 분포 정리 (2026-08-10 추가, 전체 원본 1869줄 재집계)
-
-**대상**: `firebase functions:log -n 1000` 원본(1869줄, 2026-08-09T04:46
-~ 2026-08-10T05:00) 전체에서 `verifications` 필드가 있는 라인
-147개(위 333줄 부분집합이 아니라 전체). `"app":"VALID"` 문자열은 전체
-1869줄 어디에도 없다(`grep -c` 결과 0) — 다만 아래 Q1 해석에서 다루듯,
-이는 "VALID가 없다"는 증거라기보다 "VALID는 애초에 로그를 안 남길
-가능성이 있다"는 한계를 함께 지닌다.
-
-### 값별 · 메시지 유형별 건수 (147건)
-
-| `verifications.app` | `verifications.auth` | 로그 레벨 · message | 건수 |
-|---|---|---|---|
-| `INVALID` | `VALID` | W · "AppCheck token was rejected"(강제 꺼져 있어 통과) | 110 |
-| `MISSING` | `VALID` | D · "Callable request verification **passed**"(조용히 통과) | 29 |
-| `MISSING` | `INVALID` | W · "Auth token was rejected"(auth도 함께 실패) | 8 |
-| `VALID` | 무관 | — | **0** |
-
-110 + 29 + 8 = 147. `app` 값 합계: `INVALID` 110건, `MISSING` 37건
-(29+8), `VALID` 0건.
-
-### 함수별 분포
-
-| 함수 | `INVALID` | `MISSING`(auth VALID, 조용히 통과) | `MISSING`(auth도 INVALID) |
-|---|---|---|---|
-| `callGeminiText` | 50 | 22 | 8 |
-| `getSignedImageUrls` | 56 | **0** | 0 |
-| `beginFittingAttempt` | 4 | 7 | 0 |
-
-**`getSignedImageUrls`는 `MISSING`이 단 한 건도 없다** — `INVALID`만
-나온다. `callGeminiText`·`beginFittingAttempt`는 둘 다 나온다.
-
-### 시간대 분포 (시 단위)
-
-| 시각(UTC, 시 단위) | `INVALID` | `MISSING`(조용히 통과) |
+| `verifications.app` | 건수 | 비고 |
 |---|---|---|
-| 08-09 04시 | 54 | 0 |
-| 08-09 05시 | 0 | 8 |
-| 08-09 06시 | 0 | 1 |
-| 08-09 12시 | 0 | 6 |
-| 08-09 15시 | 0 | 13 |
-| 08-09 16시 | 49 | 1 |
-| 08-10 04시 | 7 | 0 |
+| `INVALID` | 110 | `callGeminiText` 50 / `getSignedImageUrls` 56 / `beginFittingAttempt` 4 |
+| `MISSING`(auth VALID, 조용히 통과) | 29 | `callGeminiText` 22 / `beginFittingAttempt` 7 / `getSignedImageUrls` 0 |
+| `MISSING`(auth도 INVALID, 별개 사고) | 8 | 전부 `callGeminiText`, 08-09 05:10:17~19Z 2초 안에 몰림 |
+| `VALID` | 0 | 이 조회 창(1869줄) 전체에 없음 |
 
-(`MISSING`+auth INVALID 8건은 전부 08-09 05:10:17~19Z, 2초 안에
-몰려 있다 — 별개의 단발 사고로 취급하고 이 분포표에서는 뺐다.)
+**추가 관측(이 재집계에서 새로 눈에 띈 것)**: `beginFittingAttempt`의
+`MISSING` 7건(192~198행)은 **2026-08-09T15:56:13.6 ~ 15:56:17.9,
+약 4.4초 안에 전부 몰려 있다.** 순차 피팅 1회는 `beginFittingAttempt`를
+**한 번만** 호출하므로(코드 주석 확인, `gemini_service.dart:143-149`),
+이 7건은 서로 다른 7번의 피팅 시도이거나 같은 세션 안에서 반복
+호출된 것이다. 이 4.4초라는 짧은 창은 `docs/task_hardening_v2.md`
+§3-3-2(경쟁 가설 H1/H2)의 판별 대상이므로 여기서는 관측만 기록하고
+해석은 그쪽에 둔다.
 
-### 사전 등록 판정 질문(2026-08-10, 결과 확정 전 등록) — 답
-
-**Q1. `VALID`가 단 한 건이라도 있는가?**
-
-**없다(0건, 전체 1869줄 기준).** `docs/task_hardening_v2.md` §3-1의
-정정("강제도 안 되고 작동도 안 한다")과 같은 방향 — 이 조회 창
-안에서는 App Check 설정 자체가 성립한 적이 없다는 쪽에 무게가
-실린다. **다만 이 답에는 한계가 있다**: firebase-functions v2가
-`app:"VALID"`인 정상 케이스를 애초에 로그로 안 남길 가능성을
-배제하지 못했다(성공은 조용한 게 보통이다 — `MISSING`+`VALID`도
-D 레벨로 겨우 남은 것을 보면, `VALID`+`VALID`는 아예 안 남았을 수도
-있다). 그래서 "VALID가 0건"은 "설정이 항상 실패한다"의 증거로
-**과호출하지 않는다** — S2-a 자체 계측(`hasApp=true`)이 이 한계를
-닫는 진짜 답이며, 이 질문은 그 전 단계의 정황일 뿐이다.
-
-**Q2. `MISSING`이 특정 시간대에 몰려 있는가?**
-
-**몰려 있다.** `MISSING`(조용히 통과) 29건 중 21건(72%)이 05시·15시
-두 시간대에 집중된다(05시 8건, 15시 13건). `INVALID` 110건 중
-103건(94%)은 04시·16시 두 시간대에 집중된다. **두 그룹의 몰린
-시간대가 서로 다르다** — `INVALID`가 몰린 04/16시와 `MISSING`이
-몰린 05/06/12/15시가 겹치지 않는다(정확히는 04→05시로 한 시간
-인접하지만 별개 구간). 이 시간대 분리 자체가 두 실패 유형이 같은
-원인이 아니라는 방증이다. 8/9 시점에는 백그라운드 `activate()`가
-없었으므로(§3-1), `MISSING`이 활성 사용(포그라운드) 창과 다른
-시간대에 몰린다는 것은 백그라운드 발화 시각과의 정합 여부를
-확인해 볼 만한 단서다 — **다만 이 로그만으로 어느 시각이 실제
-백그라운드 발화였는지 특정할 수는 없다**(그러려면
-`agent_meta.invocationLog`를 함께 대조해야 하고, 이는 이번 작업
-범위 밖이다).
-
-**Q3. 함수별로 값 분포가 갈리는가?**
-
-**갈린다.** `getSignedImageUrls`는 `MISSING`이 0건으로,
-`callGeminiText`(30건)·`beginFittingAttempt`(7건)와 뚜렷이 다르다.
-코드로 대조한 결과(`lib/services/agent_planner.dart:722-723`)
-`callGeminiText`는 `GeminiService.withTextModelFallback`을 통해
-`AgentPlanner`의 선제 추천 로직에서 호출되고, 이 로직
-(`runProactiveCheck`)은 `background_agent.dart`의
-`BackgroundAgent.run()`을 통해 **백그라운드 아이솔레이트에서도
-실행된다.** 반면 `getSignedImageUrls`는 옷장 화면 진입 시에만
-불리는, 명백히 포그라운드 전용 호출이다. 이 비대칭은 **아이솔레이트
-가설(백그라운드 경로가 `MISSING`의 원인)을 지지하는 방향**이다 —
-다만 `beginFittingAttempt`는 배경 코드 어디에서도 호출되지 않는데도
-`MISSING` 7건이 나와, 이 가설만으로는 전부 설명되지 않는다.
-**[정정 2026-08-10]** 이 불일치는 미해결이 아니라 경쟁 가설(H1
-아이솔레이트 / H2 콜드스타트 타이밍)로 `task_hardening_v2.md`
-§3-3-2에 등록했다 — 판별 설계(콜드스타트 직후 vs 60초 대기 후 호출
-비교)를 실기기 (a)~(e) 실행 전에 사전 등록했으니 그쪽 참고.
-
-## 원문 전체 (333줄, 시각순)
+## 원문 전체 (367줄, 시각순, 편향 없는 필터)
 
 ```
 2026-08-09T04:46:56.879039Z W getsignedimageurls: Failed to validate AppCheck token. FirebaseAppCheckError: Decoding App Check token failed. Make sure you passed the entire string JWT which represents the Firebase App Check token.
@@ -330,9 +238,42 @@ D 레벨로 겨우 남은 것을 보면, `VALID`+`VALID`는 아예 안 남았을
 2026-08-09T04:58:46.186269Z W callgeminitext: Failed to validate AppCheck token. FirebaseAppCheckError: Decoding App Check token failed. Make sure you passed the entire string JWT which represents the Firebase App Check token.
 2026-08-09T04:58:46.186385Z W callgeminitext: {"message":"Callable request verification failed: AppCheck token was rejected.","verifications":{"auth":"VALID","app":"INVALID"}}
 2026-08-09T04:58:46.186444Z W callgeminitext: Allowing request with invalid AppCheck token because enforcement is disabled
+2026-08-09T05:06:58.648569Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"auth":"VALID","app":"MISSING"}}
+2026-08-09T05:07:08.975775Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"app":"MISSING","auth":"VALID"}}
+2026-08-09T05:10:17.604425Z W callgeminitext: {"verifications":{"auth":"INVALID","app":"MISSING"},"message":"Callable request verification failed: Auth token was rejected."}
 2026-08-09T05:10:17.916886Z W callgeminitext: {"message":"Callable request verification failed: Auth token was rejected.","verifications":{"app":"MISSING","auth":"INVALID"}}
 2026-08-09T05:10:18.226744Z W callgeminitext: {"message":"Callable request verification failed: Auth token was rejected.","verifications":{"app":"MISSING","auth":"INVALID"}}
+2026-08-09T05:10:18.583542Z W callgeminitext: {"message":"Callable request verification failed: Auth token was rejected.","verifications":{"auth":"INVALID","app":"MISSING"}}
+2026-08-09T05:10:18.852085Z W callgeminitext: {"verifications":{"auth":"INVALID","app":"MISSING"},"message":"Callable request verification failed: Auth token was rejected."}
 2026-08-09T05:10:19.180215Z W callgeminitext: {"message":"Callable request verification failed: Auth token was rejected.","verifications":{"app":"MISSING","auth":"INVALID"}}
+2026-08-09T05:10:19.533629Z W callgeminitext: {"message":"Callable request verification failed: Auth token was rejected.","verifications":{"auth":"INVALID","app":"MISSING"}}
+2026-08-09T05:53:54.147868Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"app":"MISSING","auth":"VALID"}}
+2026-08-09T05:55:58.419785Z D callgeminitext: {"verifications":{"app":"MISSING","auth":"VALID"},"message":"Callable request verification passed"}
+2026-08-09T05:56:09.402446Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"auth":"VALID","app":"MISSING"}}
+2026-08-09T05:57:09.677752Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"app":"MISSING","auth":"VALID"}}
+2026-08-09T05:58:47.154745Z D callgeminitext: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
+2026-08-09T05:58:57.051652Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"auth":"VALID","app":"MISSING"}}
+2026-08-09T06:00:30.940869Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"auth":"VALID","app":"MISSING"}}
+2026-08-09T12:05:42.011093Z W callgeminitext: {"message":"Callable request verification failed: Auth token was rejected.","verifications":{"auth":"INVALID","app":"MISSING"}}
+2026-08-09T12:07:00.640838Z D callgeminitext: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
+2026-08-09T12:52:36.659449Z D callgeminitext: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
+2026-08-09T12:53:08.607525Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"app":"MISSING","auth":"VALID"}}
+2026-08-09T12:53:28.460357Z D callgeminitext: {"verifications":{"app":"MISSING","auth":"VALID"},"message":"Callable request verification passed"}
+2026-08-09T12:53:52.160463Z D callgeminitext: {"verifications":{"app":"MISSING","auth":"VALID"},"message":"Callable request verification passed"}
+2026-08-09T12:55:05.427004Z D callgeminitext: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
+2026-08-09T15:19:56.278245Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"app":"MISSING","auth":"VALID"}}
+2026-08-09T15:20:14.058819Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"app":"MISSING","auth":"VALID"}}
+2026-08-09T15:20:26.126746Z D callgeminitext: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
+2026-08-09T15:20:51.850149Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"auth":"VALID","app":"MISSING"}}
+2026-08-09T15:21:06.571814Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"auth":"VALID","app":"MISSING"}}
+2026-08-09T15:22:23.349525Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"auth":"VALID","app":"MISSING"}}
+2026-08-09T15:56:13.610857Z D beginfittingattempt: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
+2026-08-09T15:56:14.875790Z D beginfittingattempt: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
+2026-08-09T15:56:15.446269Z D beginfittingattempt: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
+2026-08-09T15:56:16.055832Z D beginfittingattempt: {"message":"Callable request verification passed","verifications":{"auth":"VALID","app":"MISSING"}}
+2026-08-09T15:56:16.652864Z D beginfittingattempt: {"message":"Callable request verification passed","verifications":{"auth":"VALID","app":"MISSING"}}
+2026-08-09T15:56:17.254968Z D beginfittingattempt: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
+2026-08-09T15:56:17.885318Z D beginfittingattempt: {"verifications":{"auth":"VALID","app":"MISSING"},"message":"Callable request verification passed"}
 2026-08-09T16:12:07.367550Z W getsignedimageurls: Failed to validate AppCheck token. FirebaseAppCheckError: Decoding App Check token failed. Make sure you passed the entire string JWT which represents the Firebase App Check token.
 2026-08-09T16:12:07.499501Z W getsignedimageurls: {"message":"Callable request verification failed: AppCheck token was rejected.","verifications":{"app":"INVALID","auth":"VALID"}}
 2026-08-09T16:12:07.499622Z W getsignedimageurls: Allowing request with invalid AppCheck token because enforcement is disabled
@@ -369,6 +310,7 @@ D 레벨로 겨우 남은 것을 보면, `VALID`+`VALID`는 아예 안 남았을
 2026-08-09T16:16:27.204460Z W callgeminitext: Failed to validate AppCheck token. FirebaseAppCheckError: Decoding App Check token failed. Make sure you passed the entire string JWT which represents the Firebase App Check token.
 2026-08-09T16:16:27.204637Z W callgeminitext: {"message":"Callable request verification failed: AppCheck token was rejected.","verifications":{"app":"INVALID","auth":"VALID"}}
 2026-08-09T16:16:27.204706Z W callgeminitext: Allowing request with invalid AppCheck token because enforcement is disabled
+2026-08-09T16:26:17.770642Z D callgeminitext: {"message":"Callable request verification passed","verifications":{"auth":"VALID","app":"MISSING"}}
 2026-08-09T16:27:29.742811Z W getsignedimageurls: Failed to validate AppCheck token. FirebaseAppCheckError: Decoding App Check token failed. Make sure you passed the entire string JWT which represents the Firebase App Check token.
 2026-08-09T16:27:29.742947Z W getsignedimageurls: {"message":"Callable request verification failed: AppCheck token was rejected.","verifications":{"auth":"VALID","app":"INVALID"}}
 2026-08-09T16:27:29.742988Z W getsignedimageurls: Allowing request with invalid AppCheck token because enforcement is disabled
