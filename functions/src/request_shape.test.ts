@@ -14,10 +14,20 @@ function run(name: string, fn: () => void): void {
   }
 }
 
-// ── 우리 앱이 실제로 만드는 6종 요청 형태 ──────────────────────
+// ── 우리 앱이 실제로 만드는 6종 요청 형태(와이어 형태 기준) ─────────
 // 상상해서 쓰지 않는다 - lib/services/gemini_service.dart를 읽고 그대로
 // 옮겼다(텍스트 내용 자체는 상관없어 짧은 대역값으로 대체 - 판정은 형태만
 // 본다). 각 픽스처 바로 위에 출처 행을 남긴다.
+//
+// [정정 2026-08-10] 이 6종은 **사용자 조작 단위가 아니라 와이어 형태
+// 단위**다. docs/task_hardening_v2.md §4-3이 한때 이 6종을 "6개 사용자
+// 경로"로 그대로 승계해 실행 목록을 만들었으나, 실제 사용자 조작은
+// 5가지뿐이다 - (c)/(d)는 서로 다른 두 조작이 아니라 **같은 조작("AI
+// 코디 분석하기")이 사용자 프로필 입력 여부에 따라 만드는 두 형태**다
+// (analyzeOutfitFromAttributes의 hasProfile 분기, gemini_service.dart:644).
+// 두 목록의 대응 관계는 §4-3의 표를 참고할 것 - 픽스처(와이어 형태)
+// 분류를 실행 경로(사용자 조작) 분류에 그대로 갖다 쓰면 안 된다는
+// 교훈이 여기서 나왔다.
 
 // (a) 속성 추출 — extractAttributes, gemini_service.dart:493-509.
 // parts: [text, inlineData] 1장. generationConfig에 responseMimeType/
@@ -68,13 +78,22 @@ const FIXTURE_OUTFIT_ANALYSIS_WITH_PHOTO = {
   generationConfig: {temperature: 0.7, maxOutputTokens: 3000},
 };
 
-// (d) 체형 분석(프로필 기반) — analyzeOutfitFromAttributes,
+// (d) 코디 분석(프로필 기반, 사진 미첨부) — analyzeOutfitFromAttributes,
 // gemini_service.dart:628-686, hasProfile=true 분기
 // (_buildAttributeAnalysisPromptWithProfile, 659-661행) - "사용자 체형
 // 프로필이 입력되어 있으면 그 텍스트가 사진보다 정확하고 훨씬 빠르므로
 // 우선하고, 이 경우 전신 사진은 아예 보내지 않는다"(642행 주석) - (c)와
 // 달리 inlineData가 없다. parts: [text]만.
-const FIXTURE_BODY_PROFILE_ANALYSIS = {
+//
+// [정정 2026-08-10] 원래 "체형 분석"이라는 별도 기능으로 이름 붙였으나
+// 실재하지 않는 이름이었다 - 이건 (c)와 **같은 사용자 조작("AI 코디
+// 분석하기")**이 사용자가 체형 프로필을 입력해 뒀을 때 타는 분기일
+// 뿐이다. "체형 분석"이라는 화면·버튼·진입점은 코드 어디에도 없다
+// (fit_predictor.dart:18의 규칙 기반 핏 예측기는 Gemini를 호출하지
+// 않으므로 별개). 와이어 형태 자체는 실재하므로(텍스트만, 이미지 없음)
+// 픽스처는 유지하고 이름만 바로잡는다 - docs/task_hardening_v2.md
+// §4-1/§4-3 참고.
+const FIXTURE_OUTFIT_ANALYSIS_WITH_PROFILE = {
   contents: [{
     parts: [
       {text: "사용자 체형(키 175cm, 마름, 어깨 좁음)을 고려해 다음 옷 조합을 평가하세요: 상의(네이비/캐주얼)."},
@@ -90,6 +109,9 @@ const FIXTURE_BODY_PROFILE_ANALYSIS = {
 // 없지만 호출부(자기 평가 루프, 후보 재평가용)가 (c)/(d)와 다르다.
 // 와이어 형태는 (d)와 구조적으로 동일하다 - 이것이 실측이다(추정이
 // 아니라 코드 확인, 별도 함수가 아니라 같은 함수의 세 번째 분기를 탄다).
+// (d)와 마찬가지로 이 픽스처도 "체형 분석"이 아니라 analyzeOutfitFromAttributes의
+// 세 번째 분기(사진·프로필 둘 다 없음)일 뿐이며, 실제 호출부는
+// 자기 평가 루프(outfit_self_evaluator.dart)라는 점만 (d)와 다르다.
 const FIXTURE_SELF_EVALUATION = {
   contents: [{
     parts: [
@@ -118,7 +140,7 @@ const REAL_FIXTURES: Array<[string, unknown]> = [
   ["(a) 속성 추출", FIXTURE_EXTRACT_ATTRIBUTES],
   ["(b) 사이즈표 OCR", FIXTURE_SIZE_CHART_OCR],
   ["(c) 코디 분석(사진 기반)", FIXTURE_OUTFIT_ANALYSIS_WITH_PHOTO],
-  ["(d) 체형 분석(프로필 기반)", FIXTURE_BODY_PROFILE_ANALYSIS],
+  ["(d) 코디 분석(프로필 기반, 사진 미첨부)", FIXTURE_OUTFIT_ANALYSIS_WITH_PROFILE],
   ["(e) 자기 평가", FIXTURE_SELF_EVALUATION],
   ["(f) 피팅", FIXTURE_FITTING_STEP],
 ];
