@@ -218,8 +218,14 @@ async function checkAndRecordRateLimit(uid: string, kind: RateLimitKind): Promis
 // 전에 잘린다). **되돌릴 조건: UPSTREAM_TIMEOUT_MS와 동시에 - 업스트림
 // 소요시간 분포를 확보하면 60(원래 값)으로, 또는 그 분포에 맞는 값으로
 // 되돌린다.**
+// maxInstances(S1/3) - 이 함수를 포함해 아래 9개 서버 함수에 공통 적용되는
+// 근거: 현재 사용자 규모는 n=1이고, 동시 호출이 나오는 유일한 경로(옷 N벌
+// 순차 합성 = 호출 N회)도 클라이언트가 직렬로 돈다 - 즉 정상 사용에서
+// 동시 인스턴스가 2를 넘을 일이 없다. 따라서 아래 값들은 "정상 사용의
+// 상한"이 아니라 "비정상 사용(버그·남용)의 천장"이다. 실사용자가 붙으면
+// 반드시 재산정해야 한다.
 export const callGeminiText = onCall(
-  {secrets: [geminiApiKey], region: "asia-northeast3", timeoutSeconds: 320},
+  {secrets: [geminiApiKey], region: "asia-northeast3", timeoutSeconds: 320, maxInstances: 10},
   async (request, response) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
@@ -268,10 +274,8 @@ export const callGeminiText = onCall(
     // 때문에 정상 사용자의 시간당 호출 할당량이 깎이면 안 된다. 대가로
     // "값싼 거부를 무제한 반복"할 수 있는 문이 열리지만 - 이 경로는
     // Gemini를 타지 않으므로 비용은 함수 호출 자체뿐이다. 그 천장은
-    // 원래 maxInstances가 잡아야 하는데, **이 함수엔 현재 maxInstances가
-    // 설정돼 있지 않다**(코드 확인 - onCall 옵션에 secrets/region/
-    // timeoutSeconds뿐) - 이 트레이드오프의 다른 절반이 아직 안 닫혀
-    // 있다는 뜻이며, 별도 항목으로 남긴다(이번 범위 아님).
+    // maxInstances가 잡는다(S1/3 - 위 onCall 옵션에 설정 완료, 근거는
+    // 옵션 바로 위 주석 참고) - 이 트레이드오프의 다른 절반을 닫았다.
     const payloadDecision = evaluatePayloadLimit(requestBytes, kind, PAYLOAD_LIMIT_CONFIG);
     if (!payloadDecision.allowed) {
       console.log(
@@ -528,8 +532,12 @@ async function writeFittingCacheServerSide(
   });
 }
 
+// maxInstances(S1/3) - 근거는 callGeminiText 위 주석(n=1, 순차 클라이언트
+// 루프) 참고. 9개 함수 중 이 함수만 5로 낮게 잡는 이유: timeoutSeconds가
+// 320이라 인스턴스 하나가 점유하는 시간이 길고, 상류(Gemini) 호출 비용까지
+// 곱해진다 - 같은 남용 시도라도 이 함수에서 열어두는 동시 창이 더 비싸다.
 export const generateFittingImage = onCall(
-  {secrets: [geminiApiKey], region: "asia-northeast3", timeoutSeconds: 320},
+  {secrets: [geminiApiKey], region: "asia-northeast3", timeoutSeconds: 320, maxInstances: 5},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
@@ -686,8 +694,9 @@ export const generateFittingImage = onCall(
 // 시도 하나의 시작이다"를 세는 것만 담당한다. 클라이언트는 순차 루프
 // 진입 직전 이 콜러블을 1번 호출하고, resource-exhausted가 오면 루프를
 // 시작하지 않는다(재시도 대상 아님 - 상한 초과는 결정론적 실패).
+// maxInstances(S1/3) - 근거는 callGeminiText 위 주석 참고.
 export const beginFittingAttempt = onCall(
-  {region: "asia-northeast3"},
+  {region: "asia-northeast3", maxInstances: 10},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
@@ -717,8 +726,9 @@ function isSignedUrlCollection(value: unknown): value is SignedUrlCollection {
     (SIGNED_URL_COLLECTIONS as readonly string[]).includes(value);
 }
 
+// maxInstances(S1/3) - 근거는 callGeminiText 위 주석 참고.
 export const getSignedImageUrls = onCall(
-  {region: "asia-northeast3"},
+  {region: "asia-northeast3", maxInstances: 10},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
@@ -884,8 +894,10 @@ async function cleanupInvalidTokens(
 // 누구나 호출 가능한 무료 푸시 게이트웨이가 된다. 스케줄러(C단계)는 아직
 // 안 만든다 - 이 함수는 "토큰이 등록돼 있으면 서버가 이 기기로 알림을
 // 보낼 수 있는가"만 확인하는 용도다.
+// maxInstances(S1/3) - 근거는 callGeminiText 위 주석 참고. 진단용 호출이라
+// 3으로 낮게 잡는다.
 export const sendTestPush = onCall(
-  {region: "asia-northeast3"},
+  {region: "asia-northeast3", maxInstances: 3},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
@@ -1161,8 +1173,10 @@ async function runScheduledCheckCore(
 // 잡으로 트리거되어 공개 HTTP 엔드포인트가 아예 없다 - onRequest + 수동
 // Cloud Scheduler 조합과 달리 A-1 함정 1과 같은 무방비 엔드포인트 리스크가
 // 구조적으로 생기지 않는다.
+// maxInstances(S1/3) - 근거는 callGeminiText 위 주석 참고. 스케줄 트리거는
+// 중첩 실행이 흔치 않으므로 3으로 낮게 잡는다.
 export const scheduledProactiveCheck = onSchedule(
-  {schedule: "every 3 hours", region: "asia-northeast3"},
+  {schedule: "every 3 hours", region: "asia-northeast3", maxInstances: 3},
   async () => {
     const uids = await getActiveUids();
     for (const uid of uids) {
@@ -1179,8 +1193,10 @@ export const scheduledProactiveCheck = onSchedule(
 // 수동 발화 테스트용 - 호출한 uid 하나만 즉시 처리한다. sendTestPush와 같은
 // 이유로 onCall + request.auth 검사(A-1 함정 1). 3시간 주기를 기다리지 않고
 // 스케줄 로직 자체를 실기기로 즉시 검증할 유일한 경로다.
+// maxInstances(S1/3) - 근거는 callGeminiText 위 주석 참고. 수동 발화 테스트용이라
+// 3으로 낮게 잡는다.
 export const triggerScheduledCheckTest = onCall(
-  {region: "asia-northeast3"},
+  {region: "asia-northeast3", maxInstances: 3},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
@@ -1233,8 +1249,9 @@ async function revokeTokenIfPresent(
 // finalize된 뒤에만 이 트리거가 발화하므로 실패해도 업로드를 막을 방법도
 // 필요도 없다 - catch로 로그만 남기고 함수를 정상 종료한다(재시도 안 함,
 // opts.retry 기본값 false).
+// maxInstances(S1/3) - 근거는 callGeminiText 위 주석 참고.
 export const revokeTokenOnUpload = onObjectFinalized(
-  {region: "asia-northeast3"},
+  {region: "asia-northeast3", maxInstances: 5},
   async (event) => {
     const path = event.data.name;
     if (!isTokenRevocablePath(path)) return;
@@ -1254,8 +1271,10 @@ export const revokeTokenOnUpload = onObjectFinalized(
 // (D) 일 1회 스윕 - (C)가 놓친 건(함수 장애·배포 공백 등)의 안전망.
 // 잔여 토큰 건수를 로그로 남긴다 - 0이 계속 나오면 (C)가 정상 작동 중이라는
 // 뜻이고, 0이 아닌 값이 반복되면 (C)가 놓치는 경로가 있다는 신호다.
+// maxInstances(S1/3) - 근거는 callGeminiText 위 주석 참고. 일 1회 스윕은
+// 중첩 실행이 흔치 않으므로 3으로 낮게 잡는다.
 export const sweepStorageTokens = onSchedule(
-  {schedule: "every 24 hours", region: "asia-northeast3"},
+  {schedule: "every 24 hours", region: "asia-northeast3", maxInstances: 3},
   async () => {
     const bucket = getStorage().bucket();
     let revoked = 0;
