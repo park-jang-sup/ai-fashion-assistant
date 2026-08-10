@@ -80,12 +80,15 @@ flutter pub get
 flutter run
 ```
 
-Gemini API 키 등 민감한 값은 `lib/config/env.dart`(git 추적 제외)에 별도로 관리합니다 — 아래 형태로 직접 만들어야 합니다.
+Gemini API 호출은 클라이언트가 직접 하지 않습니다 — 모든 요청이
+Firebase Cloud Functions 서버 프록시(`functions/src/index.ts`의
+`callGeminiText`/`generateFittingImage`)를 거치며, `GEMINI_API_KEY`는
+클라이언트 소스가 아니라 [Firebase Functions 비밀](https://firebase.google.com/docs/functions/config-env?gen=2nd#secret-manager)로만 관리됩니다.
+따라서 클라이언트를 빌드·실행하는 데 별도의 API 키 설정이 필요
+없습니다. 서버를 직접 배포하려면 함수 비밀을 등록하세요.
 
-```dart
-class Env {
-  static const String geminiApiKey = 'YOUR_GEMINI_API_KEY';
-}
+```bash
+firebase functions:secrets:set GEMINI_API_KEY
 ```
 
 테스트는 다음으로 실행합니다.
