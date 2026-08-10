@@ -26,10 +26,25 @@
   (a)~(e) 실행 이후 새 로그가 쌓이면 아래 원문과 같은 라인을 다시 볼 수
   없을 가능성이 높다. 그래서 요약이 아니라 원문 그대로 남긴다.
 
+## [정정 2026-08-10] 아래 원문(333줄)은 실패 패턴 3종만 걸러낸 부분집합이다
+
+처음 이 파일을 만들 때 쓴 grep 필터(`Failed to validate AppCheck
+token` / `verifications.*app.*INVALID` / `Allowing request with
+invalid AppCheck token`)는 문자열 `INVALID`가 라인 어딘가에 있어야
+걸린다. 그런데 `app:"MISSING"`이면서 `auth:"VALID"`인 라인은
+`"message":"Callable request verification passed"`(D 레벨, 조용히
+통과)로 찍혀 `INVALID`라는 문자열이 아예 없다 — 그래서 이 필터가
+그런 라인을 전부 놓쳤다. 163~165행의 `MISSING` 3건이 잡힌 건 그
+줄들에 우연히 `auth:"INVALID"`가 같이 있었기 때문이다(별개 사고,
+아래 참고). 전체 원본(`firebase functions:log -n 1000` 결과, 1869줄)을
+다시 훑은 결과가 아래 "3상태 분포 정리" 절이다 — **아래 333줄 원문
+자체는 고치지 않는다**(원문은 원문대로 보존), 대신 이 정정 블록과
+아래 집계 절로 누락을 메운다.
+
 ## 부가 관측 — "MISSING"과 "INVALID"는 다른 상태다 (163~165행)
 
-아래 원문 163~165행(`2026-08-09T05:10:17~19Z`, `callgeminitext`)은 위
-세 패턴과 다른 문구다:
+아래 원문 333줄 중 163~165행(`2026-08-09T05:10:17~19Z`,
+`callgeminitext`)은 위 세 패턴과 다른 문구다:
 
 ```
 {"message":"Callable request verification failed: Auth token was rejected.","verifications":{"app":"MISSING","auth":"INVALID"}}
@@ -42,6 +57,101 @@
 왔으나 유효하지 않았다"(INVALID)를 **이미 구분하고 있다.** 우리
 계측(`request.app != null` 단일 판정)은 이 구분을 못 한다는 것이
 §3-3에 등록한 해석 규칙의 근거를 한 번 더 뒷받침한다.
+
+## 3상태 분포 정리 (2026-08-10 추가, 전체 원본 1869줄 재집계)
+
+**대상**: `firebase functions:log -n 1000` 원본(1869줄, 2026-08-09T04:46
+~ 2026-08-10T05:00) 전체에서 `verifications` 필드가 있는 라인
+147개(위 333줄 부분집합이 아니라 전체). `"app":"VALID"` 문자열은 전체
+1869줄 어디에도 없다(`grep -c` 결과 0) — 다만 아래 Q1 해석에서 다루듯,
+이는 "VALID가 없다"는 증거라기보다 "VALID는 애초에 로그를 안 남길
+가능성이 있다"는 한계를 함께 지닌다.
+
+### 값별 · 메시지 유형별 건수 (147건)
+
+| `verifications.app` | `verifications.auth` | 로그 레벨 · message | 건수 |
+|---|---|---|---|
+| `INVALID` | `VALID` | W · "AppCheck token was rejected"(강제 꺼져 있어 통과) | 110 |
+| `MISSING` | `VALID` | D · "Callable request verification **passed**"(조용히 통과) | 29 |
+| `MISSING` | `INVALID` | W · "Auth token was rejected"(auth도 함께 실패) | 8 |
+| `VALID` | 무관 | — | **0** |
+
+110 + 29 + 8 = 147. `app` 값 합계: `INVALID` 110건, `MISSING` 37건
+(29+8), `VALID` 0건.
+
+### 함수별 분포
+
+| 함수 | `INVALID` | `MISSING`(auth VALID, 조용히 통과) | `MISSING`(auth도 INVALID) |
+|---|---|---|---|
+| `callGeminiText` | 50 | 22 | 8 |
+| `getSignedImageUrls` | 56 | **0** | 0 |
+| `beginFittingAttempt` | 4 | 7 | 0 |
+
+**`getSignedImageUrls`는 `MISSING`이 단 한 건도 없다** — `INVALID`만
+나온다. `callGeminiText`·`beginFittingAttempt`는 둘 다 나온다.
+
+### 시간대 분포 (시 단위)
+
+| 시각(UTC, 시 단위) | `INVALID` | `MISSING`(조용히 통과) |
+|---|---|---|
+| 08-09 04시 | 54 | 0 |
+| 08-09 05시 | 0 | 8 |
+| 08-09 06시 | 0 | 1 |
+| 08-09 12시 | 0 | 6 |
+| 08-09 15시 | 0 | 13 |
+| 08-09 16시 | 49 | 1 |
+| 08-10 04시 | 7 | 0 |
+
+(`MISSING`+auth INVALID 8건은 전부 08-09 05:10:17~19Z, 2초 안에
+몰려 있다 — 별개의 단발 사고로 취급하고 이 분포표에서는 뺐다.)
+
+### 사전 등록 판정 질문(2026-08-10, 결과 확정 전 등록) — 답
+
+**Q1. `VALID`가 단 한 건이라도 있는가?**
+
+**없다(0건, 전체 1869줄 기준).** `docs/task_hardening_v2.md` §3-1의
+정정("강제도 안 되고 작동도 안 한다")과 같은 방향 — 이 조회 창
+안에서는 App Check 설정 자체가 성립한 적이 없다는 쪽에 무게가
+실린다. **다만 이 답에는 한계가 있다**: firebase-functions v2가
+`app:"VALID"`인 정상 케이스를 애초에 로그로 안 남길 가능성을
+배제하지 못했다(성공은 조용한 게 보통이다 — `MISSING`+`VALID`도
+D 레벨로 겨우 남은 것을 보면, `VALID`+`VALID`는 아예 안 남았을 수도
+있다). 그래서 "VALID가 0건"은 "설정이 항상 실패한다"의 증거로
+**과호출하지 않는다** — S2-a 자체 계측(`hasApp=true`)이 이 한계를
+닫는 진짜 답이며, 이 질문은 그 전 단계의 정황일 뿐이다.
+
+**Q2. `MISSING`이 특정 시간대에 몰려 있는가?**
+
+**몰려 있다.** `MISSING`(조용히 통과) 29건 중 21건(72%)이 05시·15시
+두 시간대에 집중된다(05시 8건, 15시 13건). `INVALID` 110건 중
+103건(94%)은 04시·16시 두 시간대에 집중된다. **두 그룹의 몰린
+시간대가 서로 다르다** — `INVALID`가 몰린 04/16시와 `MISSING`이
+몰린 05/06/12/15시가 겹치지 않는다(정확히는 04→05시로 한 시간
+인접하지만 별개 구간). 이 시간대 분리 자체가 두 실패 유형이 같은
+원인이 아니라는 방증이다. 8/9 시점에는 백그라운드 `activate()`가
+없었으므로(§3-1), `MISSING`이 활성 사용(포그라운드) 창과 다른
+시간대에 몰린다는 것은 백그라운드 발화 시각과의 정합 여부를
+확인해 볼 만한 단서다 — **다만 이 로그만으로 어느 시각이 실제
+백그라운드 발화였는지 특정할 수는 없다**(그러려면
+`agent_meta.invocationLog`를 함께 대조해야 하고, 이는 이번 작업
+범위 밖이다).
+
+**Q3. 함수별로 값 분포가 갈리는가?**
+
+**갈린다.** `getSignedImageUrls`는 `MISSING`이 0건으로,
+`callGeminiText`(30건)·`beginFittingAttempt`(7건)와 뚜렷이 다르다.
+코드로 대조한 결과(`lib/services/agent_planner.dart:722-723`)
+`callGeminiText`는 `GeminiService.withTextModelFallback`을 통해
+`AgentPlanner`의 선제 추천 로직에서 호출되고, 이 로직
+(`runProactiveCheck`)은 `background_agent.dart`의
+`BackgroundAgent.run()`을 통해 **백그라운드 아이솔레이트에서도
+실행된다.** 반면 `getSignedImageUrls`는 옷장 화면 진입 시에만
+불리는, 명백히 포그라운드 전용 호출이다. 이 비대칭은 **아이솔레이트
+가설(백그라운드 경로가 `MISSING`의 원인)을 지지하는 방향**이다 —
+다만 `beginFittingAttempt`는 배경 코드 어디에서도 호출되지 않는데도
+`MISSING` 7건이 나와, 이 가설만으로는 전부 설명되지 않는다. 이
+불일치는 **미해결로 남긴다**(이번 작업 범위 밖 — 다음 계측 개정
+때 `src=fg|bg` 태그로 직접 확인할 사안).
 
 ## 원문 전체 (333줄, 시각순)
 
