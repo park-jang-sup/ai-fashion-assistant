@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform, kReleaseMode;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -54,9 +55,21 @@ void main() async {
     FirebaseFirestore.instance.useFirestoreEmulator('10.0.2.2', 8080);
     await FirebaseAuth.instance.useAuthEmulator('10.0.2.2', 9099);
   } else if (isMobile) {
+    // [정정 2026-08-10, S2-a-3] 기존 코드는 kReleaseMode 분기 없이 릴리스
+    // 빌드도 디버그 공급자로 동작했다 - 이 저장소가 반복 겪은 릴리스 전용
+    // 결함(5.7, 5.11.3)의 새 사례이며, 이번은 강제하는 지점(서버
+    // enforceAppCheck)이 없어 무증상으로 유지되었다(코드 확인, 2026-08-10).
+    //
+    // 이 분기를 넣어도 App Check는 아직 작동하지 않는다 - 앱이 Firebase
+    // 콘솔의 App Check에 등록되어 있지 않기 때문이다(docs/task_hardening_v2.md
+    // §3-1-1). 즉 이 커밋은 App Check를 작동시키는 커밋이 아니라 작동시킬
+    // 수 있게 만드는 커밋이다. 실제 활성화 조건과 강제(enforce) 보류 사유는
+    // docs/task_hardening_v2.md §3-1-3 참고.
     await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.debug,
-      appleProvider: AppleProvider.debug,
+      androidProvider:
+          kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
+      appleProvider:
+          kReleaseMode ? AppleProvider.appAttest : AppleProvider.debug,
     );
   }
 
