@@ -238,6 +238,22 @@ export const callGeminiText = onCall(
     const reqId = randomUUID().slice(0, 8);
     const startedAt = Date.now();
 
+    // [appCheck] 계측(S2-a, docs/task_hardening_v2.md §3-2) - 강제
+    // (enforceAppCheck)는 이번 커밋에서 넣지 않는다. firebase-functions v2는
+    // 유효한 App Check 토큰이 검증됐을 때만 request.app을 채우고, 이는
+    // enforceAppCheck가 false여도 마찬가지다 - 즉 강제 이전에도 "실제 호출이
+    // 토큰을 싣고 오는가"를 관측할 수 있다. 판정 기준(축1 포그라운드
+    // hasApp=true 100% / 축2 백그라운드 hasApp=false 최소 1회)은 §3-3에
+    // 사전 등록되어 있다.
+    // reqId 있는 자리에 로그를 둔다 - auth 검사 직후(230행)에 두면 reqId가
+    // 아직 없어 위 [callGeminiText] start/done 로그와 상관시킬 수 없다.
+    // generateFittingImage도 같은 이유로 같은 자리(reqId 생성 직후)에 둔다 -
+    // 나머지 4개 onCall은 reqId가 없으므로 auth 검사 직후에 그대로 둔다.
+    console.log(
+      `[appCheck] fn=callGeminiText uid=${request.auth.uid} reqId=${reqId} ` +
+        `hasApp=${request.app != null}`
+    );
+
     const {model, requestBody} = (request.data ?? {}) as {
       model?: unknown;
       requestBody?: unknown;
@@ -546,6 +562,10 @@ export const generateFittingImage = onCall(
     const reqId = randomUUID().slice(0, 8);
     const startedAt = Date.now();
 
+    // [appCheck] 계측(S2-a) - reqId 있는 자리에 둔다. 근거·판정 기준은
+    // callGeminiText 위 주석 참고.
+    console.log(`[appCheck] fn=generateFittingImage uid=${uid} reqId=${reqId} hasApp=${request.app != null}`);
+
     const {userPhotoId, clothingItemIds, requestBody} = (request.data ?? {}) as {
       userPhotoId?: unknown;
       clothingItemIds?: unknown;
@@ -701,6 +721,9 @@ export const beginFittingAttempt = onCall(
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
     }
+    // [appCheck] 계측(S2-a) - reqId 없음. 근거·판정 기준은 callGeminiText
+    // 위 주석 참고.
+    console.log(`[appCheck] fn=beginFittingAttempt uid=${request.auth.uid} hasApp=${request.app != null}`);
     await checkAndRecordRateLimit(request.auth.uid, "fitting");
     return {ok: true};
   }
@@ -733,6 +756,9 @@ export const getSignedImageUrls = onCall(
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
     }
+    // [appCheck] 계측(S2-a) - reqId 없음. 근거·판정 기준은 callGeminiText
+    // 위 주석 참고.
+    console.log(`[appCheck] fn=getSignedImageUrls uid=${request.auth.uid} hasApp=${request.app != null}`);
     const uid = request.auth.uid;
 
     const {items} = (request.data ?? {}) as {items?: unknown};
@@ -902,6 +928,9 @@ export const sendTestPush = onCall(
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
     }
+    // [appCheck] 계측(S2-a) - reqId 없음. 근거·판정 기준은 callGeminiText
+    // 위 주석 참고.
+    console.log(`[appCheck] fn=sendTestPush uid=${request.auth.uid} hasApp=${request.app != null}`);
 
     const uid = request.auth.uid;
     const tokensSnapshot = await getFirestore()
@@ -1175,6 +1204,9 @@ async function runScheduledCheckCore(
 // 구조적으로 생기지 않는다.
 // maxInstances(S1/3) - 근거는 callGeminiText 위 주석 참고. 스케줄 트리거는
 // 중첩 실행이 흔치 않으므로 3으로 낮게 잡는다.
+// [appCheck] 계측(S2-a) 대상 아님 - 위 문단대로 공개 HTTP 엔드포인트가
+// 없어 클라이언트가 직접 호출하지 않으므로 App Check가 적용될 자리
+// 자체가 없다(docs/task_hardening_v2.md §3-2).
 export const scheduledProactiveCheck = onSchedule(
   {schedule: "every 3 hours", region: "asia-northeast3", maxInstances: 3},
   async () => {
@@ -1201,6 +1233,9 @@ export const triggerScheduledCheckTest = onCall(
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
     }
+    // [appCheck] 계측(S2-a) - reqId 없음. 근거·판정 기준은 callGeminiText
+    // 위 주석 참고.
+    console.log(`[appCheck] fn=triggerScheduledCheckTest uid=${request.auth.uid} hasApp=${request.app != null}`);
     return await runScheduledCheckCore(request.auth.uid);
   }
 );
@@ -1250,6 +1285,9 @@ async function revokeTokenIfPresent(
 // 필요도 없다 - catch로 로그만 남기고 함수를 정상 종료한다(재시도 안 함,
 // opts.retry 기본값 false).
 // maxInstances(S1/3) - 근거는 callGeminiText 위 주석 참고.
+// [appCheck] 계측(S2-a) 대상 아님 - Storage 이벤트 트리거라 공개 HTTP
+// 엔드포인트가 없다(scheduledProactiveCheck와 같은 이유,
+// docs/task_hardening_v2.md §3-2).
 export const revokeTokenOnUpload = onObjectFinalized(
   {region: "asia-northeast3", maxInstances: 5},
   async (event) => {
@@ -1273,6 +1311,8 @@ export const revokeTokenOnUpload = onObjectFinalized(
 // 뜻이고, 0이 아닌 값이 반복되면 (C)가 놓치는 경로가 있다는 신호다.
 // maxInstances(S1/3) - 근거는 callGeminiText 위 주석 참고. 일 1회 스윕은
 // 중첩 실행이 흔치 않으므로 3으로 낮게 잡는다.
+// [appCheck] 계측(S2-a) 대상 아님 - scheduledProactiveCheck와 같은 이유
+// (공개 HTTP 엔드포인트 없음, docs/task_hardening_v2.md §3-2).
 export const sweepStorageTokens = onSchedule(
   {schedule: "every 24 hours", region: "asia-northeast3", maxInstances: 3},
   async () => {
