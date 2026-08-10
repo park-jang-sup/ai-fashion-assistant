@@ -20,6 +20,7 @@ import {
 } from "./signed_url_policy";
 import {buildFittingCacheKey} from "./fitting_cache_key";
 import {verifyFittingOwnership} from "./fitting_ownership_policy";
+import {evaluateRequestShape, REQUEST_SHAPE_CONFIG, RequestShapeDecision} from "./request_shape";
 
 // firebase-admin 14.x부터 admin.firestore()/admin.messaging() 같은
 // 네임스페이스 호환 API가 최상위 export에서 빠졌다 - getFirestore()/
@@ -51,6 +52,37 @@ const ALLOWED_MODELS = [
 ];
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
+
+// 요청 본문 스키마 계측(S3-b, docs/task_hardening_v2.md §4) - 계측 단계,
+// 거부하지 않는다. S2(App Check)가 보류된 상태라 이 스키마 검증이 요청
+// 본문에 대한 현재 유일한 방어인데, 상한값(request_shape.ts)이 아직
+// 실측이 아니라 추정(3~5배 여유)이라 지금 강제로 전환하면 정상 경로가
+// 조용히 막힐 수 있다 - 이 실패 모드는 이 트랙에서 이미 두 번 나왔다
+// (§3-3 정정, §3-3-1). 전환 조건은 §4에 사전 등록되어 있다(사건 기준 -
+// 6개 실제 진입점을 릴리스에서 각 1회 이상 실행 + allowed=false 0건 +
+// evaluator_failed 0건 + 6경로 전부 로그 관측).
+const REQUEST_SHAPE_ENFORCE = false;
+
+// callGeminiText/generateFittingImage 두 곳에서 동일한 형식으로 로그를
+// 남긴다 - [appCheck] 계측에서 reqId 유무로 형식이 갈렸던 것과 달리
+// 이번은 두 함수 모두 reqId가 있으므로 갈릴 이유가 없다. 공용 함수로
+// 묶어 형식이 실수로 갈리는 것 자체를 구조적으로 막는다.
+//
+// metrics는 위반 여부와 무관하게 항상 남긴다 - 상한을 조이는 근거가
+// 정상 요청의 분포이므로, 통과한 요청의 수치가 오히려 핵심 데이터다.
+// §3-3-1에서 "증거 수집 필터가 찾으려는 상태의 이름에 의존해 다른
+// 상태를 구조적으로 못 보게 만들었다"는 사건이 있었으므로, 여기서는
+// 처음부터 전량 기록해 같은 사각을 만들지 않는다.
+function logRequestShape(fn: string, reqId: string, uid: string, shape: RequestShapeDecision): void {
+  console.log(
+    `[requestShape] fn=${fn} reqId=${reqId} uid=${uid} ` +
+      `allowed=${shape.allowed} violations=${shape.violations.join("|") || "-"} ` +
+      `contents=${shape.metrics.contentsCount} ` +
+      `maxParts=${shape.metrics.maxPartsInAnyContent} ` +
+      `textChars=${shape.metrics.totalTextChars} ` +
+      `inline=${shape.metrics.inlineDataCount}`
+  );
+}
 
 // 업스트림이 멈추면 함수 자체 타임아웃까지 무한정 붙들리므로, 클라이언트의
 // 기존 .timeout(60초)와 같은 의도로 그보다 살짝 짧게 직접 끊는다.
@@ -280,6 +312,31 @@ export const callGeminiText = onCall(
     // 호출량 상한과 같은 model→kind 파생을 쓴다(payload_limit.ts
     // kindForModel - 단일 출처, 이전엔 여기 인라인 삼항연산자였다).
     const kind = kindForModel(model);
+
+    // 요청 본문 스키마 계측(S3-b) - 페이로드 크기 검사보다 앞에 둔다.
+    // 형식이 틀린 요청이 아래 checkAndRecordRateLimit에 도달해 정상
+    // 사용자의 할당량을 깎으면 안 된다는, 페이로드 크기 검사를 호출량
+    // 상한보다 앞에 둔 기존 설계판단(아래 "설계판단(가)")과 같은
+    // 근거다 - 그 트레이드오프의 천장은 S1의 maxInstances가 잡는다.
+    // request_shape.ts는 총체적이라(예외를 던지지 않는다) 이 try/catch에
+    // 도달하지 않아야 정상이다 - 도달했다면 그 자체가 evaluateRequestShape의
+    // 결함이므로 로그로 드러내되, 서버의 fail-open 원칙(5.21.7)에 따라
+    // 요청은 통과시킨다(shape를 null로 두고 아래 로그·강제 분기를 건너뛴다).
+    let shape: RequestShapeDecision | null;
+    try {
+      shape = evaluateRequestShape(requestBody, kind, REQUEST_SHAPE_CONFIG);
+    } catch (e) {
+      console.log(`[requestShape] evaluator_failed reqId=${reqId} err=${String(e)}`);
+      shape = null;
+    }
+    if (shape) {
+      logRequestShape("callGeminiText", reqId, request.auth.uid, shape);
+      if (!shape.allowed && REQUEST_SHAPE_ENFORCE) {
+        throw new HttpsError("invalid-argument", "허용되지 않은 요청 형식입니다.", {
+          violations: shape.violations,
+        });
+      }
+    }
 
     // 페이로드 크기 상한(handoff_2026-08-07.md §6 (4)) - 근거·상한값
     // 도출 과정은 payload_limit.ts 상단 주석 참고.
@@ -613,6 +670,28 @@ export const generateFittingImage = onCall(
     }
 
     const cacheKey = buildFittingCacheKey(userPhotoId, clothingIds);
+
+    // 요청 본문 스키마 계측(S3-b) - 페이로드 크기 검사보다 앞에 둔다.
+    // callGeminiText와 같은 근거(형식이 틀린 요청이 아래
+    // checkAndRecordRateLimit에 도달해 정상 사용자의 할당량을 깎으면
+    // 안 된다). request_shape.ts는 총체적이라 이 try/catch에 도달하지
+    // 않아야 정상이다 - 도달했다면 그 자체가 결함이므로 로그로
+    // 드러내되 fail-open 원칙(5.21.7)에 따라 요청은 통과시킨다.
+    let shape: RequestShapeDecision | null;
+    try {
+      shape = evaluateRequestShape(requestBody, "image", REQUEST_SHAPE_CONFIG);
+    } catch (e) {
+      console.log(`[requestShape] evaluator_failed reqId=${reqId} err=${String(e)}`);
+      shape = null;
+    }
+    if (shape) {
+      logRequestShape("generateFittingImage", reqId, uid, shape);
+      if (!shape.allowed && REQUEST_SHAPE_ENFORCE) {
+        throw new HttpsError("invalid-argument", "허용되지 않은 요청 형식입니다.", {
+          violations: shape.violations,
+        });
+      }
+    }
 
     const requestBodyJson = JSON.stringify(requestBody);
     const requestBytes = Buffer.byteLength(requestBodyJson, "utf8");
