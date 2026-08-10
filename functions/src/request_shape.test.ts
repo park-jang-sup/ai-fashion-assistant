@@ -359,4 +359,78 @@ run("metrics — 알려진 입력에 대해 정확한 값을 낸다", () => {
   assert.strictEqual(decision.allowed, true);
 });
 
+// ── S3-c 재산정 상한(REQUEST_SHAPE_CONFIG 실제 값)의 경계값 ──────────
+// 위 BOUNDARY_CONFIG는 판정 로직 자체를 빠르게 검증하기 위한 합성
+// 값이었다 - 아래는 실제로 배포되는 상한(request_shape.ts 상단
+// 주석의 재산정 근거 참고)의 경계에서 직접 검증한다. 한 번에 방식
+// 가상 피팅(코드에 있으나 sequentialFittingEnabled=false일 때만
+// 실행되는 경로)의 최댓값(parts=10, inline=9)이 새 상한 안에
+// 들어오는지가 이 절의 핵심이다 - 이 경로는 S3-b 계측 창에 실행되지
+// 않았으므로 실제 요청 형태 픽스처(위 REAL_FIXTURES)에는 없다.
+
+function oneShotFittingFixture(clothingCount: number): unknown {
+  // _generateFittingImageOneShot과 같은 뼈대: text 1 + inlineData
+  // (전신 1 + 옷 clothingCount장).
+  return {
+    contents: [{
+      parts: [
+        {text: "다음 옷들을 순서대로 입혀주세요."},
+        {inlineData: {mimeType: "image/jpeg", data: "AAAA"}}, // 전신 사진
+        ...Array.from({length: clothingCount}, () => ({
+          inlineData: {mimeType: "image/jpeg", data: "AAAA"},
+        })),
+      ],
+    }],
+    generationConfig: {responseModalities: ["IMAGE", "TEXT"]},
+  };
+}
+
+run("실제 상한 — 한 번에 방식 피팅 최댓값(코디보드 8슬롯, parts=10/inline=9)은 통과한다", () => {
+  const decision = evaluateRequestShape(oneShotFittingFixture(8), "image", REQUEST_SHAPE_CONFIG);
+  assert.strictEqual(decision.metrics.maxPartsInAnyContent, 10);
+  assert.strictEqual(decision.metrics.inlineDataCount, 9);
+  assert.strictEqual(decision.allowed, true, `violations: ${decision.violations.join(",")}`);
+});
+
+run("실제 상한 — maxContents 경계값(==3) 허용, 초과(==4) 거부", () => {
+  const atLimit = {contents: [{parts: [{text: "x"}]}, {parts: [{text: "x"}]}, {parts: [{text: "x"}]}]};
+  const overLimit = {
+    contents: [{parts: [{text: "x"}]}, {parts: [{text: "x"}]}, {parts: [{text: "x"}]}, {parts: [{text: "x"}]}],
+  };
+  assert.strictEqual(evaluateRequestShape(atLimit, "text", REQUEST_SHAPE_CONFIG).allowed, true);
+  const over = evaluateRequestShape(overLimit, "text", REQUEST_SHAPE_CONFIG);
+  assert.strictEqual(over.allowed, false);
+  assert.ok(over.violations.includes("contents_too_many"));
+});
+
+run("실제 상한 — maxPartsPerContent 경계값(==20) 허용, 초과(==21) 거부", () => {
+  // inlineData만으로는 parts=20에 못 미쳐 도달한다(inline 상한 18이
+  // parts 상한 20보다 먼저 걸린다) - text part로만 구성해 parts
+  // 상한을 inline 상한과 독립적으로 검증한다.
+  const atLimit = {contents: [{parts: Array.from({length: 20}, () => ({text: "x"}))}]};
+  const overLimit = {contents: [{parts: Array.from({length: 21}, () => ({text: "x"}))}]};
+  assert.strictEqual(evaluateRequestShape(atLimit, "image", REQUEST_SHAPE_CONFIG).allowed, true);
+  const over = evaluateRequestShape(overLimit, "image", REQUEST_SHAPE_CONFIG);
+  assert.strictEqual(over.allowed, false);
+  assert.ok(over.violations.includes("parts_too_many"));
+});
+
+run("실제 상한 — maxInlineDataCount 경계값(==18) 허용, 초과(==19) 거부", () => {
+  const atLimit = oneShotFittingFixture(17); // 전신 1 + 옷 17 = inline 18
+  const overLimit = oneShotFittingFixture(18); // inline 19
+  assert.strictEqual(evaluateRequestShape(atLimit, "image", REQUEST_SHAPE_CONFIG).allowed, true);
+  const over = evaluateRequestShape(overLimit, "image", REQUEST_SHAPE_CONFIG);
+  assert.strictEqual(over.allowed, false);
+  assert.ok(over.violations.includes("inline_data_too_many"));
+});
+
+run("실제 상한 — maxTotalTextChars 경계값(==30000) 허용, 초과(==30001) 거부", () => {
+  const atLimit = {contents: [{parts: [{text: "a".repeat(30_000)}]}]};
+  const overLimit = {contents: [{parts: [{text: "a".repeat(30_001)}]}]};
+  assert.strictEqual(evaluateRequestShape(atLimit, "text", REQUEST_SHAPE_CONFIG).allowed, true);
+  const over = evaluateRequestShape(overLimit, "text", REQUEST_SHAPE_CONFIG);
+  assert.strictEqual(over.allowed, false);
+  assert.ok(over.violations.includes("text_too_long"));
+});
+
 console.log("전부 통과");
