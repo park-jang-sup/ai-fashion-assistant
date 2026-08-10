@@ -298,6 +298,25 @@ HTTP)의 신원을 검증하는 장치이므로, 애초에 클라이언트가 �
 이번 S2-a에서는 손대지 않되, "함께 검토했는지"를 명시적으로 남기기
 위해 제외 사유만 여기 함께 적는다.
 
+### 배포 완료 (2026-08-10)
+
+`cd functions && npx tsc --noEmit && npm test` 통과 →
+`firebase deploy --only functions --project ai-fashion-assistant-personal`
+실행 → 9개 함수 전부 "Successful update operation"(delete 0건,
+`bg_removal_on_upload`는 변경 없어 skip — S1 배포 때와 같은 패턴).
+
+**커밋: `6cb716c`** (`feat(functions): App Check 계측 로그 추가 - 강제
+이전 실측용`). `enforceAppCheck`는 이 커밋에 없다 — 관측만 배선되었다.
+실기기 관측(축1·축2)은 이 해시가 가리키는 코드를 대상으로 한다.
+
+**관측 대기 — §3-3 기준 그대로, 사용자 몫:**
+
+- [ ] 축1 포그라운드 (a)~(e) 각 1회 이상, `hasApp=true` 100%
+- [ ] 축2 백그라운드 (f), `hasApp=false` 최소 1회(로그 자체가 없으면
+      미확정 — 진행하지 않는다)
+- 관측 기간: 최소 48시간(백그라운드 발화 대기)
+- 실기기 관측 시작 전 재빌드-설치 시각을 커밋 `6cb716c`와 대조할 것
+
 ### 3-3. 사전 등록 판정 기준 — 원 기준과 정정을 둘 다 남긴다
 
 **원 기준(정정 전, 이 문서 작성 이전에 대화로 등록됨):**
