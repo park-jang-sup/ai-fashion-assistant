@@ -108,6 +108,49 @@
   때문이다(옷 1벌이면 이 함수가 1회만 불려 값 자체가 관측 대상이 되지
   않는다).
 
+### 배포 완료 (2026-08-10)
+
+`cd functions && npx tsc --noEmit && npm test` — tsc 통과, 테스트 전량
+통과(6개 파일, 위 항목과 동일한 스위트). `firebase deploy --only
+functions --project ai-fashion-assistant-personal` 실행.
+
+**배포 로그 확인 결과:**
+
+1. **delete 라인 0건 — 확인.** 로그 전체에 `delete` 계열 라인이 없고,
+   9개 함수 전부 "Successful update operation", `bg_removal_on_upload`
+   (별도 코드베이스, 이번 변경과 무관)는 "Skipped (No changes
+   detected)"로 나왔다.
+2. **update 대상 정확히 9개 — 확인.** 로그에 찍힌 update 성공 라인이
+   `generateFittingImage` / `revokeTokenOnUpload` / `sendTestPush` /
+   `getSignedImageUrls` / `callGeminiText` / `beginFittingAttempt` /
+   `triggerScheduledCheckTest` / `scheduledProactiveCheck` /
+   `sweepStorageTokens` 9개로, 지시서 목록과 정확히 일치했다.
+3. **함수 개수 배포 전후 동일 — 확인(간접).** 배포 직후
+   `firebase functions:list`로 조회한 결과 10개(위 9개 + 변경 없는
+   `bg_removal_on_upload`)가 나왔다. 배포 전 스냅샷을 별도로 남기지
+   않았으나, 1)에서 delete·create 라인이 0건임이 이미 확인되었으므로
+   "이번 배포로 개수가 변하지 않았다"는 논리적으로 성립한다.
+
+**콘솔 확인(4) 및 실기기 회귀(5-7) — 이 환경에서 수행 불가, 확인 대기.**
+
+이 실행 환경에는 `gcloud` CLI가 없어(`command not found` 확인) 각
+함수의 실제 `maxInstances` 값을 API로 조회할 수 없었고, Firebase
+콘솔 화면을 눈으로 볼 수단도 물리 기기도 없다. `task_hardening_v1.md`의
+"사용자만 할 수 있는 일" 구분과 같은 이유로, 아래 네 항목은 사용자가
+직접 확인해야 한다:
+
+- [ ] 4) Firebase 콘솔에서 9개 함수 각각의 최대 인스턴스 값이 위
+      "설정값과 근거" 표(10/5/10/10/3/3/3/5/3)와 일치하는가 —
+      **이 트랙에서 처음으로 "문서 = 실물"이 확인되는 지점**이므로
+      불일치가 나오면 그 자체가 이 트랙의 첫 발견으로 기록되어야 한다.
+- [ ] 5) 옷 등록 1회 → 속성 추출 정상 완료
+- [ ] 6) 가상 피팅 1회, **옷 2벌 이상**으로 → 순차 합성 N단계 전부 완주
+      (재빌드-설치 시각과 이 배포·커밋 시각을 먼저 대조할 것)
+- [ ] 7) 옷장 화면 진입 → 이미지 표시 정상(`getSignedImageUrls`)
+
+**S2-a 계측은 위 4)~7)이 전부 확인되기 전까지 얹지 않는다** — 지시서
+원문대로, 두 변경이 겹치면 이후 관측되는 이상의 귀속을 가릴 수 없다.
+
 ### 규명된 결함과 남은 미확인 — 다음 세션으로 이월
 
 **[정정 2026-08-10]** 아래 항목은 원래 "미확인"으로 통째로 등록했으나,
