@@ -481,7 +481,9 @@ class FirestoreService {
   // 재사용, 새 인덱스 불필요) 클라이언트에서 점수를 매긴다:
   //  · tpoTag 일치 → +3
   //  · candidateItemIds와 겹치는 itemId 1개당 → +2
-  //  · colorScore >= 80 → +1
+  //  · colorScore >= 80 → +1 (필드명과 달리 색상 점수가 아니라 자기 평가
+  //    총점이다 — 다축 평가 이전 시대의 잔재 필드명, docs/
+  //    task_selfeval_validity_v1.md B-4. 이름 그대로 읽으면 오독한다.)
   //  · 동점이면 최신순
   // 전부 0점이면(관련 신호가 하나도 없으면) 관련 없다고 빈손으로 가는 대신
   // 최신순 limit건으로 폴백한다 — 이 경우 isFallback=true.

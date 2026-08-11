@@ -11,6 +11,17 @@ class SelfEvalOutcome {
   final int? bestScore;
   final int evaluatedCount; // 실제로 Gemini 평가에 성공한 횟수(수리 재평가 포함)
   final List<int> candidateScores; // 평가 순서대로(탈락/수리 포함, 파싱 실패는 0)
+  // docs/task_selfeval_validity_v1.md §4 작업1 — 총점과 나란히, 후보별로
+  // 남긴다(승자만 남기면 총점-축 관계를 볼 표본이 이벤트당 1개로 준다).
+  // candidateScores와 길이·순서가 항상 같다. 파싱 실패 규약은 총점과
+  // 동일(0, §4 작업2).
+  final List<int> candidateFormalityScores;
+  final List<int> candidateColorHarmonyScores;
+  final List<int> candidateStyleScores;
+  // 어느 모델이 이 후보를 평가했는지(§4 작업3) — withTextModelFallback이
+  // 타임아웃/재시도 가능 오류 시 조용히 대체 모델로 넘어가므로, 저장해
+  // 두지 않으면 반복 측정이 서로 다른 모델의 분산을 섞게 된다.
+  final List<String> candidateModels;
   // 진단-수리 루프가 실제로 한 번이라도 교체를 시도했는지, 무엇을 바꿨는지.
   final bool repairAttempted;
   final String? repairNote;
@@ -22,6 +33,10 @@ class SelfEvalOutcome {
     required this.bestScore,
     required this.evaluatedCount,
     required this.candidateScores,
+    this.candidateFormalityScores = const [],
+    this.candidateColorHarmonyScores = const [],
+    this.candidateStyleScores = const [],
+    this.candidateModels = const [],
     this.repairAttempted = false,
     this.repairNote,
   });
@@ -106,29 +121,48 @@ class OutfitSelfEvaluator {
     int? bestScore;
     var evaluated = 0;
     final candidateScores = <int>[];
+    // docs/task_selfeval_validity_v1.md §4 작업1 — candidateScores와 항상
+    // 같은 길이·순서로 나란히 쌓는다. 파싱 실패 규약(0)도 공유한다(작업2).
+    final candidateFormalityScores = <int>[];
+    final candidateColorHarmonyScores = <int>[];
+    final candidateStyleScores = <int>[];
+    final candidateModels = <String>[];
     var evalCount = 0;
     var repairAttempted = false;
     String? repairNote;
 
-    Future<String?> evalOne(OutfitMatch combo) async {
-      if (evalCount >= _maxEvalCount) return null;
+    // §4 작업2: 파싱 실패는 인메모리 최선-후보 비교와 Firestore 저장
+    // 양쪽 다 0으로 통일한다(예전엔 비교가 -1, 저장이 0으로 서로 달랐다).
+    // 안전한 이유: parseScore가 실제 파싱값을 [1,100]으로 clamp하므로
+    // 진짜 점수는 절대 0이 될 수 없다 — 0은 "파싱 실패"만을 가리키는
+    // 값으로 항상 구분된다. 비교 결과도 동일하다(-1이든 0이든 진짜
+    // 점수 최솟값 1보다 항상 작으므로 실패 후보가 채택을 뒤집는 일은
+    // 없다) — 기존 저장 데이터에 0이 한 번도 없었음이 1단계 실측으로
+    // 확인되었으므로(docs/task_selfeval_validity_v1.md §3), 이 통일이
+    // 과거 데이터의 해석을 바꾸지 않는다.
+    Future<({String? text, String? model})> evalOne(OutfitMatch combo) async {
+      if (evalCount >= _maxEvalCount) return (text: null, model: null);
+      String? usedModel;
       try {
         final text = await GeminiService.withTextModelFallback(
-          (model) => GeminiService.analyzeOutfitFromAttributes(
-            items: combo.items
-                .map((it) => (category: it.category, attributes: it.attributes!))
-                .toList(),
-            recentHistoryText: recentHistoryText,
-            isRelevanceRanked: isRelevanceRanked,
-            model: model,
-          ),
+          (model) {
+            usedModel = model;
+            return GeminiService.analyzeOutfitFromAttributes(
+              items: combo.items
+                  .map((it) => (category: it.category, attributes: it.attributes!))
+                  .toList(),
+              recentHistoryText: recentHistoryText,
+              isRelevanceRanked: isRelevanceRanked,
+              model: model,
+            );
+          },
         );
         evalCount++;
-        return text;
+        return (text: text, model: usedModel);
       } catch (e) {
         evalCount++; // 실패도 호출 자체는 소비했으므로 상한에 포함시킨다.
         debugPrint('[SELF-EVAL] Gemini 호출 실패: $e');
-        return null;
+        return (text: null, model: usedModel);
       }
     }
 
@@ -139,16 +173,26 @@ class OutfitSelfEvaluator {
       debugPrint('[SELF-EVAL] 후보 ${i + 1}/${candidates.length} 평가 중...');
       onNarrative?.call('후보 ${i + 1} 평가 중...');
 
-      final analysisText = await evalOne(candidate);
+      final evalResult = await evalOne(candidate);
+      final analysisText = evalResult.text;
       if (analysisText == null) {
         onStep?.call(index: i, total: candidates.length, score: null, passed: false, wasError: true);
         continue;
       }
       evaluated++;
       final score = parseScore(analysisText);
+      // 자기 평가 프롬프트(_buildAttributeAnalysisPrompt)는 항상 다축
+      // 형식이므로 총점과 함께 매 후보마다 파싱한다 — 수리 분기 전용이
+      // 아니다(승자만 남기면 총점-축 관계를 볼 표본이 이벤트당 1개로
+      // 준다, §4 작업1).
+      final axes = _parseAxes(analysisText);
       candidateScores.add(score ?? 0);
+      candidateFormalityScores.add(axes?.formality ?? 0);
+      candidateColorHarmonyScores.add(axes?.color ?? 0);
+      candidateStyleScores.add(axes?.style ?? 0);
+      candidateModels.add(evalResult.model ?? 'unknown');
 
-      if (bestMatch == null || (score ?? -1) > (bestScore ?? -1)) {
+      if (bestMatch == null || (score ?? 0) > (bestScore ?? 0)) {
         bestMatch = candidate;
         bestText = analysisText;
         bestScore = score;
@@ -167,7 +211,6 @@ class OutfitSelfEvaluator {
       // ── 진단-수리 ── 총점이 기준 미달일 때, 다음 후보로 통째로 넘어가는
       // 대신 무엇이 문제인지 진단해 그 부분만 교체하고 한 번 더 평가한다.
       if (enableRepair && anchorItem != null && wardrobe != null && evalCount < _maxEvalCount) {
-        final axes = _parseAxes(analysisText);
         if (axes == null) {
           debugPrint('[SELF-EVAL] 축 파싱 실패 — 수리 없이 다음 후보로(하위호환)');
         } else {
@@ -192,7 +235,8 @@ class OutfitSelfEvaluator {
             final repairedItems =
                 candidate.items.map((it) => it.id == blamed.id ? replacement : it).toList();
             final repairedCombo = OutfitMatch(repairedItems, localScore: candidate.localScore);
-            final repairedText = await evalOne(repairedCombo);
+            final repairResult = await evalOne(repairedCombo);
+            final repairedText = repairResult.text;
             repairAttempted = true;
 
             if (repairedText == null) {
@@ -200,7 +244,12 @@ class OutfitSelfEvaluator {
             } else {
               evaluated++;
               final repairedScore = parseScore(repairedText);
+              final repairedAxes = _parseAxes(repairedText);
               candidateScores.add(repairedScore ?? 0);
+              candidateFormalityScores.add(repairedAxes?.formality ?? 0);
+              candidateColorHarmonyScores.add(repairedAxes?.color ?? 0);
+              candidateStyleScores.add(repairedAxes?.style ?? 0);
+              candidateModels.add(repairResult.model ?? 'unknown');
               final repairedPassed = repairedScore != null && repairedScore >= threshold;
 
               onNarrative?.call(repairedPassed
@@ -212,7 +261,7 @@ class OutfitSelfEvaluator {
               repairNote = '${blamed.category} 교체(${_axisLabel(weakAxis)} 개선)';
               // 이 시점엔 bestMatch가 이미 원본 후보 평가에서 채워져 있다
               // (위에서 무조건 한 번 대입됨).
-              if ((repairedScore ?? -1) > (bestScore ?? -1)) {
+              if ((repairedScore ?? 0) > (bestScore ?? 0)) {
                 bestMatch = repairedCombo;
                 bestText = repairedText;
                 bestScore = repairedScore;
@@ -234,6 +283,10 @@ class OutfitSelfEvaluator {
       bestScore: bestScore,
       evaluatedCount: evaluated,
       candidateScores: candidateScores,
+      candidateFormalityScores: candidateFormalityScores,
+      candidateColorHarmonyScores: candidateColorHarmonyScores,
+      candidateStyleScores: candidateStyleScores,
+      candidateModels: candidateModels,
       repairAttempted: repairAttempted,
       repairNote: repairNote,
     );
@@ -321,6 +374,10 @@ class OutfitSelfEvaluator {
     return _AxisScores(formality, color, style);
   }
 
+  // docs/task_selfeval_validity_v1.md §4 작업4 — 그대로 둔다. 사용자에게
+  // 보이는 텍스트에서 점수 메타 줄을 지우는 것은 의도된 동작이고, 축
+  // 점수는 이제 이 함수가 지우기 전에 이미 구조화된 필드(candidate*
+  // Scores)로 따로 남으므로 원문을 보존할 필요가 없다.
   static String stripScoreLine(String analysisText) {
     var text = analysisText;
     for (final label in ['총점', '점수', '격식적합', '색상조화', '스타일통일', '개선점']) {

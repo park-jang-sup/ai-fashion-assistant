@@ -13,6 +13,12 @@ class RecommendationEntry {
   final String id;
   final List<String> itemIds;
   final List<String> itemSummaries; // "카테고리: 속성" 한 줄 요약, HistoryEntry와 동일 패턴
+  // [주의 2026-08-11, docs/task_selfeval_validity_v1.md B-4] 이름과 달리
+  // "색상 점수"가 아니라 자기 평가 총점([총점])이다 — 다축 평가 이전
+  // 시대(단일 [점수])의 잔재 필드명이 남았다. firestore_service.dart의
+  // 이력 관련도 랭킹(`colorScore >= 80` 필터)도 이 값을 총점으로 쓰고
+  // 있다. 이름 변경은 마이그레이션이 필요해 이번 트랙 범위 밖이다 —
+  // 등록만 하고 고치지 않는다.
   final int? colorScore;
   final String summaryText;
   final String triggerItemId; // 이 추천을 유발한 새 옷의 id
@@ -21,9 +27,21 @@ class RecommendationEntry {
   // 자기 평가 루프가 Gemini로 비교 평가한 조합 개수. 루프 도입 전에 저장된
   // 문서에는 없으므로 nullable — null이면 카드에 평가 문구를 생략한다.
   final int? evaluatedCount;
-  // 평가한 후보들의 점수(탈락 포함, 평가 순서대로 — 점수 파싱 실패는 0).
+  // 평가한 후보들의 총점(탈락 포함, 평가 순서대로 — 점수 파싱 실패는 0).
   // 활동 로그 화면이 "후보별 점수: 62 → 85" 타임라인을 그릴 때 쓴다.
   final List<int> candidateScores;
+  // [2026-08-11, docs/task_selfeval_validity_v1.md §4 작업1] 위 총점과
+  // 나란히, 후보별로 남기는 세 축 점수 — 길이·순서가 candidateScores와
+  // 항상 같다. 파싱 실패 규약도 총점과 동일(0). 루프 도입 이전 문서와
+  // 이 필드 추가 이전 문서에는 없으므로 빈 리스트로 취급한다(nullable
+  // 아님 — candidateScores와 같은 관례).
+  final List<int> candidateFormalityScores;
+  final List<int> candidateColorHarmonyScores;
+  final List<int> candidateStyleScores;
+  // 후보별로 실제 응답한 모델(withTextModelFallback이 타임아웃/재시도
+  // 가능 오류 시 조용히 대체 모델로 넘어가므로, 반복 측정에서 서로 다른
+  // 모델의 분산을 섞지 않으려면 필요하다). candidateScores와 길이가 같다.
+  final List<String> candidateModels;
   // 일정 기반 선제 추천에서만 채워지는 필드 — 이 추천이 어느 날짜/상황(TPO)
   // 일정을 위해 준비됐는지. null이면 "새 옷 등록" 계기의 일반 추천이다.
   final DateTime? targetDate; // 자정 정규화
@@ -80,6 +98,10 @@ class RecommendationEntry {
     this.dismissed = false,
     this.evaluatedCount,
     this.candidateScores = const [],
+    this.candidateFormalityScores = const [],
+    this.candidateColorHarmonyScores = const [],
+    this.candidateStyleScores = const [],
+    this.candidateModels = const [],
     this.targetDate,
     this.targetTpoTag,
     this.userChoice,
@@ -114,6 +136,20 @@ class RecommendationEntry {
               ?.map((e) => (e as num).toInt())
               .toList() ??
           const [],
+      candidateFormalityScores: (data['candidateFormalityScores'] as List?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          const [],
+      candidateColorHarmonyScores: (data['candidateColorHarmonyScores'] as List?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          const [],
+      candidateStyleScores: (data['candidateStyleScores'] as List?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          const [],
+      candidateModels:
+          (data['candidateModels'] as List?)?.map((e) => e.toString()).toList() ?? const [],
       targetDate: (data['targetDate'] as Timestamp?)?.toDate(),
       targetTpoTag: data['targetTpoTag'] as String?,
       userChoice: data['userChoice'] as String?,
@@ -144,6 +180,12 @@ class RecommendationEntry {
         'dismissed': dismissed,
         if (evaluatedCount != null) 'evaluatedCount': evaluatedCount,
         if (candidateScores.isNotEmpty) 'candidateScores': candidateScores,
+        if (candidateFormalityScores.isNotEmpty)
+          'candidateFormalityScores': candidateFormalityScores,
+        if (candidateColorHarmonyScores.isNotEmpty)
+          'candidateColorHarmonyScores': candidateColorHarmonyScores,
+        if (candidateStyleScores.isNotEmpty) 'candidateStyleScores': candidateStyleScores,
+        if (candidateModels.isNotEmpty) 'candidateModels': candidateModels,
         if (targetDate != null)
           'targetDate': Timestamp.fromDate(
               DateTime(targetDate!.year, targetDate!.month, targetDate!.day)),
