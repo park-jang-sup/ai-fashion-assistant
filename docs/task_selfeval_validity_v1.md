@@ -2145,3 +2145,41 @@ APK 설치 → 로그인 → 디버그 테스트 실행")가 이 실패로 반�
 `assembleDebug` 22.0초). 설치 완료 `2026-08-11T14:30:09Z`
 (`adb install -r`, Success). **지금 사용자 로그인 대기 중 — 이번엔
 디버그 빌드 위에서 로그인한다.**
+
+## §6-가 실행 시도 4 — 실패, 디버그→디버그 가설도 반증 (2026-08-11)
+
+사용자 로그인 확인 후(`14:31:31Z` 실행) **또 같은 실패**
+(`uid: null`, `14:32:58Z` 확인). 디버그→디버그 전환이었는데도
+실패했다 — **"직전 설치물이 릴리스였다는 것 자체가 문제"라는
+가설도 이걸로 반증된다.** 두 가설을 연달아 반증했으므로, 추측
+대신 직접 진단했다.
+
+**진단(무료 — API 호출 없이 `adb`만 사용)**: 디버그 APK를 수동
+설치하고(`adb install -r`) `firstInstallTime`을 기록한 뒤,
+`flutter test integration_test/self_eval_repeat_probe.dart`를
+실행하면서 1초 간격으로 `adb shell dumpsys package`를
+폴링했다. 결과: **`firstInstallTime`이 39초 내내 그대로였다**
+(빌드 24초 + 설치 37초 + 실행·실패 구간 전체) — **테스트의 자체
+재설치 과정에서 앱 데이터가 지워지지 않는다는 뜻이다.** 앱이
+사라진 시점은 t=40초, 즉 테스트가 이미 실패로 끝난 **뒤**였다
+(§6-가 실행 시도 1에서 이미 등록한 "실행 후 제거" 자체는 맞았다).
+
+**결론: 원인은 설치 방식(릴리스/디버그, 재설치 시 데이터 보존
+여부)이 아니었다.** `lib/main.dart`를 확인하니, 실제 앱은
+`FirebaseAuth.instance.currentUser`를 초기화 직후 동기로 읽지
+않는다 — `authStateChanges()` 스트림을 `StreamBuilder`로 기다리며,
+복원 전에는 로딩 스피너를 보여준다(주석 없이도 코드 구조 자체가
+"동기로 읽으면 안 된다"는 것을 말해준다). 이 하네스(그리고 §7의
+원래 하네스)는 `Firebase.initializeApp()` 직후
+`FirebaseAuth.instance.currentUser?.uid`를 **동기로** 읽었다 —
+로컬 세션 복원이 비동기이므로, 실제로는 로그인돼 있어도 그 복원이
+끝나기 전에 읽으면 `null`을 관측할 수 있는 **경쟁 조건(race
+condition)**이었을 가능성이 크다. §7이 그때 성공한 것은 이
+경쟁에서 우연히 이긴 것으로 재해석한다(보장된 성공이 아니었다).
+
+**수정**: `self_eval_repeat_probe.dart`에서 `currentUser` 동기
+읽기를 `await FirebaseAuth.instance.authStateChanges().first`로
+바꿨다 — `main.dart`의 `StreamBuilder`와 같은 방식으로 첫 이벤트를
+기다린 뒤 읽는다. `flutter analyze` 통과(이슈 0). 재현 가능한
+코드 근거가 있는 수정이므로, 다시 릴리스/디버그를 오가며 추측하지
+않고 이 수정으로 재시도한다.
