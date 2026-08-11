@@ -1416,6 +1416,10 @@ n=40에서는 부호가 거의 반반으로 갈려(-0.66은 0에 가깝다) 일�
 - `tools/eval_harness_selfeval/labeling_material/tool/index.html`
   — 배포 대상 완성본(3.76MB).
 - 배포 방법: Claude Artifact로 `index.html`을 게시해 URL을 받고,
-  그 링크를 카톡으로 라벨러 각자에게 개별 전송한다.
+  그 링크를 카톡으로 라벨러 각자에게 개별 전송한다. 게시 URL:
+  `https://claude.ai/code/artifact/1a4ac13e-a1be-4a39-8b79-92c62ecfe581`
+  (커밋 `ad0048b` 기준 산출물, **기본값은 비공개** — 카톡으로 보내기
+  전에 해당 페이지의 공유 메뉴에서 링크를 켜야 라벨러가 열 수 있다.
+  이 전환은 사용자 본인이 해야 하는 조작이라 여기서 대신하지 않았다).
 - `answer_key/`는 이번 작업에서 전혀 건드리지 않았다 — `git status`로
   변경 없음을 재확인(분리 유지).
