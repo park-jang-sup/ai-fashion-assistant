@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>코디 비교 — 자기 평가 척도 검증</title>
+<style>
+  :root {
+    --bg: #EEEDE8;
+    --surface: #FBFAF7;
+    --surface-raised: #FFFFFF;
+    --ink: #20221F;
+    --ink-soft: #5B5D57;
+    --ink-faint: #8B8D84;
+    --line: #D9D6CC;
+    --accent: #33415C;
+    --accent-ink: #FFFFFF;
+    --accent-warm: #9C6B2E;
+    --focus: #33415C;
+    --shadow: 0 1px 2px rgba(32,34,31,0.06), 0 8px 24px rgba(32,34,31,0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1B1C19;
+      --surface: #242521;
+      --surface-raised: #2B2C27;
+      --ink: #EDEBE4;
+      --ink-soft: #A6A399;
+      --ink-faint: #6E6F68;
+      --line: #3A3A34;
+      --accent: #8593B8;
+      --accent-ink: #14161C;
+      --accent-warm: #D7A45E;
+      --focus: #8593B8;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1B1C19;
+    --surface: #242521;
+    --surface-raised: #2B2C27;
+    --ink: #EDEBE4;
+    --ink-soft: #A6A399;
+    --ink-faint: #6E6F68;
+    --line: #3A3A34;
+    --accent: #8593B8;
+    --accent-ink: #14161C;
+    --accent-warm: #D7A45E;
+    --focus: #8593B8;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+
+  .stage {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 20px 56px;
+  }
+
+  .wrap { width: 100%; max-width: 880px; }
+  .wrap-narrow { width: 100%; max-width: 620px; }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 10px;
+  }
+
+  h1 {
+    font-family: 'Noto Serif KR', 'Nanum Myeongjo', Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(24px, 4vw, 32px);
+    line-height: 1.3;
+    text-wrap: balance;
+    margin: 0 0 20px;
+    letter-spacing: -0.01em;
+  }
+
+  h2 {
+    font-family: 'Noto Serif KR', 'Nanum Myeongjo', Georgia, serif;
+    font-weight: 600;
+    font-size: 21px;
+    margin: 0 0 12px;
+  }
+
+  p { margin: 0 0 14px; color: var(--ink); }
+  .muted { color: var(--ink-soft); }
+  .small { font-size: 13.5px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 28px 30px;
+    box-shadow: var(--shadow);
+  }
+
+  ul.rules { margin: 0 0 22px; padding-left: 20px; }
+  ul.rules li { margin-bottom: 10px; color: var(--ink); }
+  ul.rules li::marker { color: var(--accent-warm); }
+
+  label.field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink-soft);
+    margin: 0 0 8px;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    font-size: 16px;
+    padding: 12px 14px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--surface-raised);
+    color: var(--ink);
+    font-family: inherit;
+  }
+  input[type="text"]:focus, button:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 13px 26px;
+    border-radius: 9px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.06s ease, opacity 0.15s ease;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary:not(:disabled):hover { opacity: 0.92; }
+  .btn-ghost { background: transparent; color: var(--ink-soft); border-color: var(--line); }
+  .btn-ghost:hover { color: var(--ink); border-color: var(--ink-soft); }
+  .btn-row { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+
+  /* ── 진행 표시 ── */
+  .progress-track {
+    width: 100%;
+    height: 3px;
+    background: var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent-warm);
+    transition: width 0.3s ease;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    margin-bottom: 22px;
+    font-variant-numeric: tabular-nums;
+  }
+  .phase-tag {
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .prompt {
+    text-align: center;
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0 0 26px;
+    text-wrap: balance;
+  }
+
+  /* ── 비교 패널 ── */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 640px) {
+    .compare { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background: var(--surface-raised);
+    border: 2px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.12s ease, transform 0.08s ease;
+  }
+  .panel:hover { border-color: var(--accent-warm); }
+  .panel:active { transform: scale(0.995); }
+  .panel-side-label {
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    text-align: center;
+  }
+  .panel-images {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+    gap: 8px;
+  }
+  .panel-images img {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: contain;
+    background: var(--bg);
+    border-radius: 8px;
+    display: block;
+  }
+  .panel-text {
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--ink-soft);
+    white-space: pre-line;
+  }
+
+  .choice-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+  }
+  .unsure-link {
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    font-size: 13.5px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 8px;
+  }
+  .unsure-link:hover { color: var(--ink-soft); }
+
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+    font-size: 12.5px;
+    padding: 14px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--surface-raised);
+    color: var(--ink);
+    resize: vertical;
+  }
+
+  .copy-status {
+    font-size: 13px;
+    color: var(--accent-warm);
+    min-height: 18px;
+    margin-top: 8px;
+  }
+
+  .divider { height: 1px; background: var(--line); margin: 26px 0; border: none; }
+
+  [hidden] { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <!-- ── 0. 안내 화면 ── -->
+  <div class="wrap-narrow" id="screenIntro">
+    <div class="card">
+      <p class="eyebrow">코디 비교 판단</p>
+      <h1>두 코디 중 어느 쪽이 더 잘 어울리나요?</h1>
+      <p>총 15번의 비교를 하게 됩니다. 각 비교마다 옷 조합 두 개를 보여드립니다.
+         <strong>더 잘 어울린다고 생각하는 쪽</strong>을 골라 주세요.</p>
+
+      <ul class="rules">
+        <li><strong>정답은 없습니다.</strong> 느낀 대로 고르면 됩니다 — 맞히려고 애쓰지 않아도 됩니다.</li>
+        <li>시간 제한은 없습니다. 천천히 봐도 괜찮습니다.</li>
+        <li>다른 분과 상의하지 말고 <strong>혼자</strong> 판단해 주세요.</li>
+        <li>15번을 마치면, 같은 조합을 <strong>글로 적힌 설명</strong>으로 다시 한번 보여드립니다(사진 없이).
+            그때는 사진을 보고 느꼈던 것과 다르게 답해도 전혀 상관없습니다 —
+            같은 답을 내야 한다는 규칙은 없습니다.</li>
+        <li>중간에 판단하기 애매하면 "잘 모르겠어요"를 눌러도 됩니다.</li>
+      </ul>
+
+      <label class="field-label" for="labelerName">이름 또는 별명 (응답 구분용)</label>
+      <input type="text" id="labelerName" placeholder="예: 지수" autocomplete="off">
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="startBtn" disabled>시작하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 1. 사진 비교 화면 ── -->
+  <div class="wrap" id="screenPhoto" hidden>
+    <div class="progress-track"><div class="progress-fill" id="photoProgressFill"></div></div>
+    <div class="progress-label">
+      <span class="phase-tag">사진 비교</span>
+      <span id="photoProgressText"></span>
+    </div>
+    <p class="prompt">둘 중 어느 쪽이 더 잘 어울리나요?</p>
+    <div class="compare" id="photoCompare"></div>
+    <div class="choice-row">
+      <button class="unsure-link" id="photoUnsureBtn">잘 모르겠어요</button>
+    </div>
+  </div>
+
+  <!-- ── 2. 전환 화면 ── -->
+  <div class="wrap-narrow" id="screenTransition" hidden>
+    <div class="card">
+      <h2>이제 같은 조합을 글로 봅니다</h2>
+      <p>사진 없이, 옷의 색상·스타일·소재 같은 설명만 보고 같은 방식으로
+         골라 주세요. 이번엔 <strong>{{TEXT_COUNT}}번</strong> 비교합니다
+         (사진 때보다 적습니다).</p>
+      <p class="muted small">사진 때와 똑같이 답해야 하는 것은 아닙니다.
+         설명만 읽고 지금 느끼는 대로 판단해 주세요.</p>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="continueToTextBtn">계속하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. 텍스트 비교 화면 ── -->
+  <div class="wrap" id="screenText" hidden>
+    <div class="progress-track"><div class="progress-fill" id="textProgressFill"></div></div>
+    <div class="progress-label">
+      <span class="phase-tag">설명 비교</span>
+      <span id="textProgressText"></span>
+    </div>
+    <p class="prompt">둘 중 어느 쪽이 더 잘 어울리나요?</p>
+    <div class="compare" id="textCompare"></div>
+    <div class="choice-row">
+      <button class="unsure-link" id="textUnsureBtn">잘 모르겠어요</button>
+    </div>
+  </div>
+
+  <!-- ── 4. 완료 화면 ── -->
+  <div class="wrap-narrow" id="screenDone" hidden>
+    <div class="card">
+      <h2>수고하셨습니다</h2>
+      <p>아래 상자 안의 내용을 전부 복사해서 보내주시면 됩니다.
+         버튼을 누르면 자동으로 복사됩니다.</p>
+      <textarea id="resultOutput" readonly></textarea>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="copyBtn">결과 복사하기</button>
+        <button class="btn btn-ghost" id="downloadBtn">파일로 저장</button>
+      </div>
+      <div class="copy-status" id="copyStatus"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// __TOOL_DATA_PLACEHOLDER__
+</script>
+<script>
+(function () {
+  'use strict';
+
+  // 이 도구는 라벨만 모은다 — 집계·정답 표시를 하지 않는다(eval_harness와
+  // 같은 원칙). TOOL_DATA에는 채점 관련 필드가 전혀 없다 — 블라인드가
+  // 이 파일 구조 자체로 성립한다(값을 몰라서가 아니라 갖고 있지 않아서).
+
+  var pairs = TOOL_DATA.pairs;
+  var textSubsampleIds = TOOL_DATA.textSubsamplePairIds;
+  var pairById = {};
+  pairs.forEach(function (p) { pairById[p.pairId] = p; });
+
+  var labelerName = '';
+  var photoOrder = [];
+  var textOrder = [];
+  var photoLabels = [];
+  var textLabels = [];
+  var photoIdx = 0;
+  var textIdx = 0;
+  var shownAt = 0;
+  var sessionStartedAt = null;
+  var photoStartedAt = null;
+  var textStartedAt = null;
+
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  var screens = {
+    intro: document.getElementById('screenIntro'),
+    photo: document.getElementById('screenPhoto'),
+    transition: document.getElementById('screenTransition'),
+    text: document.getElementById('screenText'),
+    done: document.getElementById('screenDone'),
+  };
+  function showScreen(name) {
+    Object.keys(screens).forEach(function (k) { screens[k].hidden = (k !== name); });
+    window.scrollTo(0, 0);
+  }
+
+  // ── 0. 안내 ──
+  var nameInput = document.getElementById('labelerName');
+  var startBtn = document.getElementById('startBtn');
+  nameInput.addEventListener('input', function () {
+    startBtn.disabled = nameInput.value.trim().length === 0;
+  });
+  startBtn.addEventListener('click', function () {
+    labelerName = nameInput.value.trim();
+    sessionStartedAt = new Date().toISOString();
+    photoOrder = shuffle(pairs.map(function (p) { return p.pairId; }));
+    photoIdx = 0;
+    photoLabels = [];
+    photoStartedAt = new Date().toISOString();
+    showScreen('photo');
+    renderPhoto();
+  });
+
+  // ── 1. 사진 비교 ──
+  var photoCompare = document.getElementById('photoCompare');
+  var photoFill = document.getElementById('photoProgressFill');
+  var photoProgressText = document.getElementById('photoProgressText');
+
+  function panelHTML(side) {
+    var imgs = side.images.map(function (src) {
+      return '<img src="' + src + '" alt="">';
+    }).join('');
+    return '<div class="panel-side-label">코디</div>' +
+           '<div class="panel-images">' + imgs + '</div>';
+  }
+
+  function renderPhoto() {
+    if (photoIdx >= photoOrder.length) {
+      showScreen('transition');
+      document.getElementById('continueToTextBtn').focus();
+      return;
+    }
+    var pair = pairById[photoOrder[photoIdx]];
+    photoProgressText.textContent = (photoIdx + 1) + ' / ' + photoOrder.length;
+    photoFill.style.width = (100 * photoIdx / photoOrder.length) + '%';
+
+    photoCompare.innerHTML =
+      '<button class="panel" id="panelLeft">' + panelHTML(pair.left) + '</button>' +
+      '<button class="panel" id="panelRight">' + panelHTML(pair.right) + '</button>';
+
+    document.getElementById('panelLeft').addEventListener('click', function () { choosePhoto('left'); });
+    document.getElementById('panelRight').addEventListener('click', function () { choosePhoto('right'); });
+    shownAt = Date.now();
+  }
+
+  function choosePhoto(choice) {
+    var pair = pairById[photoOrder[photoIdx]];
+    photoLabels.push({
+      pairId: pair.pairId,
+      choice: choice,
+      elapsedMs: Date.now() - shownAt,
+    });
+    photoIdx++;
+    renderPhoto();
+  }
+
+  document.getElementById('photoUnsureBtn').addEventListener('click', function () { choosePhoto('unsure'); });
+
+  // ── 2. 전환 ──
+  document.getElementById('continueToTextBtn').addEventListener('click', function () {
+    textOrder = shuffle(textSubsampleIds.slice());
+    textIdx = 0;
+    textLabels = [];
+    textStartedAt = new Date().toISOString();
+    showScreen('text');
+    renderText();
+  });
+
+  // ── 3. 텍스트 비교 ──
+  var textCompare = document.getElementById('textCompare');
+  var textFill = document.getElementById('textProgressFill');
+  var textProgressText = document.getElementById('textProgressText');
+
+  function textPanelHTML(side) {
+    return '<div class="panel-side-label">코디</div>' +
+           '<div class="panel-text">' + escapeHtml(side.text) + '</div>';
+  }
+  function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function renderText() {
+    if (textIdx >= textOrder.length) {
+      finish();
+      return;
+    }
+    var pair = pairById[textOrder[textIdx]];
+    textProgressText.textContent = (textIdx + 1) + ' / ' + textOrder.length;
+    textFill.style.width = (100 * textIdx / textOrder.length) + '%';
+
+    textCompare.innerHTML =
+      '<button class="panel" id="tPanelLeft">' + textPanelHTML(pair.left) + '</button>' +
+      '<button class="panel" id="tPanelRight">' + textPanelHTML(pair.right) + '</button>';
+
+    document.getElementById('tPanelLeft').addEventListener('click', function () { chooseText('left'); });
+    document.getElementById('tPanelRight').addEventListener('click', function () { chooseText('right'); });
+    shownAt = Date.now();
+  }
+
+  function chooseText(choice) {
+    var pair = pairById[textOrder[textIdx]];
+    textLabels.push({
+      pairId: pair.pairId,
+      choice: choice,
+      elapsedMs: Date.now() - shownAt,
+    });
+    textIdx++;
+    renderText();
+  }
+
+  document.getElementById('textUnsureBtn').addEventListener('click', function () { chooseText('unsure'); });
+
+  // ── 4. 완료 ──
+  function finish() {
+    var output = {
+      labelerName: labelerName,
+      sessionStartedAt: sessionStartedAt,
+      photo: {
+        startedAt: photoStartedAt,
+        presentationOrder: photoOrder,
+        labels: photoLabels,
+      },
+      text: {
+        startedAt: textStartedAt,
+        presentationOrder: textOrder,
+        labels: textLabels,
+      },
+      finishedAt: new Date().toISOString(),
+    };
+    var json = JSON.stringify(output, null, 2);
+    document.getElementById('resultOutput').value = json;
+    showScreen('done');
+
+    document.getElementById('copyBtn').onclick = function () {
+      var status = document.getElementById('copyStatus');
+      var ta = document.getElementById('resultOutput');
+      ta.select();
+      var done = function () { status.textContent = '복사되었습니다 — 붙여넣기(Ctrl+V)로 보내주세요.'; };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(json).then(done).catch(function () {
+          document.execCommand('copy'); done();
+        });
+      } else {
+        document.execCommand('copy'); done();
+      }
+    };
+    document.getElementById('downloadBtn').onclick = function () {
+      var blob = new Blob([json], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'coordi_labels_' + (labelerName || 'anon') + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+  }
+})();
+</script>
+</body>
+</html>
