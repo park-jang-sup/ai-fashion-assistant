@@ -47,6 +47,12 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  # docs/task_selfeval_validity_v1.md §6-가 "하네스 위치 결정" -
+  # 반복 일관성·쌍 생성 하네스가 GeminiService/OutfitSelfEvaluator를
+  # 재구현 없이 그대로 호출하기 위한 것. 릴리스 빌드(flutter build)에는
+  # 포함되지 않는다 - `flutter test integration_test/` 전용 실행 경로.
+  integration_test:
+    sdk: flutter
 
 flutter:
   uses-material-design: true
