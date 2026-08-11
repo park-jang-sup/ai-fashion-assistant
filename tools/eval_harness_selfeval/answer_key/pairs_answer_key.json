@@ -1,0 +1,722 @@
+{
+  "seed": 20260811,
+  "sourceHarnessRun": "2026-08-11T08:14:49Z~ (integration_test, commit 96ad3a0)",
+  "tertileBoundaries": {
+    "low_max": 80,
+    "mid_range": [
+      82,
+      88
+    ],
+    "high_min": 88
+  },
+  "stratificationPlan": [
+    [
+      "low",
+      "mid",
+      3
+    ],
+    [
+      "low",
+      "high",
+      4
+    ],
+    [
+      "mid",
+      "high",
+      5
+    ],
+    [
+      "low",
+      "low",
+      2
+    ],
+    [
+      "high",
+      "high",
+      1
+    ]
+  ],
+  "minScoreGap": 5,
+  "maxItemOverlap": 2,
+  "attentionCheckPairIds": [
+    "p013",
+    "p004"
+  ],
+  "textSubsamplePairIds": [
+    "p002",
+    "p005",
+    "p006",
+    "p008",
+    "p009",
+    "p010",
+    "p014",
+    "p015"
+  ],
+  "pairs": [
+    {
+      "pairId": "p001",
+      "stratum": "low-mid",
+      "scoreGap": 10,
+      "itemOverlap": 1,
+      "attentionCheck": false,
+      "left": {
+        "itemIds": [
+          "8L9WdwcZHgw1sH13kAKk",
+          "Ak8ljaEQIoUQg1ls8aO4",
+          "Jjjyojfr6IkUKVjxd7D5",
+          "xk74sQFfOnIFHTOlyJyP"
+        ],
+        "kind": "random",
+        "score": 75,
+        "formality": 85,
+        "colorHarmony": 88,
+        "style": 65,
+        "itemSummaries": [
+          "상의: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 데님, 반팔셔츠, 스티치, 여름",
+          "하의: 색상 블랙, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 나일론, 트랙팬츠, 스포티, 밴딩팬츠",
+          "신발: 색상 베이지, 스타일 스트릿, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 가죽, 스웨이드, 데일리",
+          "아우터: 색상 브라운, 스타일 미니멀, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 스웨이드, 가을, 겨울, 블루종"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "OcTZ4keKA2WeNN2ZtH8r",
+          "MA8a45cerrH3VdLKXB64",
+          "Jjjyojfr6IkUKVjxd7D5",
+          "cnwqpOYioHPlFxgju1JO"
+        ],
+        "kind": "random",
+        "score": 85,
+        "formality": 80,
+        "colorHarmony": 92,
+        "style": 83,
+        "itemSummaries": [
+          "상의: 색상 아이보리, 스타일 캐주얼, 패턴 그래픽, 격식 캐주얼, 핏 레귤러, 태그: 링거티, 반팔, 여름, 코튼",
+          "하의: 색상 차콜, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 슬랙스, 와이드팬츠, 핀턱, 사계절",
+          "신발: 색상 베이지, 스타일 스트릿, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 가죽, 스웨이드, 데일리",
+          "액세서리: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 가죽, 숄더백, 호보백, 데일리"
+        ]
+      }
+    },
+    {
+      "pairId": "p002",
+      "stratum": "low-mid",
+      "scoreGap": 13,
+      "itemOverlap": 0,
+      "attentionCheck": false,
+      "left": {
+        "itemIds": [
+          "OcTZ4keKA2WeNN2ZtH8r",
+          "IfD5d3BN6AMyrbQ6HKOe",
+          "t16mhpuSrkQq4KvRxiqx",
+          "Fwye077U6vV3j2GVhq6X",
+          "Yt0GTgy3Z0z11GMP6bt9"
+        ],
+        "kind": "random",
+        "score": 85,
+        "formality": 95,
+        "colorHarmony": 92,
+        "style": 90,
+        "itemSummaries": [
+          "상의: 색상 아이보리, 스타일 캐주얼, 패턴 그래픽, 격식 캐주얼, 핏 레귤러, 태그: 링거티, 반팔, 여름, 코튼",
+          "하의: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 데님, 워싱, 와이드핏, 사계절",
+          "신발: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 가죽, 여름, 플랫폼, 샌들",
+          "아우터: 색상 카키, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 코듀로이, 퀼팅안감, 워크자켓, 가을/겨울",
+          "액세서리: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 나일론, 크로스백, 숄더백, 데일리"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "6vVNoavk5DLduhTNKu0d",
+          "Q2TqinzkRVKNgDoQE5dp",
+          "O4qG86tGixYjq0DPGe13"
+        ],
+        "kind": "extreme",
+        "score": 72,
+        "formality": 65,
+        "colorHarmony": 80,
+        "style": 68,
+        "itemSummaries": [
+          "상의: 색상 블랙, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 카라티, 니트, 반팔, 여름",
+          "하의: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 나일론, 여름, 숏팬츠, 밴딩",
+          "신발: 색상 네이비, 스타일 캐주얼, 패턴 스트라이프, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 스웨이드, 클래식, 사계절"
+        ]
+      }
+    },
+    {
+      "pairId": "p003",
+      "stratum": "low-mid",
+      "scoreGap": 8,
+      "itemOverlap": 0,
+      "attentionCheck": false,
+      "left": {
+        "itemIds": [
+          "6vVNoavk5DLduhTNKu0d",
+          "Q2TqinzkRVKNgDoQE5dp",
+          "gvNXys4KQoVTk0ECutQK",
+          "O8fh90dk0yTYpGycvAsb"
+        ],
+        "kind": "extreme",
+        "score": 80,
+        "formality": 72,
+        "colorHarmony": 95,
+        "style": 75,
+        "itemSummaries": [
+          "상의: 색상 블랙, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 카라티, 니트, 반팔, 여름",
+          "하의: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 나일론, 여름, 숏팬츠, 밴딩",
+          "신발: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 가죽, 사계절, 스티치",
+          "아우터: 색상 블랙, 스타일 스트릿, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 윈드브레이커, 나일론, 봄가을, 후드"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "fTq2v3BzHT4LoWTGDD2I",
+          "9S4GHdIFLNTTGCbTdPzM",
+          "t16mhpuSrkQq4KvRxiqx",
+          "QoZfNdKA4HsThkZDsYAk"
+        ],
+        "kind": "random",
+        "score": 88,
+        "formality": 95,
+        "colorHarmony": 85,
+        "style": 90,
+        "itemSummaries": [
+          "상의: 색상 버건디, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 반팔, 면, 롤업, 여름",
+          "하의: 색상 블랙, 스타일 스트리트, 패턴 무지, 격식 캐주얼, 핏 와이드, 태그: 데님쇼츠, 버뮤다팬츠, 흑청, 하프팬츠",
+          "신발: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 가죽, 여름, 플랫폼, 샌들",
+          "액세서리: 색상 브라운, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 나일론, 토트백, 데일리백, 아웃도어"
+        ]
+      }
+    },
+    {
+      "pairId": "p004",
+      "stratum": "low-high",
+      "scoreGap": 20,
+      "itemOverlap": 0,
+      "attentionCheck": true,
+      "left": {
+        "itemIds": [
+          "6vVNoavk5DLduhTNKu0d",
+          "Q2TqinzkRVKNgDoQE5dp",
+          "5iTNF0tDQtqLURJfzC77",
+          "XuKEpE6KnBRy3nqyh7Dm"
+        ],
+        "kind": "extreme",
+        "score": 72,
+        "formality": 65,
+        "colorHarmony": 88,
+        "style": 60,
+        "itemSummaries": [
+          "상의: 색상 블랙, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 카라티, 니트, 반팔, 여름",
+          "하의: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 나일론, 여름, 숏팬츠, 밴딩",
+          "신발: 색상 화이트, 스타일 스트릿, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 가죽, 사계절, 클래식",
+          "아우터: 색상 네이비, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레ギュラー, 태그: 데님, 트러커, 봄가을, 아우터"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "YvqnuHTpWYXpkeEU0t1l",
+          "fnJa8XarETojyI87RxbS",
+          "I5UvWsKT9hz5YqIMn65E",
+          "QoZfNdKA4HsThkZDsYAk"
+        ],
+        "kind": "random",
+        "score": 92,
+        "formality": 95,
+        "colorHarmony": 88,
+        "style": 90,
+        "itemSummaries": [
+          "상의: 색상 블랙, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 맨투맨, 스포티, 코튼, 봄가을",
+          "하의: 색상 아이보리, 스타일 미니멀, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 밴딩팬츠, 와이드핏, 봄가을, 편안함",
+          "신발: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 러닝화, 메쉬, 사계절",
+          "액세서리: 색상 브라운, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 나일론, 토트백, 데일리백, 아웃도어"
+        ]
+      }
+    },
+    {
+      "pairId": "p005",
+      "stratum": "low-high",
+      "scoreGap": 12,
+      "itemOverlap": 0,
+      "attentionCheck": false,
+      "left": {
+        "itemIds": [
+          "UKvHI9gmwg4809IhzNJH",
+          "MA8a45cerrH3VdLKXB64",
+          "6CVPMcrOKtaBwW7xN0e5"
+        ],
+        "kind": "extreme",
+        "score": 80,
+        "formality": 75,
+        "colorHarmony": 95,
+        "style": 70,
+        "itemSummaries": [
+          "상의: 색상 화이트, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 반팔, 코튼, 여름, 레트로",
+          "하의: 색상 차콜, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 슬랙스, 와이드팬츠, 핀턱, 사계절",
+          "신발: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 러닝화, 메쉬, 쿠셔닝, 사계절"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "MUjMQy0Pn6yQ24NIlghq",
+          "IfD5d3BN6AMyrbQ6HKOe",
+          "Z0HlgPZ6ypYyAnIim9Jw"
+        ],
+        "kind": "random",
+        "score": 92,
+        "formality": 95,
+        "colorHarmony": 90,
+        "style": 93,
+        "itemSummaries": [
+          "상의: 색상 블랙, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 반팔티셔츠, 그래피티, 여름, 코튼",
+          "하의: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 데님, 워싱, 와이드핏, 사계절",
+          "신발: 색상 아이보리, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 가죽, 사계절, 클래식"
+        ]
+      }
+    },
+    {
+      "pairId": "p006",
+      "stratum": "low-high",
+      "scoreGap": 19,
+      "itemOverlap": 0,
+      "attentionCheck": false,
+      "left": {
+        "itemIds": [
+          "InhFLCWQZnP0zUDZjGEc",
+          "hZ2sxrcryzccvPf6GiyA",
+          "I5UvWsKT9hz5YqIMn65E",
+          "dSy54ZUwmR0JcmW5wfdw",
+          "cnwqpOYioHPlFxgju1JO"
+        ],
+        "kind": "random",
+        "score": 91,
+        "formality": 95,
+        "colorHarmony": 92,
+        "style": 88,
+        "itemSummaries": [
+          "상의: 색상 화이트, 스타일 캐주얼, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 반팔, 코튼, 여름, 스트릿웨어",
+          "하의: 색상 블랙, 스타일 미니멀, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 밴딩팬츠, 와이드, 사계절, 편안함",
+          "신발: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 러닝화, 메쉬, 사계절",
+          "아우터: 색상 와인, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 바람막이, 나일론, 스포티, 가을",
+          "액세서리: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 가죽, 숄더백, 호보백, 데일리"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "6vVNoavk5DLduhTNKu0d",
+          "Q2TqinzkRVKNgDoQE5dp",
+          "xSv2rYtW0u4NsW2Z68O4",
+          "OJRMRg43ugBqqmDvTfFr"
+        ],
+        "kind": "extreme",
+        "score": 72,
+        "formality": 68,
+        "colorHarmony": 92,
+        "style": 65,
+        "itemSummaries": [
+          "상의: 색상 블랙, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 카라티, 니트, 반팔, 여름",
+          "하의: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 나일론, 여름, 숏팬츠, 밴딩",
+          "신발: 색상 그레이, 스타일 캐주얼, 패턴 스트라이프, 격식 캐주얼, 핏 레귤러, 태그: 스웨이드, 스니커즈, 데일리, 사계절",
+          "아우터: 색상 블랙, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 와펜, 레이싱, 간절기, 지퍼"
+        ]
+      }
+    },
+    {
+      "pairId": "p007",
+      "stratum": "low-high",
+      "scoreGap": 18,
+      "itemOverlap": 0,
+      "attentionCheck": false,
+      "left": {
+        "itemIds": [
+          "6vVNoavk5DLduhTNKu0d",
+          "Q2TqinzkRVKNgDoQE5dp",
+          "t16mhpuSrkQq4KvRxiqx",
+          "eX4cHUhrSMhv5GIGaB5Z"
+        ],
+        "kind": "extreme",
+        "score": 70,
+        "formality": 65,
+        "colorHarmony": 90,
+        "style": 60,
+        "itemSummaries": [
+          "상의: 색상 블랙, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 카라티, 니트, 반팔, 여름",
+          "하의: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 나일론, 여름, 숏팬츠, 밴딩",
+          "신발: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 가죽, 여름, 플랫폼, 샌들",
+          "아우터: 색상 베이지, 스타일 미니멀, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 스웨이드, 봄, 가을, 블루종"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "UKvHI9gmwg4809IhzNJH",
+          "MA8a45cerrH3VdLKXB64",
+          "ZckzFZxd4RAcnfgoicRa"
+        ],
+        "kind": "extreme",
+        "score": 88,
+        "formality": 85,
+        "colorHarmony": 95,
+        "style": 80,
+        "itemSummaries": [
+          "상의: 색상 화이트, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 반팔, 코튼, 여름, 레트로",
+          "하의: 색상 차콜, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 슬랙스, 와이드팬츠, 핀턱, 사계절",
+          "신발: 색상 아이보리, 스타일 스포티, 패턴 그래픽, 격식 캐주얼, 핏 레귤러, 태그: 어글리슈즈, 스니커즈, 로고, 사계절"
+        ]
+      }
+    },
+    {
+      "pairId": "p008",
+      "stratum": "mid-high",
+      "scoreGap": 8,
+      "itemOverlap": 0,
+      "attentionCheck": false,
+      "left": {
+        "itemIds": [
+          "OcTZ4keKA2WeNN2ZtH8r",
+          "7dVhP4li6WwE0ziIaBFG",
+          "Y1b218Xpq6cSnyRdTJU2",
+          "x6LceqIdyglrW2dei4BA",
+          "dqF7Z0xl3l6bnoxJD0Dh"
+        ],
+        "kind": "random",
+        "score": 92,
+        "formality": 95,
+        "colorHarmony": 92,
+        "style": 90,
+        "itemSummaries": [
+          "상의: 색상 아이보리, 스타일 캐주얼, 패턴 그래픽, 격식 캐주얼, 핏 레귤러, 태그: 링거티, 반팔, 여름, 코튼",
+          "하의: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 데님, 와이드팬츠, 턱팬츠, 사계절",
+          "신발: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 나일론, 스웨이드, 사계절",
+          "아우터: 색상 블랙, 스타일 스트릿, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 차이나카라, 버클디테일, 봄가을, 코튼",
+          "액세서리: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 해당없음, 태그: 캔버스, 토트백, 데일리, 수납"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "8yOCc7T2YBACZsk4k0Dk",
+          "klM1hv8OiuUEPY9vWRXr",
+          "O4qG86tGixYjq0DPGe13",
+          "XuKEpE6KnBRy3nqyh7Dm",
+          "Yt0GTgy3Z0z11GMP6bt9"
+        ],
+        "kind": "random",
+        "score": 84,
+        "formality": 95,
+        "colorHarmony": 92,
+        "style": 80,
+        "itemSummaries": [
+          "상의: 색상 화이트, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 반팔, 그래피티, 면, 여름",
+          "하의: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 트레이닝, 반바지, 여름, 스트링",
+          "신발: 색상 네이비, 스타일 캐주얼, 패턴 스트라이프, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 스웨이드, 클래식, 사계절",
+          "아우터: 색상 네이비, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레ギュラー, 태그: 데님, 트러커, 봄가을, 아우터",
+          "액세서리: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 나일론, 크로스백, 숄더백, 데일리"
+        ]
+      }
+    },
+    {
+      "pairId": "p009",
+      "stratum": "mid-high",
+      "scoreGap": 6,
+      "itemOverlap": 0,
+      "attentionCheck": false,
+      "left": {
+        "itemIds": [
+          "UKvHI9gmwg4809IhzNJH",
+          "MA8a45cerrH3VdLKXB64",
+          "Y1b218Xpq6cSnyRdTJU2"
+        ],
+        "kind": "extreme",
+        "score": 86,
+        "formality": 80,
+        "colorHarmony": 95,
+        "style": 82,
+        "itemSummaries": [
+          "상의: 색상 화이트, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 반팔, 코튼, 여름, 레트로",
+          "하의: 색상 차콜, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 슬랙스, 와이드팬츠, 핀턱, 사계절",
+          "신발: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 나일론, 스웨이드, 사계절"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "YftmR9j2FvnXI50kNqSB",
+          "hReZYct1bgbr25bmQotu",
+          "NBUt3TYHSzz2oIv9hxzL",
+          "O8fh90dk0yTYpGycvAsb"
+        ],
+        "kind": "random",
+        "score": 92,
+        "formality": 95,
+        "colorHarmony": 90,
+        "style": 93,
+        "itemSummaries": [
+          "상의: 색상 블랙, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 레귤러, 태그: 반팔, 면, 여름, 프린팅",
+          "하의: 색상 그레이, 스타일 캐주얼, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 스웨트팬츠, 반바지, 밴딩, 캐릭터",
+          "신발: 색상 화이트, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 가죽, 사계절, 클래식",
+          "아우터: 색상 블랙, 스타일 스트릿, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 윈드브레이커, 나일론, 봄가을, 후드"
+        ]
+      }
+    },
+    {
+      "pairId": "p010",
+      "stratum": "mid-high",
+      "scoreGap": 5,
+      "itemOverlap": 2,
+      "attentionCheck": false,
+      "left": {
+        "itemIds": [
+          "UKvHI9gmwg4809IhzNJH",
+          "MA8a45cerrH3VdLKXB64",
+          "kC0gwb3bHizwF5TPp2Th",
+          "dSy54ZUwmR0JcmW5wfdw"
+        ],
+        "kind": "extreme",
+        "score": 85,
+        "formality": 75,
+        "colorHarmony": 92,
+        "style": 78,
+        "itemSummaries": [
+          "상의: 색상 화이트, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 반팔, 코튼, 여름, 레트로",
+          "하의: 색상 차콜, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 슬랙스, 와이드팬츠, 핀턱, 사계절",
+          "신발: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 스웨이드, 사계절, 클래식",
+          "아우터: 색상 와인, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 바람막이, 나일론, 스포티, 가을"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "UKvHI9gmwg4809IhzNJH",
+          "MA8a45cerrH3VdLKXB64",
+          "ytIHDu7L7iWfhDLaFDOh"
+        ],
+        "kind": "extreme",
+        "score": 90,
+        "formality": 85,
+        "colorHarmony": 95,
+        "style": 88,
+        "itemSummaries": [
+          "상의: 색상 화이트, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 반팔, 코튼, 여름, 레트로",
+          "하의: 색상 차콜, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 슬랙스, 와이드팬츠, 핀턱, 사계절",
+          "신발: 색상 화이트, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 가죽, 플랫폼, 사계절"
+        ]
+      }
+    },
+    {
+      "pairId": "p011",
+      "stratum": "mid-high",
+      "scoreGap": 8,
+      "itemOverlap": 1,
+      "attentionCheck": false,
+      "left": {
+        "itemIds": [
+          "N3VECNLQ2LqrATA3nWG5",
+          "Ak8ljaEQIoUQg1ls8aO4",
+          "6CVPMcrOKtaBwW7xN0e5",
+          "NPh8wN6k4fK1ResqX65B"
+        ],
+        "kind": "random",
+        "score": 92,
+        "formality": 98,
+        "colorHarmony": 90,
+        "style": 95,
+        "itemSummaries": [
+          "상의: 색상 블랙, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 레귤러, 태그: 반팔, 면, 여름, 캐릭터",
+          "하의: 색상 블랙, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 나일론, 트랙팬츠, 스포티, 밴딩팬츠",
+          "신발: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 러닝화, 메쉬, 쿠셔닝, 사계절",
+          "아우터: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 바람막이, 나일론, 간절기, 집업"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "6vVNoavk5DLduhTNKu0d",
+          "Q2TqinzkRVKNgDoQE5dp",
+          "Z0HlgPZ6ypYyAnIim9Jw",
+          "NPh8wN6k4fK1ResqX65B"
+        ],
+        "kind": "extreme",
+        "score": 84,
+        "formality": 78,
+        "colorHarmony": 95,
+        "style": 80,
+        "itemSummaries": [
+          "상의: 색상 블랙, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 카라티, 니트, 반팔, 여름",
+          "하의: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 나일론, 여름, 숏팬츠, 밴딩",
+          "신발: 색상 아이보리, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 가죽, 사계절, 클래식",
+          "아우터: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 바람막이, 나일론, 간절기, 집업"
+        ]
+      }
+    },
+    {
+      "pairId": "p012",
+      "stratum": "mid-high",
+      "scoreGap": 6,
+      "itemOverlap": 1,
+      "attentionCheck": false,
+      "left": {
+        "itemIds": [
+          "UKvHI9gmwg4809IhzNJH",
+          "MA8a45cerrH3VdLKXB64",
+          "NBUt3TYHSzz2oIv9hxzL"
+        ],
+        "kind": "extreme",
+        "score": 88,
+        "formality": 82,
+        "colorHarmony": 95,
+        "style": 80,
+        "itemSummaries": [
+          "상의: 색상 화이트, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 반팔, 코튼, 여름, 레트로",
+          "하의: 색상 차콜, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 슬랙스, 와이드팬츠, 핀턱, 사계절",
+          "신발: 색상 화이트, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 가죽, 사계절, 클래식"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "UKvHI9gmwg4809IhzNJH",
+          "sVXZHzWvtfqDdaRtSFgx",
+          "gvNXys4KQoVTk0ECutQK",
+          "WiyzsFM2QqSCYa3d8Uzp"
+        ],
+        "kind": "random",
+        "score": 82,
+        "formality": 78,
+        "colorHarmony": 95,
+        "style": 75,
+        "itemSummaries": [
+          "상의: 색상 화이트, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 반팔, 코튼, 여름, 레트로",
+          "하의: 색상 블랙, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 슬랙스, 와이드팬츠, 사계절, 핀턱",
+          "신발: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 가죽, 사계절, 스티치",
+          "액세서리: 색상 블랙, 스타일 포멀, 패턴 무지, 격식 포멀, 핏 레귤러, 태그: 가죽스트랩, 사각프레임, 클래식, 로마숫자"
+        ]
+      }
+    },
+    {
+      "pairId": "p013",
+      "stratum": "low-low",
+      "scoreGap": 30,
+      "itemOverlap": 2,
+      "attentionCheck": true,
+      "left": {
+        "itemIds": [
+          "6vVNoavk5DLduhTNKu0d",
+          "Q2TqinzkRVKNgDoQE5dp",
+          "kC0gwb3bHizwF5TPp2Th"
+        ],
+        "kind": "extreme",
+        "score": 75,
+        "formality": 65,
+        "colorHarmony": 90,
+        "style": 70,
+        "itemSummaries": [
+          "상의: 색상 블랙, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 카라티, 니트, 반팔, 여름",
+          "하의: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 나일론, 여름, 숏팬츠, 밴딩",
+          "신발: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 스웨이드, 사계절, 클래식"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "6vVNoavk5DLduhTNKu0d",
+          "Q2TqinzkRVKNgDoQE5dp",
+          "gvNXys4KQoVTk0ECutQK",
+          "iVV5QjLZegzAK7JJJpWo"
+        ],
+        "kind": "extreme",
+        "score": 45,
+        "formality": 50,
+        "colorHarmony": 85,
+        "style": 40,
+        "itemSummaries": [
+          "상의: 색상 블랙, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 카라티, 니트, 반팔, 여름",
+          "하의: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 나일론, 여름, 숏팬츠, 밴딩",
+          "신발: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 가죽, 사계절, 스티치",
+          "아우터: 색상 퍼플, 스타일 스트릿, 패턴 무지, 격식 캐주얼, 핏 레ギュラー, 태그: 후드, 캔버스, 겨울, 양털안감"
+        ]
+      }
+    },
+    {
+      "pairId": "p014",
+      "stratum": "low-low",
+      "scoreGap": 10,
+      "itemOverlap": 1,
+      "attentionCheck": false,
+      "left": {
+        "itemIds": [
+          "UKvHI9gmwg4809IhzNJH",
+          "MA8a45cerrH3VdLKXB64",
+          "6CVPMcrOKtaBwW7xN0e5"
+        ],
+        "kind": "extreme",
+        "score": 80,
+        "formality": 75,
+        "colorHarmony": 95,
+        "style": 70,
+        "itemSummaries": [
+          "상의: 색상 화이트, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 반팔, 코튼, 여름, 레트로",
+          "하의: 색상 차콜, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 슬랙스, 와이드팬츠, 핀턱, 사계절",
+          "신발: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 러닝화, 메쉬, 쿠셔닝, 사계절"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "fTq2v3BzHT4LoWTGDD2I",
+          "0Yo3dn1nNHgB5NkdBWjU",
+          "6CVPMcrOKtaBwW7xN0e5",
+          "XuKEpE6KnBRy3nqyh7Dm",
+          "Yt0GTgy3Z0z11GMP6bt9"
+        ],
+        "kind": "random",
+        "score": 70,
+        "formality": 65,
+        "colorHarmony": 75,
+        "style": 68,
+        "itemSummaries": [
+          "상의: 색상 버건디, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 반팔, 면, 롤업, 여름",
+          "하의: 색상 차콜, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 슬랙스, 가을, 겨울, 울혼방",
+          "신발: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 러닝화, 메쉬, 쿠셔닝, 사계절",
+          "아우터: 색상 네이비, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레ギュラー, 태그: 데님, 트러커, 봄가을, 아우터",
+          "액세서리: 색상 블랙, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 나일론, 크로스백, 숄더백, 데일리"
+        ]
+      }
+    },
+    {
+      "pairId": "p015",
+      "stratum": "high-high",
+      "scoreGap": 8,
+      "itemOverlap": 0,
+      "attentionCheck": false,
+      "left": {
+        "itemIds": [
+          "09v2UrBJX8GmeqMs5IBz",
+          "whQ5IREpPXXzG4O3apWJ",
+          "5iTNF0tDQtqLURJfzC77",
+          "ROIMhutWsJi7CuFAkheC"
+        ],
+        "kind": "random",
+        "score": 96,
+        "formality": 98,
+        "colorHarmony": 95,
+        "style": 95,
+        "itemSummaries": [
+          "상의: 색상 화이트, 스타일 스포티, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 반팔, 여름, 스트릿웨어, 블록코어",
+          "하의: 색상 블루, 스타일 캐주얼, 패턴 무지, 격식 캐주얼, 핏 오버사이즈, 태그: 데님, 반바지, 여름, 워싱",
+          "신발: 색상 화이트, 스타일 스트릿, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 가죽, 사계절, 클래식",
+          "액세서리: 색상 블랙, 스타일 스포티, 패턴 그래픽, 격식 캐주얼, 핏 레귤러, 태그: 나일론, 숄더백, 크로스백, 아디다스"
+        ]
+      },
+      "right": {
+        "itemIds": [
+          "UKvHI9gmwg4809IhzNJH",
+          "MA8a45cerrH3VdLKXB64",
+          "kC0gwb3bHizwF5TPp2Th"
+        ],
+        "kind": "extreme",
+        "score": 88,
+        "formality": 80,
+        "colorHarmony": 95,
+        "style": 82,
+        "itemSummaries": [
+          "상의: 색상 화이트, 스타일 스트릿, 패턴 그래픽, 격식 캐주얼, 핏 오버사이즈, 태그: 반팔, 코튼, 여름, 레트로",
+          "하의: 색상 차콜, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 슬랙스, 와이드팬츠, 핀턱, 사계절",
+          "신발: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 스웨이드, 사계절, 클래식"
+        ]
+      }
+    }
+  ]
+}

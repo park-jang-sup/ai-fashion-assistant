@@ -1,0 +1,647 @@
+{
+  "presentationOrder": [
+    "p014",
+    "p008",
+    "p013",
+    "p015",
+    "p012",
+    "p001",
+    "p006",
+    "p007",
+    "p003",
+    "p011",
+    "p002",
+    "p009",
+    "p010",
+    "p004",
+    "p005"
+  ],
+  "attentionCheckNote": "일부 쌍은 명백히 한쪽이 나은 주의 확인 문항입니다 - 정답 취급하지 않습니다.",
+  "pairs": [
+    {
+      "pairId": "p001",
+      "left": {
+        "images": [
+          {
+            "itemId": "8L9WdwcZHgw1sH13kAKk",
+            "file": "images/8L9WdwcZHgw1sH13kAKk.png"
+          },
+          {
+            "itemId": "Ak8ljaEQIoUQg1ls8aO4",
+            "file": "images/Ak8ljaEQIoUQg1ls8aO4.png"
+          },
+          {
+            "itemId": "xk74sQFfOnIFHTOlyJyP",
+            "file": "images/xk74sQFfOnIFHTOlyJyP.png"
+          },
+          {
+            "itemId": "Jjjyojfr6IkUKVjxd7D5",
+            "file": "images/Jjjyojfr6IkUKVjxd7D5.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "OcTZ4keKA2WeNN2ZtH8r",
+            "file": "images/OcTZ4keKA2WeNN2ZtH8r.png"
+          },
+          {
+            "itemId": "MA8a45cerrH3VdLKXB64",
+            "file": "images/MA8a45cerrH3VdLKXB64.png"
+          },
+          {
+            "itemId": "Jjjyojfr6IkUKVjxd7D5",
+            "file": "images/Jjjyojfr6IkUKVjxd7D5.png"
+          },
+          {
+            "itemId": "cnwqpOYioHPlFxgju1JO",
+            "file": "images/cnwqpOYioHPlFxgju1JO.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p002",
+      "left": {
+        "images": [
+          {
+            "itemId": "OcTZ4keKA2WeNN2ZtH8r",
+            "file": "images/OcTZ4keKA2WeNN2ZtH8r.png"
+          },
+          {
+            "itemId": "IfD5d3BN6AMyrbQ6HKOe",
+            "file": "images/IfD5d3BN6AMyrbQ6HKOe.png"
+          },
+          {
+            "itemId": "Fwye077U6vV3j2GVhq6X",
+            "file": "images/Fwye077U6vV3j2GVhq6X.png"
+          },
+          {
+            "itemId": "t16mhpuSrkQq4KvRxiqx",
+            "file": "images/t16mhpuSrkQq4KvRxiqx.png"
+          },
+          {
+            "itemId": "Yt0GTgy3Z0z11GMP6bt9",
+            "file": "images/Yt0GTgy3Z0z11GMP6bt9.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "6vVNoavk5DLduhTNKu0d",
+            "file": "images/6vVNoavk5DLduhTNKu0d.png"
+          },
+          {
+            "itemId": "Q2TqinzkRVKNgDoQE5dp",
+            "file": "images/Q2TqinzkRVKNgDoQE5dp.png"
+          },
+          {
+            "itemId": "O4qG86tGixYjq0DPGe13",
+            "file": "images/O4qG86tGixYjq0DPGe13.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p003",
+      "left": {
+        "images": [
+          {
+            "itemId": "6vVNoavk5DLduhTNKu0d",
+            "file": "images/6vVNoavk5DLduhTNKu0d.png"
+          },
+          {
+            "itemId": "Q2TqinzkRVKNgDoQE5dp",
+            "file": "images/Q2TqinzkRVKNgDoQE5dp.png"
+          },
+          {
+            "itemId": "O8fh90dk0yTYpGycvAsb",
+            "file": "images/O8fh90dk0yTYpGycvAsb.png"
+          },
+          {
+            "itemId": "gvNXys4KQoVTk0ECutQK",
+            "file": "images/gvNXys4KQoVTk0ECutQK.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "fTq2v3BzHT4LoWTGDD2I",
+            "file": "images/fTq2v3BzHT4LoWTGDD2I.png"
+          },
+          {
+            "itemId": "9S4GHdIFLNTTGCbTdPzM",
+            "file": "images/9S4GHdIFLNTTGCbTdPzM.png"
+          },
+          {
+            "itemId": "t16mhpuSrkQq4KvRxiqx",
+            "file": "images/t16mhpuSrkQq4KvRxiqx.png"
+          },
+          {
+            "itemId": "QoZfNdKA4HsThkZDsYAk",
+            "file": "images/QoZfNdKA4HsThkZDsYAk.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p004",
+      "left": {
+        "images": [
+          {
+            "itemId": "6vVNoavk5DLduhTNKu0d",
+            "file": "images/6vVNoavk5DLduhTNKu0d.png"
+          },
+          {
+            "itemId": "Q2TqinzkRVKNgDoQE5dp",
+            "file": "images/Q2TqinzkRVKNgDoQE5dp.png"
+          },
+          {
+            "itemId": "XuKEpE6KnBRy3nqyh7Dm",
+            "file": "images/XuKEpE6KnBRy3nqyh7Dm.png"
+          },
+          {
+            "itemId": "5iTNF0tDQtqLURJfzC77",
+            "file": "images/5iTNF0tDQtqLURJfzC77.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "YvqnuHTpWYXpkeEU0t1l",
+            "file": "images/YvqnuHTpWYXpkeEU0t1l.png"
+          },
+          {
+            "itemId": "fnJa8XarETojyI87RxbS",
+            "file": "images/fnJa8XarETojyI87RxbS.png"
+          },
+          {
+            "itemId": "I5UvWsKT9hz5YqIMn65E",
+            "file": "images/I5UvWsKT9hz5YqIMn65E.png"
+          },
+          {
+            "itemId": "QoZfNdKA4HsThkZDsYAk",
+            "file": "images/QoZfNdKA4HsThkZDsYAk.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p005",
+      "left": {
+        "images": [
+          {
+            "itemId": "UKvHI9gmwg4809IhzNJH",
+            "file": "images/UKvHI9gmwg4809IhzNJH.png"
+          },
+          {
+            "itemId": "MA8a45cerrH3VdLKXB64",
+            "file": "images/MA8a45cerrH3VdLKXB64.png"
+          },
+          {
+            "itemId": "6CVPMcrOKtaBwW7xN0e5",
+            "file": "images/6CVPMcrOKtaBwW7xN0e5.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "MUjMQy0Pn6yQ24NIlghq",
+            "file": "images/MUjMQy0Pn6yQ24NIlghq.png"
+          },
+          {
+            "itemId": "IfD5d3BN6AMyrbQ6HKOe",
+            "file": "images/IfD5d3BN6AMyrbQ6HKOe.png"
+          },
+          {
+            "itemId": "Z0HlgPZ6ypYyAnIim9Jw",
+            "file": "images/Z0HlgPZ6ypYyAnIim9Jw.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p006",
+      "left": {
+        "images": [
+          {
+            "itemId": "InhFLCWQZnP0zUDZjGEc",
+            "file": "images/InhFLCWQZnP0zUDZjGEc.png"
+          },
+          {
+            "itemId": "hZ2sxrcryzccvPf6GiyA",
+            "file": "images/hZ2sxrcryzccvPf6GiyA.png"
+          },
+          {
+            "itemId": "dSy54ZUwmR0JcmW5wfdw",
+            "file": "images/dSy54ZUwmR0JcmW5wfdw.png"
+          },
+          {
+            "itemId": "I5UvWsKT9hz5YqIMn65E",
+            "file": "images/I5UvWsKT9hz5YqIMn65E.png"
+          },
+          {
+            "itemId": "cnwqpOYioHPlFxgju1JO",
+            "file": "images/cnwqpOYioHPlFxgju1JO.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "6vVNoavk5DLduhTNKu0d",
+            "file": "images/6vVNoavk5DLduhTNKu0d.png"
+          },
+          {
+            "itemId": "Q2TqinzkRVKNgDoQE5dp",
+            "file": "images/Q2TqinzkRVKNgDoQE5dp.png"
+          },
+          {
+            "itemId": "OJRMRg43ugBqqmDvTfFr",
+            "file": "images/OJRMRg43ugBqqmDvTfFr.png"
+          },
+          {
+            "itemId": "xSv2rYtW0u4NsW2Z68O4",
+            "file": "images/xSv2rYtW0u4NsW2Z68O4.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p007",
+      "left": {
+        "images": [
+          {
+            "itemId": "6vVNoavk5DLduhTNKu0d",
+            "file": "images/6vVNoavk5DLduhTNKu0d.png"
+          },
+          {
+            "itemId": "Q2TqinzkRVKNgDoQE5dp",
+            "file": "images/Q2TqinzkRVKNgDoQE5dp.png"
+          },
+          {
+            "itemId": "eX4cHUhrSMhv5GIGaB5Z",
+            "file": "images/eX4cHUhrSMhv5GIGaB5Z.jpg"
+          },
+          {
+            "itemId": "t16mhpuSrkQq4KvRxiqx",
+            "file": "images/t16mhpuSrkQq4KvRxiqx.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "UKvHI9gmwg4809IhzNJH",
+            "file": "images/UKvHI9gmwg4809IhzNJH.png"
+          },
+          {
+            "itemId": "MA8a45cerrH3VdLKXB64",
+            "file": "images/MA8a45cerrH3VdLKXB64.png"
+          },
+          {
+            "itemId": "ZckzFZxd4RAcnfgoicRa",
+            "file": "images/ZckzFZxd4RAcnfgoicRa.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p008",
+      "left": {
+        "images": [
+          {
+            "itemId": "OcTZ4keKA2WeNN2ZtH8r",
+            "file": "images/OcTZ4keKA2WeNN2ZtH8r.png"
+          },
+          {
+            "itemId": "7dVhP4li6WwE0ziIaBFG",
+            "file": "images/7dVhP4li6WwE0ziIaBFG.png"
+          },
+          {
+            "itemId": "x6LceqIdyglrW2dei4BA",
+            "file": "images/x6LceqIdyglrW2dei4BA.png"
+          },
+          {
+            "itemId": "Y1b218Xpq6cSnyRdTJU2",
+            "file": "images/Y1b218Xpq6cSnyRdTJU2.png"
+          },
+          {
+            "itemId": "dqF7Z0xl3l6bnoxJD0Dh",
+            "file": "images/dqF7Z0xl3l6bnoxJD0Dh.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "8yOCc7T2YBACZsk4k0Dk",
+            "file": "images/8yOCc7T2YBACZsk4k0Dk.png"
+          },
+          {
+            "itemId": "klM1hv8OiuUEPY9vWRXr",
+            "file": "images/klM1hv8OiuUEPY9vWRXr.png"
+          },
+          {
+            "itemId": "XuKEpE6KnBRy3nqyh7Dm",
+            "file": "images/XuKEpE6KnBRy3nqyh7Dm.png"
+          },
+          {
+            "itemId": "O4qG86tGixYjq0DPGe13",
+            "file": "images/O4qG86tGixYjq0DPGe13.png"
+          },
+          {
+            "itemId": "Yt0GTgy3Z0z11GMP6bt9",
+            "file": "images/Yt0GTgy3Z0z11GMP6bt9.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p009",
+      "left": {
+        "images": [
+          {
+            "itemId": "UKvHI9gmwg4809IhzNJH",
+            "file": "images/UKvHI9gmwg4809IhzNJH.png"
+          },
+          {
+            "itemId": "MA8a45cerrH3VdLKXB64",
+            "file": "images/MA8a45cerrH3VdLKXB64.png"
+          },
+          {
+            "itemId": "Y1b218Xpq6cSnyRdTJU2",
+            "file": "images/Y1b218Xpq6cSnyRdTJU2.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "YftmR9j2FvnXI50kNqSB",
+            "file": "images/YftmR9j2FvnXI50kNqSB.png"
+          },
+          {
+            "itemId": "hReZYct1bgbr25bmQotu",
+            "file": "images/hReZYct1bgbr25bmQotu.png"
+          },
+          {
+            "itemId": "O8fh90dk0yTYpGycvAsb",
+            "file": "images/O8fh90dk0yTYpGycvAsb.png"
+          },
+          {
+            "itemId": "NBUt3TYHSzz2oIv9hxzL",
+            "file": "images/NBUt3TYHSzz2oIv9hxzL.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p010",
+      "left": {
+        "images": [
+          {
+            "itemId": "UKvHI9gmwg4809IhzNJH",
+            "file": "images/UKvHI9gmwg4809IhzNJH.png"
+          },
+          {
+            "itemId": "MA8a45cerrH3VdLKXB64",
+            "file": "images/MA8a45cerrH3VdLKXB64.png"
+          },
+          {
+            "itemId": "dSy54ZUwmR0JcmW5wfdw",
+            "file": "images/dSy54ZUwmR0JcmW5wfdw.png"
+          },
+          {
+            "itemId": "kC0gwb3bHizwF5TPp2Th",
+            "file": "images/kC0gwb3bHizwF5TPp2Th.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "UKvHI9gmwg4809IhzNJH",
+            "file": "images/UKvHI9gmwg4809IhzNJH.png"
+          },
+          {
+            "itemId": "MA8a45cerrH3VdLKXB64",
+            "file": "images/MA8a45cerrH3VdLKXB64.png"
+          },
+          {
+            "itemId": "ytIHDu7L7iWfhDLaFDOh",
+            "file": "images/ytIHDu7L7iWfhDLaFDOh.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p011",
+      "left": {
+        "images": [
+          {
+            "itemId": "N3VECNLQ2LqrATA3nWG5",
+            "file": "images/N3VECNLQ2LqrATA3nWG5.png"
+          },
+          {
+            "itemId": "Ak8ljaEQIoUQg1ls8aO4",
+            "file": "images/Ak8ljaEQIoUQg1ls8aO4.png"
+          },
+          {
+            "itemId": "NPh8wN6k4fK1ResqX65B",
+            "file": "images/NPh8wN6k4fK1ResqX65B.png"
+          },
+          {
+            "itemId": "6CVPMcrOKtaBwW7xN0e5",
+            "file": "images/6CVPMcrOKtaBwW7xN0e5.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "6vVNoavk5DLduhTNKu0d",
+            "file": "images/6vVNoavk5DLduhTNKu0d.png"
+          },
+          {
+            "itemId": "Q2TqinzkRVKNgDoQE5dp",
+            "file": "images/Q2TqinzkRVKNgDoQE5dp.png"
+          },
+          {
+            "itemId": "NPh8wN6k4fK1ResqX65B",
+            "file": "images/NPh8wN6k4fK1ResqX65B.png"
+          },
+          {
+            "itemId": "Z0HlgPZ6ypYyAnIim9Jw",
+            "file": "images/Z0HlgPZ6ypYyAnIim9Jw.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p012",
+      "left": {
+        "images": [
+          {
+            "itemId": "UKvHI9gmwg4809IhzNJH",
+            "file": "images/UKvHI9gmwg4809IhzNJH.png"
+          },
+          {
+            "itemId": "MA8a45cerrH3VdLKXB64",
+            "file": "images/MA8a45cerrH3VdLKXB64.png"
+          },
+          {
+            "itemId": "NBUt3TYHSzz2oIv9hxzL",
+            "file": "images/NBUt3TYHSzz2oIv9hxzL.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "UKvHI9gmwg4809IhzNJH",
+            "file": "images/UKvHI9gmwg4809IhzNJH.png"
+          },
+          {
+            "itemId": "sVXZHzWvtfqDdaRtSFgx",
+            "file": "images/sVXZHzWvtfqDdaRtSFgx.png"
+          },
+          {
+            "itemId": "gvNXys4KQoVTk0ECutQK",
+            "file": "images/gvNXys4KQoVTk0ECutQK.png"
+          },
+          {
+            "itemId": "WiyzsFM2QqSCYa3d8Uzp",
+            "file": "images/WiyzsFM2QqSCYa3d8Uzp.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p013",
+      "left": {
+        "images": [
+          {
+            "itemId": "6vVNoavk5DLduhTNKu0d",
+            "file": "images/6vVNoavk5DLduhTNKu0d.png"
+          },
+          {
+            "itemId": "Q2TqinzkRVKNgDoQE5dp",
+            "file": "images/Q2TqinzkRVKNgDoQE5dp.png"
+          },
+          {
+            "itemId": "kC0gwb3bHizwF5TPp2Th",
+            "file": "images/kC0gwb3bHizwF5TPp2Th.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "6vVNoavk5DLduhTNKu0d",
+            "file": "images/6vVNoavk5DLduhTNKu0d.png"
+          },
+          {
+            "itemId": "Q2TqinzkRVKNgDoQE5dp",
+            "file": "images/Q2TqinzkRVKNgDoQE5dp.png"
+          },
+          {
+            "itemId": "iVV5QjLZegzAK7JJJpWo",
+            "file": "images/iVV5QjLZegzAK7JJJpWo.png"
+          },
+          {
+            "itemId": "gvNXys4KQoVTk0ECutQK",
+            "file": "images/gvNXys4KQoVTk0ECutQK.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p014",
+      "left": {
+        "images": [
+          {
+            "itemId": "UKvHI9gmwg4809IhzNJH",
+            "file": "images/UKvHI9gmwg4809IhzNJH.png"
+          },
+          {
+            "itemId": "MA8a45cerrH3VdLKXB64",
+            "file": "images/MA8a45cerrH3VdLKXB64.png"
+          },
+          {
+            "itemId": "6CVPMcrOKtaBwW7xN0e5",
+            "file": "images/6CVPMcrOKtaBwW7xN0e5.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "fTq2v3BzHT4LoWTGDD2I",
+            "file": "images/fTq2v3BzHT4LoWTGDD2I.png"
+          },
+          {
+            "itemId": "0Yo3dn1nNHgB5NkdBWjU",
+            "file": "images/0Yo3dn1nNHgB5NkdBWjU.png"
+          },
+          {
+            "itemId": "XuKEpE6KnBRy3nqyh7Dm",
+            "file": "images/XuKEpE6KnBRy3nqyh7Dm.png"
+          },
+          {
+            "itemId": "6CVPMcrOKtaBwW7xN0e5",
+            "file": "images/6CVPMcrOKtaBwW7xN0e5.png"
+          },
+          {
+            "itemId": "Yt0GTgy3Z0z11GMP6bt9",
+            "file": "images/Yt0GTgy3Z0z11GMP6bt9.png"
+          }
+        ]
+      }
+    },
+    {
+      "pairId": "p015",
+      "left": {
+        "images": [
+          {
+            "itemId": "09v2UrBJX8GmeqMs5IBz",
+            "file": "images/09v2UrBJX8GmeqMs5IBz.png"
+          },
+          {
+            "itemId": "whQ5IREpPXXzG4O3apWJ",
+            "file": "images/whQ5IREpPXXzG4O3apWJ.png"
+          },
+          {
+            "itemId": "5iTNF0tDQtqLURJfzC77",
+            "file": "images/5iTNF0tDQtqLURJfzC77.png"
+          },
+          {
+            "itemId": "ROIMhutWsJi7CuFAkheC",
+            "file": "images/ROIMhutWsJi7CuFAkheC.png"
+          }
+        ]
+      },
+      "right": {
+        "images": [
+          {
+            "itemId": "UKvHI9gmwg4809IhzNJH",
+            "file": "images/UKvHI9gmwg4809IhzNJH.png"
+          },
+          {
+            "itemId": "MA8a45cerrH3VdLKXB64",
+            "file": "images/MA8a45cerrH3VdLKXB64.png"
+          },
+          {
+            "itemId": "kC0gwb3bHizwF5TPp2Th",
+            "file": "images/kC0gwb3bHizwF5TPp2Th.png"
+          }
+        ]
+      }
+    }
+  ]
+}
