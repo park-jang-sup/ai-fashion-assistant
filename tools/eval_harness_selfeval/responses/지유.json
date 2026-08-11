@@ -1,0 +1,65 @@
+{
+  "labelerName": "지유",
+  "sessionStartedAt": "2026-08-11T13:05:45.727Z",
+  "photo": {
+    "startedAt": "2026-08-11T13:05:45.727Z",
+    "presentationOrder": [
+      "p007",
+      "p005",
+      "p004",
+      "p014",
+      "p015",
+      "p012",
+      "p002",
+      "p001",
+      "p011",
+      "p006",
+      "p013",
+      "p010",
+      "p003",
+      "p008",
+      "p009"
+    ],
+    "labels": [
+      { "pairId": "p007", "choice": "left", "elapsedMs": 72326 },
+      { "pairId": "p005", "choice": "right", "elapsedMs": 43128 },
+      { "pairId": "p004", "choice": "right", "elapsedMs": 35434 },
+      { "pairId": "p014", "choice": "right", "elapsedMs": 24182 },
+      { "pairId": "p015", "choice": "left", "elapsedMs": 28917 },
+      { "pairId": "p012", "choice": "left", "elapsedMs": 21400 },
+      { "pairId": "p002", "choice": "right", "elapsedMs": 27255 },
+      { "pairId": "p001", "choice": "right", "elapsedMs": 20471 },
+      { "pairId": "p011", "choice": "left", "elapsedMs": 26178 },
+      { "pairId": "p006", "choice": "left", "elapsedMs": 26528 },
+      { "pairId": "p013", "choice": "left", "elapsedMs": 21977 },
+      { "pairId": "p010", "choice": "left", "elapsedMs": 26650 },
+      { "pairId": "p003", "choice": "right", "elapsedMs": 32907 },
+      { "pairId": "p008", "choice": "left", "elapsedMs": 29267 },
+      { "pairId": "p009", "choice": "right", "elapsedMs": 32836 }
+    ]
+  },
+  "text": {
+    "startedAt": "2026-08-11T13:13:37.397Z",
+    "presentationOrder": [
+      "p006",
+      "p009",
+      "p015",
+      "p014",
+      "p002",
+      "p005",
+      "p008",
+      "p010"
+    ],
+    "labels": [
+      { "pairId": "p006", "choice": "left", "elapsedMs": 27186 },
+      { "pairId": "p009", "choice": "right", "elapsedMs": 27088 },
+      { "pairId": "p015", "choice": "left", "elapsedMs": 46445 },
+      { "pairId": "p014", "choice": "left", "elapsedMs": 30082 },
+      { "pairId": "p002", "choice": "right", "elapsedMs": 26959 },
+      { "pairId": "p005", "choice": "right", "elapsedMs": 27047 },
+      { "pairId": "p008", "choice": "left", "elapsedMs": 26986 },
+      { "pairId": "p010", "choice": "left", "elapsedMs": 24473 }
+    ]
+  },
+  "finishedAt": "2026-08-11T13:17:33.669Z"
+}
