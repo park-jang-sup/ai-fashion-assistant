@@ -323,5 +323,5 @@ void main() {
 
     // ignore: avoid_print
     print('[MODELFIX] 완료');
-  }, timeout: const Timeout(Duration(minutes: 40)));
+  }, timeout: const Timeout(Duration(minutes: 75)));
 }
