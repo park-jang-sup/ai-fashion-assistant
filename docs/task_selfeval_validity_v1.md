@@ -3046,3 +3046,75 @@ statusCode를 담은 로그가 존재하지 않는다** — (a)와 같은 성격
 마지막 호출 종료(`08:12:44.448Z`)까지 299.16초에 32건이므로,
 **평균 호출 밀도는 약 9.3초당 1건**(0.107회/초)이다 — 이 값을
 2단계 설계의 "호출 간격" 논의에 그대로 쓴다.
+
+## §6-가 실패 경로 로깅 수정 — 배포 완료 (2026-08-12)
+
+**목적**: 위 "폴백 상태코드 규명 시도"가 확인한 두 계측 공백(서버
+`upstreamStatus` 미기록, 클라이언트 폴백 사유 미기록)을 메운다 —
+값을 새로 수집하는 게 아니라 이미 있는 값(`HttpsError.details`,
+`GeminiApiException.statusCode`)을 로그로 흘리기만 한다. **동작
+(제어 흐름·에러 매핑·재시도 조건)은 바꾸지 않았다.**
+
+**변경 내용**(커밋 `47687aa`):
+- 서버(`functions/src/index.ts`): `extractUpstreamStatus(err)` 헬퍼
+  추가, `callGeminiText`·`generateFittingImage`의 실패 경로
+  catch-all 로거에 `upstreamStatus=<n>`을 성공 로그와 같은 키·
+  비슷한 위치(`outcome=error` 바로 뒤)로 추가. 값이 없는 경우(예:
+  `unauthenticated`/`invalid-argument`처럼 업스트림까지 못 간
+  실패)는 필드 자체를 생략한다.
+- 클라이언트(`lib/services/gemini_service.dart`):
+  `withTextModelFallback`의 세 폴백 분기(`TimeoutException`/
+  `GeminiApiException`/`FormatException`)에 `debugPrint`로 폴백
+  사유를 남긴다 — `GeminiApiException` 분기는 `e.statusCode`를
+  그대로 찍는다. **`GeminiApiException.toString()`은 건드리지
+  않았다** — `fitting_job_controller.dart:315`(`fittingError =
+  e.toString()`)가 이 값을 사용자에게 그대로 보여주는 자리라서,
+  건드리면 로그가 아니라 사용자 화면 문구가 바뀌는 것이 된다(금지
+  사항 위반이 될 뻔한 지점 — 코드로 확인하고 피함).
+
+**검증(배포 전)**: `npm test`(functions, 103 PASS/0 FAIL),
+`npx tsc --noEmit`(에러 0), `npm run build`(정상 컴파일),
+`flutter analyze`(이슈 0) — 전부 통과.
+
+**배포**: `firebase deploy --only
+"functions:default:callGeminiText,functions:default:generateFittingImage"`
+(대상 프로젝트 `ai-fashion-assistant-personal`, `firebase use`로
+사전 확인). CLI 출력 — 두 함수 각각 "Successful update operation.",
+"Deploy complete!" 확인. 완료 시각 `2026-08-12T13:05:10Z`(명령
+반환 직후 기록, 배포 자체의 내부 타임스탬프는 아님).
+
+**(a) 다른 함수는 안 건드려졌는가 — 부분 확인**: `--only` 인자에
+정확히 이 두 함수만 지정했고, CLI 출력에도 "updating ...
+callGeminiText", "updating ... generateFittingImage" 두 줄만
+나타났다(다른 7개·`bgremoval`은 언급조차 없음) — Firebase CLI
+자체의 보고를 근거로 삼는다. **다만 지시된 "audit 로그" 자체는
+확인 못 했다** — Cloud Run Admin API(`run.services.get`)와 Cloud
+Functions v2 Admin API(`cloudfunctions.functions.get`) 둘 다
+우리가 가진 서비스 계정(Firestore Admin SDK용 키)으로 시도했으나
+**403 PERMISSION_DENIED**(이 키는 Firestore 권한만 있고 프로젝트
+전역 Editor/Owner가 아니다), `gcloud` CLI 미설치, 브라우저 세션
+없음 — 이번에도 접근 수단이 없었다. 배포 후 `firebase functions:list`로
+9개 함수 전부의 트리거·런타임·메모리 설정이 배포 전과 동일함은
+확인했다(설정 드리프트 없음, 코드 내용까지 확인하는 건 아님).
+**결론: CLI 자체 보고 + 설정 무변경 확인까지가 이번에 확보한
+근거이고, 진짜 감사 로그 대조는 미확인으로 남긴다.**
+
+**(b) 새 리비전 번호 — 미확인**: 위와 같은 이유(권한 없음, CLI
+없음, 콘솔 없음)로 Cloud Run 리비전 식별자(예:
+`callgeminitext-000NN-xxx` 형태)를 가져오지 못했다. **안 한 것을
+했다고 적지 않는다** — 배포가 일어났다는 사실 자체는 CLI 반환값과
+"Successful update operation"으로 확실하지만, 그 배포가 만든
+구체적 리비전 문자열은 이 세션의 도구로는 확인할 수 없었다. 다음에
+이 값이 필요해지면(예: 시점 대조) 사용자에게 콘솔 확인을 요청해야
+한다 — 지금은 요청하지 않는다.
+
+**(c) 실패 경로 로그가 실제로 찍히는지 — 미검증**: 배포 직후
+인위로 실패를 유발하지 않았다(금지 사항). 다음에 자연 발생
+실패(또는 2차 측정의 조건 F 실행 중 실제 실패)가 났을 때 로그를
+확인하면 그때 검증된다.
+
+**(d) 클라이언트 변경은 이번 배포에 없다**: 서버(functions)만
+배포했다 — `lib/services/gemini_service.dart`의 로그 추가는
+컴파일된 앱 바이너리에 들어가야 하므로, **다음 APK 빌드(2차
+측정용 하네스 빌드)에 포함될 때까지 실기기에서 전혀 검증되지
+않은 상태**다. `flutter analyze`만 통과했을 뿐이다.
