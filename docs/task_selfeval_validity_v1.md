@@ -2454,3 +2454,139 @@ Keystore에 묶인 암호화 저장소(Google Sign-In/Firebase Auth 일부
 - 하네스 위치 자체를 재검토한다(§6-가 "하네스 위치 결정"이 검토한
   세 후보로 되돌아가거나, 네 번째 대안을 찾는다) — `integration_test`
   경로가 이 문제와 근본적으로 맞지 않을 가능성.
+
+## §6-가 인증 의존 제거 + 실행 시도 8 — 성공, N=20 완료 (2026-08-12)
+
+**방향 결정**: 위 세 후보 중 어느 것도 택하지 않고, 근본적으로 다른
+접근을 취했다 — "같은 조합을 반복 평가하면 점수가 얼마나 흔들리는가"를
+재는 데는 실기기 로그인 세션이 본질적으로 필요하지 않다는 점에 착안해
+인증 의존 자체를 없앴다. 두 변경(`integration_test/self_eval_repeat_probe.dart`,
+커밋 `3dcc3c9`):
+
+1. **조합을 옷장 조회 대신 하드코딩한다** — p007 왼쪽 조합(원 점수
+   70) 4벌의 `category`/`attributes`를
+   `tools/eval_harness_selfeval/answer_key/pairs_answer_key.json`에서
+   그대로 옮겼다. `imageUrl`은 빈 문자열로 채웠다.
+2. **`signInAnonymously()`로 이 실행 전용 익명 계정을 새로 만든다** —
+   서버 프록시(`callGeminiText`)는 `request.auth` 존재만 요구하고
+   소유권을 보지 않으므로 충분하다.
+
+**실행 전 두 가지 무료 확인(사용자 로그인 요청 없이)**:
+
+- **(a) 하드코딩 attributes ↔ Firestore 대조**: Admin SDK
+  (`C:\Users\hse09\key\...-47679dd51a.json`, HANDOFF.md가 가리키는
+  경로)로 4개 문서(`6vVNoavk5DLduhTNKu0d`/`Q2TqinzkRVKNgDoQE5dp`/
+  `t16mhpuSrkQq4KvRxiqx`/`eX4cHUhrSMhv5GIGaB5Z`)를 직접 조회해
+  `color`/`style`/`pattern`/`formality`/`fit`/`tags`/`category`
+  전부 대조 — **4벌 전부 일치**. 원점수 70 전제가 깨지지 않았다.
+- **(b) `imageUrl` 참조 여부**: `OutfitSelfEvaluator.run()` →
+  `evalOne` → `GeminiService.analyzeOutfitFromAttributes`의 호출부
+  (`outfit_self_evaluator.dart:150-153`)는 `combo.items`에서
+  `category`와 `attributes`만 꺼내 넘긴다 — `it.imageUrl`을 읽는
+  자리가 없다. `userPhotoUrl`/`userProfile` 인자도 `run()`이 아예
+  넘기지 않는다(§2에서 이미 확인된 사실과 일치). 이미지 바이트를
+  읽는 유일한 곳(`gemini_service.dart:488` 부근, `extractAttributes`)은
+  **등록 시점 속성 추출용**이며 자기 평가 경로와 무관하다.
+  **결론: `imageUrl:''` 하드코딩은 측정 대상을 바꾸지 않는다.**
+
+**빌드·설치 기록(§0 승계 규약)**: 대상 커밋 `3dcc3c9`(HEAD, 작업
+트리 클린 — `flutter analyze` 통과 후 커밋·`personal main` 푸시
+완료). `flutter build apk --debug` 완료(Gradle `assembleDebug`
+46.5초). `adb install -r` 완료(`2026-08-12T08:06:17Z`). 설치 직후
+`dumpsys package`로 `lastUpdateTime=2026-08-12 17:05:58`(기기 로컬,
+UTC+9 → `08:05:58Z`)를 확인해 이번 설치가 대상 커밋의 새 빌드임을
+대조했다(기기: `R3CW10DF8CW`, 기존 세션과 동일).
+
+**`SKIP_APPCHECK` 관련 확인(사용자 지적, 습관적으로 붙이지 않음)**:
+이 빌드는 `SKIP_APPCHECK` 없이 나갔다. `integration_test`는
+자체 테스트 파일의 `main()`을 실행하고 `lib/main.dart`의 `main()`을
+거치지 않으므로 `FirebaseAppCheck.instance.activate()` 자체가
+호출되지 않는다 — §3-1-4가 등록한 스플래시 정지 문제와 이 하네스는
+애초에 무관하다.
+
+**실행**: `flutter test integration_test/self_eval_repeat_probe.dart
+-d R3CW10DF8CW` — 이 실행이 자체적으로 다시 빌드·설치(Gradle
+26.8초 + install 37.5초)한 뒤 테스트를 돌렸다(§6-가 실행 시도 1이
+이미 등록한 설치-제거 수명주기, 대상 커밋은 동일하게 `3dcc3c9`).
+**결과: `All tests passed!`, 총 소요 5분 3초.** 익명 로그인 uid
+`GCBuXhGqzHRwLeDsrRPKJoxGQmC3`(주 계정과 무관, 정리 대상 — 아래
+"정리 필요" 참고).
+
+### 원자료 — `[REPEAT_RESULT]` 20줄 그대로 (재현 코드 원칙, §2)
+
+```
+{"trial":0,"score":75,"formality":70,"colorHarmony":85,"style":65,"model":"gemini-3.1-flash-lite"}
+{"trial":1,"score":85,"formality":75,"colorHarmony":90,"style":80,"model":"gemini-3.1-flash-lite"}
+{"trial":2,"score":85,"formality":75,"colorHarmony":90,"style":80,"model":"gemini-3.1-flash-lite"}
+{"trial":3,"score":75,"formality":70,"colorHarmony":85,"style":70,"model":"gemini-3.1-flash-lite"}
+{"trial":4,"score":72,"formality":75,"colorHarmony":90,"style":65,"model":"gemini-3.5-flash"}
+{"trial":5,"score":75,"formality":70,"colorHarmony":85,"style":65,"model":"gemini-3.1-flash-lite"}
+{"trial":6,"score":75,"formality":70,"colorHarmony":85,"style":70,"model":"gemini-3.1-flash-lite"}
+{"trial":7,"score":75,"formality":65,"colorHarmony":85,"style":70,"model":"gemini-3.1-flash-lite"}
+{"trial":8,"score":65,"formality":60,"colorHarmony":90,"style":55,"model":"gemini-3.5-flash"}
+{"trial":9,"score":85,"formality":75,"colorHarmony":90,"style":80,"model":"gemini-3.1-flash-lite"}
+{"trial":10,"score":85,"formality":75,"colorHarmony":90,"style":80,"model":"gemini-3.1-flash-lite"}
+{"trial":11,"score":72,"formality":65,"colorHarmony":90,"style":60,"model":"gemini-3.5-flash"}
+{"trial":12,"score":75,"formality":70,"colorHarmony":85,"style":65,"model":"gemini-3.1-flash-lite"}
+{"trial":13,"score":72,"formality":65,"colorHarmony":90,"style":60,"model":"gemini-3.5-flash"}
+{"trial":14,"score":75,"formality":70,"colorHarmony":85,"style":70,"model":"gemini-3.1-flash-lite"}
+{"trial":15,"score":72,"formality":68,"colorHarmony":92,"style":60,"model":"gemini-3.5-flash"}
+{"trial":16,"score":75,"formality":70,"colorHarmony":85,"style":70,"model":"gemini-3.1-flash-lite"}
+{"trial":17,"score":65,"formality":60,"colorHarmony":90,"style":55,"model":"gemini-3.5-flash"}
+{"trial":18,"score":65,"formality":55,"colorHarmony":85,"style":50,"model":"gemini-3.5-flash"}
+{"trial":19,"score":68,"formality":65,"colorHarmony":90,"style":60,"model":"gemini-3.5-flash"}
+```
+
+**성공/실패 회차 분리**: 20회 전부 `evaluatedCount=1`(후보 1/1이
+매번 실제로 평가됨, 호출 실패로 건너뛴 회차 없음) — **n=20/20
+성공, 실패 0.** 아래 통계는 이 20개 전량 위에서 계산했다(생존
+회차만으로 축소된 값이 아니다).
+
+### 요약 통계 (사전 등록 판정 기준 그대로 적용)
+
+- 총점 20개: 평균 74.55, SD 6.41(표본, n-1), 모집단 SD 6.25,
+  range 20(최솟값 65, 최댓값 85).
+- 판정(threshold=70): 20회 중 **미달(fail) 4회**(trial 8·17·18·19,
+  전부 65~68점), 통과 16회 — **뒤집힘 4회(20%)**.
+- 모델 축: `gemini-3.1-flash-lite`가 12회, `gemini-3.5-flash`가
+  8회 배정됐다(withTextModelFallback의 대체 발생 — §2가 이미
+  등록한 "모델도 고정이 아니다"가 실측으로 나타난 것). 사후
+  관찰이지만 패턴이 뚜렷하다: `flash-lite`가 나온 12회는 전부
+  72~85점(미달 0건)인 반면, `flash`가 나온 8회는 65~72점에 몰려
+  미달 4건이 전부 이쪽에서 나왔다 — **모델 축이 반복 편차의
+  상당 부분을 설명할 가능성**(확인된 인과가 아니라 사후 관측,
+  다음 조치 후보로만 등록한다).
+- **분포 모양(요약 통계로는 안 보이는 부분)**: 이봉형이 아니라
+  70 근방(65~85)에 단봉으로 몰려 있고, 최빈값은 75(6회)와
+  85(4회) 두 값 근처에 살짝 뭉쳐 있다 — "두 값 사이에서 요동"이
+  아니라 "경계 위아래로 퍼진 하나의 분포"에 더 가깝다. 다만
+  fail 4건이 전부 하위 구간(65~68)에 몰려 있어, 분포 자체는
+  단봉이어도 **판정만 놓고 보면 경계 근처의 작은 폭(65~72 구간)에서
+  통과/미달이 갈린다.**
+
+**판정(사전 등록 기준 그대로): SD(6.25~6.41) ≥ 5, 그리고 20회 중
+1회 이상(실제 4회) 판정이 갈림 — 둘 다 성립하므로 "신뢰도
+우려"로 등록한다.** §6-가가 미리 고정해 둔 해석 규칙대로, 이
+결론을 "척도가 전 구간에서 불안정하다"로 확대하지 않는다 — **이
+경계 조합(원점수 70)에서는 반복 평가 시 통과/미달이 사실상 우연에
+가깝게 갈린다**는 것이 이 결과가 실제로 보여주는 것이다.
+
+### 정리 필요 (트랙 종료 시 처리할 항목)
+
+- **익명 계정 `GCBuXhGqzHRwLeDsrRPKJoxGQmC3`** — 이번 실행이
+  만든 측정 전용 계정. `rate_limit`은 0부터 시작해 기존 사용량과
+  섞이지 않았지만, Firebase Auth에는 남아 있다. 트랙 종료 시
+  삭제 대상으로 등록해 둔다.
+- **기기에 남은 앱 없음** — `flutter test` 종료 시 앱이 제거되는
+  정상 동작(§6-가 실행 시도 1)이 이번에도 그대로 적용됐다. 이후
+  수동 확인이 필요하면 `SKIP_APPCHECK=true` 빌드를 다시 설치해야
+  한다(§3-1-4, 조치 미확정이라 이 빌드는 기본값에서 스플래시가
+  멈춘다).
+
+### 다음 단계(미실행)
+
+이 조합 하나(N=20)로 "이 경계 조합에서는 신뢰도 우려"까지는
+확정됐다. §6-가 본문이 이미 명시한 대로 다른 조합으로 일반화하지
+않는다 — 그건 4단계 이후 범위다. 사후 관측된 "모델 축이 편차를
+설명할 가능성"은 다음에 확인할 가설로만 남긴다(예: 같은 조합을
+모델 고정 상태로 재실행해 모델 자체가 변량원인지 분리).
