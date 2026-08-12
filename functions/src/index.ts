@@ -122,6 +122,19 @@ function extractUpstreamErrorMessage(rawBody: string): string {
   }
 }
 
+// docs/task_selfeval_validity_v1.md §6-가 "폴백 상태코드 규명 시도"(2026-08-12)
+// - 실패 경로의 catch-all 로거가 HttpsError.details에 이미 실려 있는
+// upstreamStatus를 안 읽어 503/429를 사후에 구분할 수 없었던 계측 공백을
+// 메운다. 값을 새로 만드는 게 아니라 이미 던져둔 details(423-429행·
+// 455-461행 등)를 읽기만 한다 - 제어 흐름은 바꾸지 않는다.
+function extractUpstreamStatus(err: unknown): number | undefined {
+  if (!(err instanceof HttpsError)) return undefined;
+  const details = err.details;
+  if (details === null || typeof details !== "object") return undefined;
+  const status = (details as {upstreamStatus?: unknown}).upstreamStatus;
+  return typeof status === "number" ? status : undefined;
+}
+
 // reqId/startedAt는 계측용 상관 키 - callGeminiText의 시작 로그와 같은
 // 키로 묶여야 여러 요청이 겹칠 때(동시 사용자·재시도) 어느 시작에 어느
 // 완료/abort가 대응하는지 알 수 있다(handoff_2026-08-08 "업스트림 이미지
@@ -520,9 +533,18 @@ export const callGeminiText = onCall(
       // 어느 쪽이든 "왜 끝났는지"가 이 한 줄에 남아야 한다.
       const code = err instanceof HttpsError ? err.code : "unknown";
       const message = err instanceof Error ? err.message : String(err);
+      // upstreamStatus가 있으면 성공 로그와 같은 키로, 같은 위치
+      // (outcome= 바로 뒤)에 싣는다 - 나중에 outcome 무관하게 같은
+      // 쿼리로 집계할 수 있어야 한다(§6-가 참고, 위 extractUpstreamStatus).
+      // 없는 경우(예: unauthenticated/invalid-argument처럼 업스트림까지
+      // 못 간 실패)는 필드 자체를 생략한다 - 없는 값을 자리표시자로
+      // 채우지 않는다.
+      const upstreamStatus = extractUpstreamStatus(err);
       console.log(
         `[callGeminiText] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
-          `outcome=error code=${code} message=${message}`
+          "outcome=error " +
+          (upstreamStatus !== undefined ? `upstreamStatus=${upstreamStatus} ` : "") +
+          `code=${code} message=${message}`
       );
       throw err;
     }
@@ -791,9 +813,14 @@ export const generateFittingImage = onCall(
     } catch (err) {
       const code = err instanceof HttpsError ? err.code : "unknown";
       const message = err instanceof Error ? err.message : String(err);
+      // callGeminiText와 같은 계측 공백 메움(§6-가 참고) - 같은 키·같은
+      // 위치, 없으면 생략.
+      const upstreamStatus = extractUpstreamStatus(err);
       console.log(
         `[generateFittingImage] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
-          `outcome=error code=${code} message=${message}`
+          "outcome=error " +
+          (upstreamStatus !== undefined ? `upstreamStatus=${upstreamStatus} ` : "") +
+          `code=${code} message=${message}`
       );
       throw err;
     }

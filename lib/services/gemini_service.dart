@@ -79,13 +79,22 @@ class GeminiService {
     try {
       return await action(_textModel);
     } on TimeoutException {
+      // docs/task_selfeval_validity_v1.md §6-가 "폴백 상태코드 규명
+      // 시도"(2026-08-12) - 이 세 분기 중 어느 것이 폴백을 유발했는지
+      // 아무 로그도 안 남아 서버 쪽(§6-가 참고)과 대칭인 계측 공백이었다.
+      // 판정 로직은 그대로 두고 로그만 추가한다.
+      debugPrint('[GEMINI] $_textModel 타임아웃 - $textModelFallback로 폴백');
       return await action(textModelFallback);
     } on GeminiApiException catch (e) {
       if (!e.isRetryable) rethrow;
+      debugPrint('[GEMINI] $_textModel 실패(statusCode=${e.statusCode}) - '
+          '$textModelFallback로 폴백');
       return await action(textModelFallback);
     } on FormatException {
       // 1차 모델이 JSON을 다 못 쓰고 잘리는 경우(_parseJsonObject 참고)도
       // 같은 모델로 재시도해봤자 또 잘릴 수 있으므로 대체 모델로 넘긴다.
+      debugPrint('[GEMINI] $_textModel 응답 파싱 실패(FormatException) - '
+          '$textModelFallback로 폴백');
       return await action(textModelFallback);
     }
   }
