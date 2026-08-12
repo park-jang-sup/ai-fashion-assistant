@@ -3551,3 +3551,93 @@ n개) 원점수에 대해 동일하게 적용한다.
   비결정성의 원인이 확정됐다"고 쓰지 않고, 계속 가설로 남긴다
   (다른 조합·다른 임계값에서 재현해야 확정에 가까워진다 — 이
   트랙 범위 밖).
+
+## §6-가 2차 측정 하네스 구현 완료 — 재사용·동일성 검증 (2026-08-12, 실행 전)
+
+새 파일 `integration_test/self_eval_model_fixed_probe.dart`를
+추가했다(§6-가 2차 측정 설계의 후보 1 + (1a)). `flutter analyze`
+통과(이슈 0).
+
+### (a) 프롬프트를 재구성하지 않았다 — 공개 함수 직접 호출
+
+하네스는 `GeminiService.analyzeOutfitFromAttributes()`(본 경로가
+프롬프트를 만드는 바로 그 공개 함수)를 `model`만 고정해 직접
+부른다. `OutfitSelfEvaluator.run()`/`GeminiService.withTextModelFallback`은
+우회하지만, 그 둘은 "어느 모델로 부를지 고르는 라우팅 계층"이지
+프롬프트를 만드는 코드가 아니다 — 프롬프트·요청 본문 구성은
+전부 `analyzeOutfitFromAttributes` 내부에 있고, 하네스는 그
+함수를 그대로 호출하므로 재구현이 아니다.
+
+**리팩터링(최소, 승인된 범위)**: 이 함수 자체는 이미 공개라 새로
+공개할 게 없었다. 대신 **조합 데이터**(`_kFixedCombo`)를
+`self_eval_repeat_probe.dart`에서 공개(`kFixedCombo`, 밑줄 제거)로
+바꾸고 새 하네스가 `import '...' show kFixedCombo`로 그대로
+가져다 쓴다 — 조합 값을 두 파일에 따로 타이핑하면 한쪽만 나중에
+고쳐 조합이 갈라질 위험이 있어(이 트랙이 이미 두 번 겪은 픽스처
+드리프트 패턴), 데이터도 재구현 금지 원칙을 적용했다. **테스트
+전용 파일 간의 리팩터링이며 `lib/`(프로덕션 코드)는 손대지
+않았다.**
+
+### (b) `parseScore()` 재사용
+
+`OutfitSelfEvaluator.parseScore()`(공개 static, §6-가 실행 시도
+8부터 이미 계획에 있던 부분)를 그대로 쓴다 — 파싱 로직 재구현
+없음.
+
+### (c) 요청 본문 동일성 — 정적 코드 대조로 확인(API 호출 없이)
+
+**방법**: API를 호출해 비교하지 않고, `gemini_service.dart`를
+읽어 `model` 파라미터가 `requestBody` 구성 어디에도 안 들어가는지
+확인했다 — 낭비 없는 대조 방법을 택하라는 요구에 맞춘 선택.
+
+**확인한 것**: `analyzeOutfitFromAttributes` 안에서 `prompt`/
+`requestBody`(`contents`/`generationConfig`)는 `items`·
+`userPhotoUrl`·`userProfile`·`recentHistoryText`·
+`isRelevanceRanked`에서만 만들어진다. `model`은 함수 맨 끝
+`_callProxyText(model: model ?? _textModel, requestBody:
+requestBody)` 호출에서 **`requestBody`와 나란한 별도 인자로만**
+쓰이고(RPC 페이로드 `{'model': model, 'requestBody': requestBody}`에서도
+형제 필드), `requestBody` 내부 어디에도 `model` 값이 흘러들어가는
+분기가 없다 — 코드에 그런 조건문 자체가 없다.
+
+**결론**: `requestBody`는 `model` 값과 무관하게 항상 동일하다.
+이 하네스와 `OutfitSelfEvaluator.run()`(`evalOne` 경유)이 둘 다
+`items=kFixedCombo` 매핑, `recentHistoryText=null`,
+`isRelevanceRanked=false`를 쓰고 `userPhotoUrl`/`userProfile`을
+안 넘기므로(`run()`이 이 값들을 안 넘긴다는 것은 §2에서 이미
+확인된 사실 — 이번에 새 하네스도 명시적으로 안 넘기게 작성했다),
+**두 경로가 만드는 요청 본문은 `model` 필드 하나만 다르고 나머지는
+항상 같다** — 런타임 대조 없이 코드 구조로 증명되는 성질이라
+API 호출을 쓰지 않았다.
+
+### (d) `flutter analyze` 통과
+
+`integration_test/self_eval_repeat_probe.dart`(조합 공개 리팩터링)·
+`integration_test/self_eval_model_fixed_probe.dart`(신규) 둘 다
+포함해 `flutter analyze` 이슈 0.
+
+### 구현 요약 — 설계와 일치하는지 재확인
+
+- 정지 규칙: 조건 F `min(성공 20, 호출 50)`, 조건 L `min(성공
+  20, 호출 25)` — 회차 시작 전 "이 회차가 최악(재시도 포함 2회)을
+  써도 상한을 안 넘는지"를 먼저 확인해(`callsUsed + 2 <= maxCalls`)
+  **상한을 절대 넘지 않도록** 구현했다(설계 문서의 "최대 +1회차
+  초과 가능"이라는 느슨한 표현보다 엄격하게 구현함 — 상한을 지금
+  코드로 보장한다).
+- 버킷 분리: 조건마다 `signOut()` 후 `signInAnonymously()`로 새
+  uid를 받는다(§6-가 2차 측정 설계가 "구현 시점에 결정"으로 남겨둔
+  두 방식 중 이쪽을 택함 — 별도 `flutter test` 실행 대신 한 번의
+  빌드·설치로 두 조건을 다 돈다).
+- 재시도 정책: 같은 모델로 최대 1회, `TimeoutException`/
+  `GeminiApiException.isRetryable`/`FormatException`만 재시도
+  대상 — `withTextModelFallback`과 판정 기준은 같고 "다른 모델로"
+  대신 "같은 모델로"만 다르다.
+- 실패 기록: `errorKind`에 `GeminiApiException`이면 `statusCode`를
+  포함해 남긴다(§6-가 폴백 상태코드 규명 시도가 열어 둔 배포된
+  서버 로깅과 나란히, 클라이언트에서도 조건 F 실패 시 503/429를
+  직접 볼 수 있다).
+- 출력: `[MODELFIX_RESULT]`(회차별)·`[MODELFIX_SUMMARY]`(조건별
+  집계 — 성공 점수 목록·실패 사유 목록·호출 소비량 포함) 두
+  종류로 남긴다.
+
+**아직 실행하지 않았다** — 다음은 사용자 확인 후 빌드·설치·실행.

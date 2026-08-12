@@ -62,7 +62,13 @@ const int _kRepeatCount = 20;
 // tools/eval_harness_selfeval/answer_key/pairs_answer_key.json의 p007
 // 왼쪽 조합을 그대로 옮긴 것 - 옷장 조회 없이 이 값만으로 조합을
 // 구성한다(위 파일 헤더 설계 변경 1) 참고).
-final List<WardrobeItem> _kFixedCombo = [
+//
+// [2026-08-12] 공개(밑줄 제거) - self_eval_model_fixed_probe.dart(§6-가
+// 2차 측정)가 같은 조합을 재구성 없이 그대로 가져다 쓴다. 데이터를
+// 두 곳에 따로 타이핑하면 나중에 한쪽만 고쳐 조합이 갈라질 위험이
+// 있다 - 재구현 금지 원칙(§6-가 "하네스 위치 결정")을 조합 데이터에도
+// 적용한다.
+final List<WardrobeItem> kFixedCombo = [
   WardrobeItem(
     id: '6vVNoavk5DLduhTNKu0d',
     imageUrl: '',
@@ -143,10 +149,10 @@ void main() {
 
     // ignore: avoid_print
     print('[REPEAT] 고정 조합(하드코딩): '
-        '${_kFixedCombo.map((it) => '${it.category}:${it.id}').toList()}');
+        '${kFixedCombo.map((it) => '${it.category}:${it.id}').toList()}');
 
     for (var i = 0; i < _kRepeatCount; i++) {
-      final match = OutfitMatch(_kFixedCombo);
+      final match = OutfitMatch(kFixedCombo);
       try {
         // enableRepair 기본값 false, recentHistoryText 기본값 없음 -
         // §6-가/A-3이 요구하는 조건 통제를 인자를 안 주는 것으로 그대로
