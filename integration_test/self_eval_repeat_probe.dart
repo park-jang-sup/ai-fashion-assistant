@@ -59,14 +59,20 @@ void main() {
   testWidgets('self-eval 반복 일관성 하네스 (N=20, 고정 조합)', (tester) async {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-    // main.dart(AiFashionAssistantApp)는 currentUser를 동기로 읽지 않고
-    // authStateChanges() 스트림을 StreamBuilder로 기다린다(로딩 스피너 →
-    // 로그인/앱 분기) - 로컬 세션 복원이 비동기이기 때문이다. 이 하네스가
-    // 초기화 직후 currentUser를 동기로 읽으면 그 복원과 경합해 실제로는
-    // 로그인돼 있어도 null을 관측할 수 있다(§6-가 실행 시도 1~4가 겪은
-    // 것과 부합) - main.dart와 같은 방식으로 첫 이벤트를 기다린다.
-    final firstAuthState = await FirebaseAuth.instance.authStateChanges().first;
-    final uid = firstAuthState?.uid;
+    // [정정, §6-가 실행 시도 5] authStateChanges().first도 null로
+    // 정착하는 것을 실측했다 - 경쟁 조건이 스트림 자체가 아니라 그
+    // 스트림의 "첫" 이벤트 신뢰 여부에 있었다. firebase_auth 플러그인은
+    // 네이티브 세션 복원이 끝나기 전에 placeholder로 null을 먼저 흘려
+    // 보내고, 복원이 끝나면 두 번째 이벤트로 실제 사용자를 낼 수 있다
+    // (알려진 동작 - main.dart의 StreamBuilder는 이 문제를 겪지 않는데,
+    // UI가 계속 리빌드되며 나중 이벤트를 자연히 받기 때문이다). 첫
+    // 이벤트가 아니라 짧게 폴링해 currentUser가 안정적으로 채워지길
+    // 기다린다.
+    String? uid = FirebaseAuth.instance.currentUser?.uid;
+    for (var i = 0; i < 10 && uid == null; i++) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      uid = FirebaseAuth.instance.currentUser?.uid;
+    }
     // ignore: avoid_print
     print('[REPEAT] 로그인 uid: $uid');
     expect(uid, isNotNull, reason: '기기에 로그인된 세션이 필요합니다(main.dart와 같은 지속성 의존).');

@@ -65,12 +65,20 @@ void main() async {
     // §3-1-1). 즉 이 커밋은 App Check를 작동시키는 커밋이 아니라 작동시킬
     // 수 있게 만드는 커밋이다. 실제 활성화 조건과 강제(enforce) 보류 사유는
     // docs/task_hardening_v2.md §3-1-3 참고.
-    await FirebaseAppCheck.instance.activate(
-      androidProvider:
-          kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
-      appleProvider:
-          kReleaseMode ? AppleProvider.appAttest : AppleProvider.debug,
-    );
+    // [진단 전용, docs/task_selfeval_validity_v1.md §6-가 진단 C]
+    // --dart-define=SKIP_APPCHECK=true로 빌드하면 이 activate() 호출을
+    // 건너뛴다 - 스플래시 정지가 이 호출과 인과가 있는지 이분법으로
+    // 확인하기 위한 임시 플래그다. 기본값 false라 일반 빌드에는 영향
+    // 없음. 원인이 확정되면 이 플래그와 분기를 제거한다.
+    const skipAppCheck = bool.fromEnvironment('SKIP_APPCHECK');
+    if (!skipAppCheck) {
+      await FirebaseAppCheck.instance.activate(
+        androidProvider:
+            kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
+        appleProvider:
+            kReleaseMode ? AppleProvider.appAttest : AppleProvider.debug,
+      );
+    }
   }
 
   // [검증 전용] --dart-define=RUN_SIMILARITY_CHECK=true 로 빌드했을 때만 실행.
