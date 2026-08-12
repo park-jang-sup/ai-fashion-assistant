@@ -3610,6 +3610,67 @@ requestBody)` 호출에서 **`requestBody`와 나란한 별도 인자로만**
 항상 같다** — 런타임 대조 없이 코드 구조로 증명되는 성질이라
 API 호출을 쓰지 않았다.
 
+## §6-가 2차 측정 하네스 [정정 2026-08-12] — (c) 검증이 확인하지 않은 것: 인자 전수 대조
+
+**[정정] 위 (c)는 "`model` 인자가 `requestBody` 구성에 관여하지
+않는다"만 확인했다 — 이건 애초에 걱정거리가 아니었다(코드에
+`model`을 조건으로 쓰는 분기 자체가 없다는 걸 보이는 것은
+쉽다). 확인하지 않고 넘어간 진짜 위험은 따로 있었다: **1차
+하네스는 `OutfitSelfEvaluator.run()`을 통째로 불러서 `run()`이
+채워 넣는 인자가 자동으로 맞았지만, 2차 하네스는 한 층 아래
+(`analyzeOutfitFromAttributes`)를 직접 부르므로 `run()`이 대신
+채워주던 인자를 하네스가 손으로 전부 채워야 한다.** 하나라도
+기본값이 달랐다면 두 경로가 다른 프롬프트를 보냈을 것이다 — 이
+정정은 그걸 놓치지 않았는지 인자 전수로 대조한다(§2 기록 원칙
+11번, 원문은 지우지 않는다).**
+
+### (a) `analyzeOutfitFromAttributes()` 전체 매개변수 목록
+
+`gemini_service.dart:637-647` 기준, 7개 전부:
+
+| 순번 | 이름 | 타입 | 기본값 |
+|---|---|---|---|
+| 1 | `items` | `List<({String category, ClothingAttributes attributes})>` | 필수(기본값 없음) |
+| 2 | `userPhotoId` | `String?` | `null` |
+| 3 | `userPhotoUrl` | `String?` | `null` |
+| 4 | `userProfile` | `UserProfile?` | `null` |
+| 5 | `recentHistoryText` | `String?` | `null` |
+| 6 | `isRelevanceRanked` | `bool` | `false` |
+| 7 | `model` | `String?` | `null` |
+
+### (b) `run()`(경유 `evalOne`) vs 새 하네스 — 인자별 대조표
+
+`run()`이 실제로 넘기는 값은 `outfit_self_evaluator.dart:150-157`의
+`evalOne` 호출부에서 확인(1차 하네스는 `OutfitSelfEvaluator.run([match])`를
+추가 인자 없이 부르므로, `run()` 자체의 `recentHistoryText`/
+`isRelevanceRanked`도 각각 기본값 `null`/`false`를 그대로 씀 —
+`outfit_self_evaluator.dart:102-118` 시그니처 확인).
+
+| 매개변수 | `run()`이 넘기는 값(경유 `evalOne`) | 새 하네스가 넘기는 값 | 일치? |
+|---|---|---|---|
+| `items` | `combo.items.map((it) => (category: it.category, attributes: it.attributes!)).toList()` | `kFixedCombo.map((it) => (category: it.category, attributes: it.attributes!)).toList()` | **일치**(같은 매핑 코드, 같은 `kFixedCombo` 원본) |
+| `userPhotoId` | 안 넘김 → `null` | 안 넘김 → `null` | **일치** |
+| `userPhotoUrl` | 안 넘김 → `null` | 안 넘김 → `null` | **일치** |
+| `userProfile` | 안 넘김 → `null` | 안 넘김 → `null` | **일치** |
+| `recentHistoryText` | `recentHistoryText`(`run()`의 파라미터, 1차 하네스가 안 넘겨 기본값 `null`) | `null`(명시) | **일치** |
+| `isRelevanceRanked` | `isRelevanceRanked`(`run()`의 파라미터, 기본값 `false`) | `false`(명시) | **일치** |
+| `model` | `withTextModelFallback`이 고르는 값(`_textModel`='gemini-3.5-flash' 우선, 재시도 가능 오류 시 `textModelFallback`='gemini-3.1-flash-lite') | 조건 F: `'gemini-3.5-flash'` 고정 / 조건 L: `'gemini-3.1-flash-lite'` 고정 | **의도된 유일한 차이** — 하네스 상수(`_kModelF`/`_kModelL`)가 `gemini_service.dart`의 `_textModel`/`textModelFallback` 리터럴 문자열과 정확히 같음을 대조·확인 |
+
+**결과: 불일치 0건.** `model`을 뺀 6개 매개변수 전부 일치하고,
+`model`은 이 측정이 의도적으로 통제하는 유일한 변수다. §2 조건도
+충돌 없이 함께 성립한다(사전 등록된 `recentHistoryText=null`·
+`isRelevanceRanked=false`가 `run()`의 기본 동작과 정확히 같은
+값이었다).
+
+### (c) 조치
+
+불일치가 없었으므로 하네스 수정은 필요 없다. **이 정정 자체가
+조치다** — (a)(b)가 이번에 새로 확인한 근거이고, 위 "(c) 요청
+본문 동일성" 절의 결론("두 경로가 만드는 요청 본문은 `model`
+필드 하나만 다르고 나머지는 항상 같다")은 유지되지만, 이제
+그 근거가 "코드에 `model` 조건 분기가 없다"뿐 아니라 "그 외
+6개 매개변수도 값까지 전수 일치한다"로 보강됐다.
+
 ### (d) `flutter analyze` 통과
 
 `integration_test/self_eval_repeat_probe.dart`(조합 공개 리팩터링)·
