@@ -2848,3 +2848,114 @@ uid·다른 프로젝트의 같은 시간대 트래픽과 비교해야 가를 �
 이 절은 설계·사전 등록까지다. 구현(후보 1의 하네스 수정 —
 `integration_test/self_eval_repeat_probe.dart` 또는 새 파일)과
 실기기 실행은 **사용자 승인 후에만** 한다.
+
+## §6-가 폴백 상태코드 규명 시도 — 미확정, 계측 공백 둘 확인 (2026-08-12)
+
+**목적**: §6-가 프록시 로그 대조가 폴백을 유발한 예외가
+`GeminiApiException`(503 또는 429)임을 좁혔으나 정확한 상태코드는
+못 가렸다. 503(업스트림 혼잡, 못 고침, 논문 5.21절과 같은 축일
+가능성)과 429(우리 쪽 할당량, 하네스 자신의 호출 패턴이 측정
+대상을 오염시킨 것)는 2차 측정 설계의 방향을 정반대로 가른다.
+경로 (a)~(c)를 순서대로 확인했다.
+
+### (a) 서버 로그 — `upstreamStatus`가 실패 경로에서 안 찍힌다(계측 공백, 확인함)
+
+`functions/src/index.ts`의 실패 분기(`!upstream.ok`, 두 곳:
+비스트리밍 423-429·스트리밍 455-461)는 `HttpsError("internal",
+message, {upstreamStatus: upstream.status, upstreamMessage:
+message})`로 **상태코드를 `details`에 실어 던진다** — 값 자체는
+서버가 그 순간에 갖고 있다. 그런데 이 값을 실제로 로그에 찍는
+코드가 없다. `callGeminiText`·`generateFittingImage` 둘 다 같은
+구조의 catch-all 로거를 쓴다(`callGeminiText` 518-528,
+`generateFittingImage` 791-799):
+
+```ts
+} catch (err) {
+  const code = err instanceof HttpsError ? err.code : "unknown";
+  const message = err instanceof Error ? err.message : String(err);
+  console.log(`[...] done reqId=${reqId} ... outcome=error code=${code} message=${message}`);
+  throw err;
+}
+```
+
+`err.details`를 아예 읽지 않는다 — `HttpsError.details`는 실제
+읽기 가능한 필드다(`firebase-functions` 타입 선언
+`readonly details: unknown` 확인, `functions/node_modules/
+firebase-functions/lib/common/providers/https.d.ts:201`). 반면
+**성공 경로는 `upstreamStatus`를 명시적으로 찍는다**(`callGeminiText`
+433-435, `generateFittingImage` 786-788 — "성공 경로에는 전례가
+있다"는 지적과 일치, reqId=`90ad4194` 기록이 그 전례). **결론:
+이건 우리가 못 가린 게 아니라 애초에 안 찍혀 있었다** — 실패
+분기만 상태코드를 빠뜨리는 비대칭적 계측 공백이다. 이번
+12건이 지난 일이라 이 공백을 지금 메워도 소급 복구는 안 된다.
+
+### (b) 클라이언트 로그 — `GeminiApiException.toString()`도 statusCode를 안 보여준다(계측 공백, 확인함)
+
+`GeminiApiException`(`gemini_service.dart`의
+`gemini_api_exception.dart`)은 `statusCode` 필드를 갖고
+`isRetryable`도 그 값으로 판정하지만, `toString()`은
+`'Gemini API 오류: $message'`만 반환한다 — **statusCode가
+문자열 표현에 없다.** 이 예외를 실제로 잡는 자리
+(`gemini_service.dart:83-85`, `withTextModelFallback`의
+`on GeminiApiException catch (e) { if (!e.isRetryable) rethrow;
+return await action(textModelFallback); }`)는 폴백 여부만 판단할
+뿐 아무것도 로그에 남기지 않는다 — 이번 12건이 성공적으로
+폴백됐으므로 이 조용한 경로를 탔고, `evalOne`의 바깥 `catch`
+(`outfit_self_evaluator.dart:162-166`, `debugPrint('[SELF-EVAL]
+Gemini 호출 실패: $e')`)까지 예외가 전파되지도 않았다(폴백이
+성공해 예외 자체가 삼켜짐). **결론: 클라이언트 쪽에도 이 12건의
+statusCode를 담은 로그가 존재하지 않는다** — (a)와 같은 성격의
+공백이 클라이언트에도 대칭으로 있다.
+
+### (c) Gemini API 콘솔(`Default Gemini Project`, 983770466004) — 접근 불가, 등록만
+
+이 세션의 도구로는 접근할 수단이 없다: `gcloud` CLI 미설치
+확인(`command not found`), 저장된 OAuth 인증(`~/.config/gcloud`)
+없음, 브라우저 자동화 도구 미연결(이번 환경에 `claude-in-chrome`
+활성 세션 없음), 우리가 가진 서비스 계정 키(Firestore Admin SDK용,
+`ai-fashion-assistant-personal` 프로젝트)는 별개 프로젝트인
+`Default Gemini Project`(983770466004)에 권한이 없다 — 두 프로젝트가
+다르다는 것 자체가 이미 이 트랙 문서(§0 인접, `handoff_2026-08-07.md`
+기본 정보)에 등록돼 있다. `task_hardening_v2.md` §3-1(항목 4)도
+같은 종류의 콘솔 확인을 **"코드가 아니라 콘솔 확인 — 사용자
+몫"**으로 명시적으로 분류해 둔 전례가 있다 — 이번에도 같은 성격의
+확인이라 같은 결론이다. **사용자에게 지금 콘솔을 확인해 달라고
+요청하지 않는다**(이 절은 등록만) — 필요해지면(예: 429로 밝혀져야만
+풀리는 설계 분기에 실제로 부딪히면) 그때 별도로 요청할 항목으로만
+남긴다.
+
+### 결론 — 미확정, 원인으로 확정하지 않는다
+
+(a)·(b)·(c) 전부 확정에 실패했다 — **503인지 429인지는 미확정으로
+남긴다.** 추정으로 하나를 고르지 않는다. 2차 측정 설계(§6-가 2차
+측정 설계)는 이 미확정을 전제로 두 분기 다 대비해야 한다 — 아래
+2단계에서 이어 다룬다.
+
+**부수 발견 — 계측 공백 자체를 결함으로 등록(수정 안 함)**:
+(a)·(b)가 드러낸 "실패 경로만 상태코드를 안 남긴다"는 비대칭은
+이 트랙(자기 평가) 범위 밖의 서버·클라이언트 공통 관측성 결함이다
+— `docs/handoff_2026-08-07.md` §4 결함표에 별도 행으로 등록한다
+(아래 커밋에 포함).
+
+### 부수 확인 — 자기 평가 1회가 실제로 몇 회 호출을 쓰는가
+
+`handoff_2026-08-07.md`(640행)의 "분석 1회 실행이 본 호출 +
+자기평가로 2건을 쓴다"는 기록은 **앱의 "코디 분석하기" UI 흐름**
+(본 호출 44,810B + 자기평가 5,864B 페어)을 가리킨다 — 이 하네스와는
+다른 경로다. 코드로 확인: `OutfitSelfEvaluator.run()`(하네스가
+직접 부르는 유일한 진입점)의 `evalOne`은
+`GeminiService.withTextModelFallback`을 통해
+`analyzeOutfitFromAttributes` **하나만** 호출한다 — "본 호출"에
+해당하는 별도 함수 호출이 코드 경로 어디에도 없다(`run()`은
+`userPhotoUrl`/`userProfile`을 아예 안 넘긴다는 것도 §2에서 이미
+확인된 사실). 즉 **"분석 1회=본호출+자기평가 2건" 배수는 이
+하네스에 적용되지 않는다** — 이 하네스의 배수는 오직 모델 폴백
+여부에서만 나온다.
+
+실측(§6-가 프록시 로그 대조에서 이미 확보한 원자료 재확인):
+20회의 `REPEAT_RESULT` = 32건의 실제 `callGeminiText` 호출
+(직접 성공 8건×1호출 + 폴백 12건×2호출 = 8+24=32) — **"40~60회"라는
+우려는 확인 결과 해당하지 않는다.** 첫 호출 시작(`08:07:45.283Z`)부터
+마지막 호출 종료(`08:12:44.448Z`)까지 299.16초에 32건이므로,
+**평균 호출 밀도는 약 9.3초당 1건**(0.107회/초)이다 — 이 값을
+2단계 설계의 "호출 간격" 논의에 그대로 쓴다.
