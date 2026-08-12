@@ -68,8 +68,17 @@ void main() async {
     // [진단 전용, docs/task_selfeval_validity_v1.md §6-가 진단 C]
     // --dart-define=SKIP_APPCHECK=true로 빌드하면 이 activate() 호출을
     // 건너뛴다 - 스플래시 정지가 이 호출과 인과가 있는지 이분법으로
-    // 확인하기 위한 임시 플래그다. 기본값 false라 일반 빌드에는 영향
-    // 없음. 원인이 확정되면 이 플래그와 분기를 제거한다.
+    // 확인하기 위한 임시 플래그였다. 기본값 false라 일반 빌드에는 영향
+    // 없음.
+    //
+    // [2026-08-12] 이분법 결과 activate()가 스플래시 정지의 원인으로
+    // 확정됐다(docs/task_hardening_v2.md §3-1-4). 하지만 이 activate()
+    // 호출 자체는 여전히 기본값(skipAppCheck=false)에서 앱을 막는
+    // 상태 그대로다 - 세 조치 후보(디버그 토큰 등록 / fire-and-forget
+    // 전환 / 디버그 빌드에서 생략) 중 아무것도 아직 결정되지 않았다.
+    // 그래서 이 플래그를 지금 지우지 않는다 - 지우면 진단 이전 상태
+    // (막힘)로 그냥 돌아갈 뿐이다. §3-1-4가 조치를 확정하면 그때
+    // 이 플래그와 분기를 정리한다.
     const skipAppCheck = bool.fromEnvironment('SKIP_APPCHECK');
     if (!skipAppCheck) {
       await FirebaseAppCheck.instance.activate(
