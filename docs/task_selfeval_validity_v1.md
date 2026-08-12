@@ -2649,6 +2649,12 @@ UTC+9 → `08:05:58Z`)를 확인해 이번 설치가 대상 커밋의 새 빌드
   만든 측정 전용 계정. `rate_limit`은 0부터 시작해 기존 사용량과
   섞이지 않았지만, Firebase Auth에는 남아 있다. 트랙 종료 시
   삭제 대상으로 등록해 둔다.
+- **[2026-08-12 추가] 익명 계정 4개(§6-가 2차 측정, 블록 교차
+  실행)** — 블록마다 새로 만든 uid: `7EhOla25H6ZT33GWNENilGnsmiY2`
+  (F1), `nB3ansQmVWZaQ38opZPOox3Xr7h1`(L1),
+  `Hk8WGwrtkBQK304AHTmUsqPzC7H3`(F2),
+  `02PYOZolOcd2O6o6VWdAoi6yR1W2`(L2). 위와 같은 이유로 삭제하지
+  않고 트랙 종료 시 일괄 삭제 대상으로만 등록한다.
 - **기기에 남은 앱 없음** — `flutter test` 종료 시 앱이 제거되는
   정상 동작(§6-가 실행 시도 1)이 이번에도 그대로 적용됐다. 이후
   수동 확인이 필요하면 `SKIP_APPCHECK=true` 빌드를 다시 설치해야
@@ -3807,3 +3813,205 @@ maxCalls`를 다시 확인해 재시도가 상한을 넘기지 않을 때만
 타임아웃 수정(위 (a)) 외에는 대기 중인 변경이 없다.
 
 `flutter analyze` 재확인 통과(이슈 0).
+
+## §6-가 2차 측정 실행 결과 (2026-08-12)
+
+### 실행 환경·절차
+
+- **절전 설정**: `adb shell svc power stayon usb`로 충전 중 화면
+  유지 적용(`mStayOnWhilePluggedInSetting`이 `2`로 바뀜을 확인).
+  측정 완료 후 `adb shell svc power stayon false`로 원복
+  (`mStayOnWhilePluggedInSetting=0`으로 되돌아옴을 확인). 실행
+  전 기기 재연결(사용자 확인, `R3CW10DF8CW`).
+- **빌드·설치**: `flutter build apk --debug`(대상 커밋 `96d02b0`)
+  → `adb install -r`(설치 완료 `2026-08-12T13:47:50Z` 확인 시점).
+  `lastUpdateTime=2026-08-12 22:47:42`(기기 로컬, UTC+9 →
+  `13:47:42Z`) — 설치 직후 시각과 일치, **대조 통과**.
+- **실행**: `flutter test integration_test/self_eval_model_fixed_probe.dart
+  -d R3CW10DF8CW`를 `tee`로 로그 저장하며 백그라운드 실행.
+  **총 소요 4분 24초**(`13:48:59Z` 첫 호출 시작 ~ `13:53:21Z`
+  마지막 호출 종료, 테스트 프레임워크 표시 `04:24`) — 사전
+  계산한 현실적 최악(32.5분)에도 한참 못 미쳤다. 중단 없이
+  `All tests passed!`로 완주, 재실행 불필요.
+- **실패 0건**: 두 조건 40회차(F 20 + L 20) 전부 1차 시도에서
+  성공했다 — 재시도가 단 한 번도 발동하지 않았다. **1차 측정이
+  겪은 60% 폴백률(§6-가 프록시 로그 대조)과 정반대로, 이번
+  실행 구간은 업스트림이 조용했다.** 실패가 없었으므로
+  **503/429 상태코드 규명은 이번에도 못 했다** — 인위로 실패를
+  만들지 않았고(금지 사항), 자연 발생 실패도 없었다. 미확정
+  그대로 남는다.
+
+### 원자료 — 조건·블록별 전량 (재현 코드 원칙, §2 원칙 12번)
+
+```
+[MODELFIX_RESULT] {"condition":"F","block":1,"model":"gemini-3.5-flash","uid":"7EhOla25H6ZT33GWNENilGnsmiY2","trialIndexInBlock":0,"score":72,"callsUsedThisTrial":1,"callsUsedConditionCumulative":1,"startedAt":"2026-08-12T13:48:59.464224Z","endedAt":"2026-08-12T13:49:11.343913Z"}
+[MODELFIX_RESULT] {"condition":"F","block":1,"model":"gemini-3.5-flash","uid":"7EhOla25H6ZT33GWNENilGnsmiY2","trialIndexInBlock":1,"score":72,"callsUsedThisTrial":1,"callsUsedConditionCumulative":2,"startedAt":"2026-08-12T13:49:11.347621Z","endedAt":"2026-08-12T13:49:21.931298Z"}
+[MODELFIX_RESULT] {"condition":"F","block":1,"model":"gemini-3.5-flash","uid":"7EhOla25H6ZT33GWNENilGnsmiY2","trialIndexInBlock":2,"score":65,"callsUsedThisTrial":1,"callsUsedConditionCumulative":3,"startedAt":"2026-08-12T13:49:21.931968Z","endedAt":"2026-08-12T13:49:30.423566Z"}
+[MODELFIX_RESULT] {"condition":"F","block":1,"model":"gemini-3.5-flash","uid":"7EhOla25H6ZT33GWNENilGnsmiY2","trialIndexInBlock":3,"score":72,"callsUsedThisTrial":1,"callsUsedConditionCumulative":4,"startedAt":"2026-08-12T13:49:30.424249Z","endedAt":"2026-08-12T13:49:39.989284Z"}
+[MODELFIX_RESULT] {"condition":"F","block":1,"model":"gemini-3.5-flash","uid":"7EhOla25H6ZT33GWNENilGnsmiY2","trialIndexInBlock":4,"score":72,"callsUsedThisTrial":1,"callsUsedConditionCumulative":5,"startedAt":"2026-08-12T13:49:39.990315Z","endedAt":"2026-08-12T13:49:51.193730Z"}
+[MODELFIX_RESULT] {"condition":"F","block":1,"model":"gemini-3.5-flash","uid":"7EhOla25H6ZT33GWNENilGnsmiY2","trialIndexInBlock":5,"score":65,"callsUsedThisTrial":1,"callsUsedConditionCumulative":6,"startedAt":"2026-08-12T13:49:51.196030Z","endedAt":"2026-08-12T13:49:59.969103Z"}
+[MODELFIX_RESULT] {"condition":"F","block":1,"model":"gemini-3.5-flash","uid":"7EhOla25H6ZT33GWNENilGnsmiY2","trialIndexInBlock":6,"score":72,"callsUsedThisTrial":1,"callsUsedConditionCumulative":7,"startedAt":"2026-08-12T13:49:59.970885Z","endedAt":"2026-08-12T13:50:09.716889Z"}
+[MODELFIX_RESULT] {"condition":"F","block":1,"model":"gemini-3.5-flash","uid":"7EhOla25H6ZT33GWNENilGnsmiY2","trialIndexInBlock":7,"score":75,"callsUsedThisTrial":1,"callsUsedConditionCumulative":8,"startedAt":"2026-08-12T13:50:09.718519Z","endedAt":"2026-08-12T13:50:20.704308Z"}
+[MODELFIX_RESULT] {"condition":"F","block":1,"model":"gemini-3.5-flash","uid":"7EhOla25H6ZT33GWNENilGnsmiY2","trialIndexInBlock":8,"score":70,"callsUsedThisTrial":1,"callsUsedConditionCumulative":9,"startedAt":"2026-08-12T13:50:20.706112Z","endedAt":"2026-08-12T13:50:30.992082Z"}
+[MODELFIX_RESULT] {"condition":"F","block":1,"model":"gemini-3.5-flash","uid":"7EhOla25H6ZT33GWNENilGnsmiY2","trialIndexInBlock":9,"score":70,"callsUsedThisTrial":1,"callsUsedConditionCumulative":10,"startedAt":"2026-08-12T13:50:30.994203Z","endedAt":"2026-08-12T13:50:42.033026Z"}
+[MODELFIX_RESULT] {"condition":"L","block":1,"model":"gemini-3.1-flash-lite","uid":"nB3ansQmVWZaQ38opZPOox3Xr7h1","trialIndexInBlock":0,"score":85,"callsUsedThisTrial":1,"callsUsedConditionCumulative":1,"startedAt":"2026-08-12T13:50:42.896868Z","endedAt":"2026-08-12T13:50:45.352773Z"}
+[MODELFIX_RESULT] {"condition":"L","block":1,"model":"gemini-3.1-flash-lite","uid":"nB3ansQmVWZaQ38opZPOox3Xr7h1","trialIndexInBlock":1,"score":85,"callsUsedThisTrial":1,"callsUsedConditionCumulative":2,"startedAt":"2026-08-12T13:50:45.353748Z","endedAt":"2026-08-12T13:50:47.672224Z"}
+[MODELFIX_RESULT] {"condition":"L","block":1,"model":"gemini-3.1-flash-lite","uid":"nB3ansQmVWZaQ38opZPOox3Xr7h1","trialIndexInBlock":2,"score":75,"callsUsedThisTrial":1,"callsUsedConditionCumulative":3,"startedAt":"2026-08-12T13:50:47.673775Z","endedAt":"2026-08-12T13:50:49.980084Z"}
+[MODELFIX_RESULT] {"condition":"L","block":1,"model":"gemini-3.1-flash-lite","uid":"nB3ansQmVWZaQ38opZPOox3Xr7h1","trialIndexInBlock":3,"score":75,"callsUsedThisTrial":1,"callsUsedConditionCumulative":4,"startedAt":"2026-08-12T13:50:49.984078Z","endedAt":"2026-08-12T13:50:52.473826Z"}
+[MODELFIX_RESULT] {"condition":"L","block":1,"model":"gemini-3.1-flash-lite","uid":"nB3ansQmVWZaQ38opZPOox3Xr7h1","trialIndexInBlock":4,"score":75,"callsUsedThisTrial":1,"callsUsedConditionCumulative":5,"startedAt":"2026-08-12T13:50:52.475327Z","endedAt":"2026-08-12T13:50:54.787979Z"}
+[MODELFIX_RESULT] {"condition":"L","block":1,"model":"gemini-3.1-flash-lite","uid":"nB3ansQmVWZaQ38opZPOox3Xr7h1","trialIndexInBlock":5,"score":75,"callsUsedThisTrial":1,"callsUsedConditionCumulative":6,"startedAt":"2026-08-12T13:50:54.790237Z","endedAt":"2026-08-12T13:50:57.100099Z"}
+[MODELFIX_RESULT] {"condition":"L","block":1,"model":"gemini-3.1-flash-lite","uid":"nB3ansQmVWZaQ38opZPOox3Xr7h1","trialIndexInBlock":6,"score":75,"callsUsedThisTrial":1,"callsUsedConditionCumulative":7,"startedAt":"2026-08-12T13:50:57.101258Z","endedAt":"2026-08-12T13:50:59.580636Z"}
+[MODELFIX_RESULT] {"condition":"L","block":1,"model":"gemini-3.1-flash-lite","uid":"nB3ansQmVWZaQ38opZPOox3Xr7h1","trialIndexInBlock":7,"score":75,"callsUsedThisTrial":1,"callsUsedConditionCumulative":8,"startedAt":"2026-08-12T13:50:59.581907Z","endedAt":"2026-08-12T13:51:02.239645Z"}
+[MODELFIX_RESULT] {"condition":"L","block":1,"model":"gemini-3.1-flash-lite","uid":"nB3ansQmVWZaQ38opZPOox3Xr7h1","trialIndexInBlock":8,"score":85,"callsUsedThisTrial":1,"callsUsedConditionCumulative":9,"startedAt":"2026-08-12T13:51:02.241714Z","endedAt":"2026-08-12T13:51:04.536961Z"}
+[MODELFIX_RESULT] {"condition":"L","block":1,"model":"gemini-3.1-flash-lite","uid":"nB3ansQmVWZaQ38opZPOox3Xr7h1","trialIndexInBlock":9,"score":75,"callsUsedThisTrial":1,"callsUsedConditionCumulative":10,"startedAt":"2026-08-12T13:51:04.538149Z","endedAt":"2026-08-12T13:51:08.631060Z"}
+[MODELFIX_RESULT] {"condition":"F","block":2,"model":"gemini-3.5-flash","uid":"Hk8WGwrtkBQK304AHTmUsqPzC7H3","trialIndexInBlock":0,"score":72,"callsUsedThisTrial":1,"callsUsedConditionCumulative":11,"startedAt":"2026-08-12T13:51:09.406996Z","endedAt":"2026-08-12T13:51:21.831527Z"}
+[MODELFIX_RESULT] {"condition":"F","block":2,"model":"gemini-3.5-flash","uid":"Hk8WGwrtkBQK304AHTmUsqPzC7H3","trialIndexInBlock":1,"score":70,"callsUsedThisTrial":1,"callsUsedConditionCumulative":12,"startedAt":"2026-08-12T13:51:21.832768Z","endedAt":"2026-08-12T13:51:32.191990Z"}
+[MODELFIX_RESULT] {"condition":"F","block":2,"model":"gemini-3.5-flash","uid":"Hk8WGwrtkBQK304AHTmUsqPzC7H3","trialIndexInBlock":2,"score":65,"callsUsedThisTrial":1,"callsUsedConditionCumulative":13,"startedAt":"2026-08-12T13:51:32.193391Z","endedAt":"2026-08-12T13:51:43.094259Z"}
+[MODELFIX_RESULT] {"condition":"F","block":2,"model":"gemini-3.5-flash","uid":"Hk8WGwrtkBQK304AHTmUsqPzC7H3","trialIndexInBlock":3,"score":72,"callsUsedThisTrial":1,"callsUsedConditionCumulative":14,"startedAt":"2026-08-12T13:51:43.095667Z","endedAt":"2026-08-12T13:51:56.778815Z"}
+[MODELFIX_RESULT] {"condition":"F","block":2,"model":"gemini-3.5-flash","uid":"Hk8WGwrtkBQK304AHTmUsqPzC7H3","trialIndexInBlock":4,"score":70,"callsUsedThisTrial":1,"callsUsedConditionCumulative":15,"startedAt":"2026-08-12T13:51:56.780024Z","endedAt":"2026-08-12T13:52:05.826360Z"}
+[MODELFIX_RESULT] {"condition":"F","block":2,"model":"gemini-3.5-flash","uid":"Hk8WGwrtkBQK304AHTmUsqPzC7H3","trialIndexInBlock":5,"score":72,"callsUsedThisTrial":1,"callsUsedConditionCumulative":16,"startedAt":"2026-08-12T13:52:05.827747Z","endedAt":"2026-08-12T13:52:17.849047Z"}
+[MODELFIX_RESULT] {"condition":"F","block":2,"model":"gemini-3.5-flash","uid":"Hk8WGwrtkBQK304AHTmUsqPzC7H3","trialIndexInBlock":6,"score":72,"callsUsedThisTrial":1,"callsUsedConditionCumulative":17,"startedAt":"2026-08-12T13:52:17.850348Z","endedAt":"2026-08-12T13:52:27.128927Z"}
+[MODELFIX_RESULT] {"condition":"F","block":2,"model":"gemini-3.5-flash","uid":"Hk8WGwrtkBQK304AHTmUsqPzC7H3","trialIndexInBlock":7,"score":62,"callsUsedThisTrial":1,"callsUsedConditionCumulative":18,"startedAt":"2026-08-12T13:52:27.132456Z","endedAt":"2026-08-12T13:52:37.345585Z"}
+[MODELFIX_RESULT] {"condition":"F","block":2,"model":"gemini-3.5-flash","uid":"Hk8WGwrtkBQK304AHTmUsqPzC7H3","trialIndexInBlock":8,"score":68,"callsUsedThisTrial":1,"callsUsedConditionCumulative":19,"startedAt":"2026-08-12T13:52:37.346743Z","endedAt":"2026-08-12T13:52:47.458594Z"}
+[MODELFIX_RESULT] {"condition":"F","block":2,"model":"gemini-3.5-flash","uid":"Hk8WGwrtkBQK304AHTmUsqPzC7H3","trialIndexInBlock":9,"score":65,"callsUsedThisTrial":1,"callsUsedConditionCumulative":20,"startedAt":"2026-08-12T13:52:47.459784Z","endedAt":"2026-08-12T13:52:56.355368Z"}
+[MODELFIX_RESULT] {"condition":"L","block":2,"model":"gemini-3.1-flash-lite","uid":"02PYOZolOcd2O6o6VWdAoi6yR1W2","trialIndexInBlock":0,"score":85,"callsUsedThisTrial":1,"callsUsedConditionCumulative":11,"startedAt":"2026-08-12T13:52:57.228352Z","endedAt":"2026-08-12T13:52:59.658070Z"}
+[MODELFIX_RESULT] {"condition":"L","block":2,"model":"gemini-3.1-flash-lite","uid":"02PYOZolOcd2O6o6VWdAoi6yR1W2","trialIndexInBlock":1,"score":85,"callsUsedThisTrial":1,"callsUsedConditionCumulative":12,"startedAt":"2026-08-12T13:52:59.659319Z","endedAt":"2026-08-12T13:53:01.926568Z"}
+[MODELFIX_RESULT] {"condition":"L","block":2,"model":"gemini-3.1-flash-lite","uid":"02PYOZolOcd2O6o6VWdAoi6yR1W2","trialIndexInBlock":2,"score":85,"callsUsedThisTrial":1,"callsUsedConditionCumulative":13,"startedAt":"2026-08-12T13:53:01.927639Z","endedAt":"2026-08-12T13:53:04.182396Z"}
+[MODELFIX_RESULT] {"condition":"L","block":2,"model":"gemini-3.1-flash-lite","uid":"02PYOZolOcd2O6o6VWdAoi6yR1W2","trialIndexInBlock":3,"score":75,"callsUsedThisTrial":1,"callsUsedConditionCumulative":14,"startedAt":"2026-08-12T13:53:04.184375Z","endedAt":"2026-08-12T13:53:06.407756Z"}
+[MODELFIX_RESULT] {"condition":"L","block":2,"model":"gemini-3.1-flash-lite","uid":"02PYOZolOcd2O6o6VWdAoi6yR1W2","trialIndexInBlock":4,"score":85,"callsUsedThisTrial":1,"callsUsedConditionCumulative":15,"startedAt":"2026-08-12T13:53:06.409335Z","endedAt":"2026-08-12T13:53:09.528131Z"}
+[MODELFIX_RESULT] {"condition":"L","block":2,"model":"gemini-3.1-flash-lite","uid":"02PYOZolOcd2O6o6VWdAoi6yR1W2","trialIndexInBlock":5,"score":75,"callsUsedThisTrial":1,"callsUsedConditionCumulative":16,"startedAt":"2026-08-12T13:53:09.529565Z","endedAt":"2026-08-12T13:53:12.137001Z"}
+[MODELFIX_RESULT] {"condition":"L","block":2,"model":"gemini-3.1-flash-lite","uid":"02PYOZolOcd2O6o6VWdAoi6yR1W2","trialIndexInBlock":6,"score":75,"callsUsedThisTrial":1,"callsUsedConditionCumulative":17,"startedAt":"2026-08-12T13:53:12.138520Z","endedAt":"2026-08-12T13:53:14.280399Z"}
+[MODELFIX_RESULT] {"condition":"L","block":2,"model":"gemini-3.1-flash-lite","uid":"02PYOZolOcd2O6o6VWdAoi6yR1W2","trialIndexInBlock":7,"score":85,"callsUsedThisTrial":1,"callsUsedConditionCumulative":18,"startedAt":"2026-08-12T13:53:14.281587Z","endedAt":"2026-08-12T13:53:17.059944Z"}
+[MODELFIX_RESULT] {"condition":"L","block":2,"model":"gemini-3.1-flash-lite","uid":"02PYOZolOcd2O6o6VWdAoi6yR1W2","trialIndexInBlock":8,"score":85,"callsUsedThisTrial":1,"callsUsedConditionCumulative":19,"startedAt":"2026-08-12T13:53:17.061567Z","endedAt":"2026-08-12T13:53:19.324580Z"}
+[MODELFIX_RESULT] {"condition":"L","block":2,"model":"gemini-3.1-flash-lite","uid":"02PYOZolOcd2O6o6VWdAoi6yR1W2","trialIndexInBlock":9,"score":75,"callsUsedThisTrial":1,"callsUsedConditionCumulative":20,"startedAt":"2026-08-12T13:53:19.325847Z","endedAt":"2026-08-12T13:53:21.788164Z"}
+[MODELFIX_SUMMARY] {"condition":"F","model":"gemini-3.5-flash","successCount":20,"targetSuccesses":20,"callsUsed":20,"maxCalls":50,"capReached":false,"failureCount":0,"failureReasons":[],"scores":[72,72,65,72,72,65,72,75,70,70,72,70,65,72,70,72,72,62,68,65]}
+[MODELFIX_SUMMARY] {"condition":"L","model":"gemini-3.1-flash-lite","successCount":20,"targetSuccesses":20,"callsUsed":20,"maxCalls":25,"capReached":false,"failureCount":0,"failureReasons":[],"scores":[85,85,75,75,75,75,75,75,85,75,85,85,85,75,85,75,75,85,85,75]}
+```
+
+**성공/실패 분리**: 조건 F 20/20 성공(실패 0), 조건 L 20/20
+성공(실패 0) — 정지 규칙(F≤50, L≤25)에 훨씬 못 미치는 호출
+20건씩만으로 각 조건의 목표(20)를 채웠다(`capReached: false`
+둘 다).
+
+### 조건별 통계 — 고유값·도수분포·평균·SD·range·뒤집힘
+
+| 조건 | n | 평균 | 표본 SD | range(최소~최대) | 고유값 개수 | 도수분포 | 미달(<70) |
+|---|---|---|---|---|---|---|---|
+| F(`gemini-3.5-flash`) | 20 | **69.65** | **3.45** | 13(62~75) | 6 | 62×1, 65×4, 68×1, 70×4, 72×9, 75×1 | **6/20(30%)** |
+| L(`gemini-3.1-flash-lite`) | 20 | **79.5** | **5.10** | 10(75~85) | 2 | 75×11, 85×9 | 0/20(0%) |
+
+**F의 평균(69.65)이 임계값(70) 바로 아래다** — 모델을
+`gemini-3.5-flash`로 고정하면 이 조합은 평균적으로도 미달
+경계에 있다는 뜻이다.
+
+**SD 문턱(5) 판정 — 갈린다**: F는 3.45로 문턱 미만, **L은 5.10로
+문턱을 살짝 넘는다.** 1차 자료의 근사(within SD≈5.2)·실측
+역산(pooled SD≈4.42) 둘 다 "두 조건 다 5 미만일 가능성"을
+암시했지만, 2차 실측은 조건별로 쪼개 보니 L만 문턱을 넘었다 —
+**둘을 하나의 공통 SD로 가정한 1차의 사후 역산이 정확하지
+않았다는 뜻이다**(사후 설명을 짓지 않는다 — 그냥 이 차이를
+관측으로 남긴다).
+
+### Welch's t-test·95% CI·관측 검정력 (사전 등록된 방법 그대로)
+
+- **Welch's t-test**: t = −7.15, df = 33.38(Satterthwaite),
+  **p ≈ 3.2×10⁻⁸**(< 0.0001).
+- **평균차(L−F) = 9.85점, 표준오차 1.378, 95% 신뢰구간
+  [7.05, 12.65].**
+- **관측 SD 기준 달성 검정력**(비중심 t분포, 관측된 두 조건
+  SD·df 그대로 사용): **≈ 99.99997%**(사실상 100%에 가깝다) —
+  사전 등록된 개선안 3(관측 검정력·95% CI 병기)을 그대로
+  적용했다.
+- **Cohen's d(합동 SD 4.358 기준) ≈ 2.26** — 매우 큰 효과 크기.
+  1차 자료 기반 사전 예측(Δ≈9.46, pooled SD≈4.42, d≈2.14)과
+  근접하다(아래 "사전 예측 대조" 참고).
+- **보조 검정(Mann-Whitney U, 순위 기반 — 판정 근거로는 안 씀,
+  교차 확인용)**: U = 5.5, p ≈ 7.1×10⁻⁸ — Welch와 결론이 일치한다.
+
+### 2×2 판정표 — 어느 칸인가
+
+**행(SD 문턱) 판정**: F<5, **L≥5** → "어느 한쪽이든 SD≥5" 행.
+**열(평균차 유의성) 판정**: p≈3.2×10⁻⁸ < 0.05 → "p<0.05" 열.
+
+**→ 셀 (다): "척도 자체도 불안정하고 라우팅 편향도 있다."**
+사전 등록된 서술 그대로 적용한다 — **두 원인이 공존하는
+경우이며, 이 설계로는 어느 쪽이 주된 기여인지 가르지 못한다.**
+개선안 3(관측 검정력·95% CI)은 위에 이미 병기했다.
+
+**셀 판정에 대한 관측(확대 해석 아님)**: L의 SD(5.10)는 문턱(5)을
+근소하게 넘겼다 — 관측 하나만 다르게 나왔어도 (가) 셀(조건 내
+안정)로 갈렸을 수 있는 경계값이다. 그렇다고 이 셀 판정을 사후에
+(가)로 바꾸지 않는다 — **사전 등록된 문턱은 결과를 보고 나서
+조정하지 않는다**는 원칙을 그대로 지킨다. 다만 이 근접성 자체는
+해석에 참고할 관측으로 남긴다.
+
+### 이산 앵커 — 도수분포가 다시 보여주는 것
+
+L은 이번에도 고유값 2개(75·85)뿐이고 10점 격차의 두 값 사이에서
+11:9로 갈렸다 — 1차(75·85, 8:4)와 같은 두 앵커, 다른 비율. 이번
+L의 SD가 문턱을 넘긴 것 자체가 바로 이 "10점 격차의 두 값
+사이에서 거의 반반으로 갈리는" 구조에서 나온 것이다(§6-가 2차
+측정 설계 "이산성 보완" (b)가 예견한 메커니즘과 부합 — 다만 그
+절의 트리거 규칙(SD<5인데 이산성 때문에 안정으로 오독하는 경우)은
+이번엔 해당하지 않는다. L의 SD가 이미 5 이상으로 나와 "불안정"
+쪽으로 정확히 분류됐기 때문이다 — 이산성이 SD를 과소평가하게
+만든 게 아니라 SD를 문턱 위로 밀어 올린 사례다).
+
+### (c) 검증 — 조건 F가 68·72 근방 앵커에 몰리는가: 부분 일치, 확대 해석 안 함
+
+1차(n=8)의 F 고유값은 `{65, 68, 72}` 세 개였다. 2차(n=20)의 F
+고유값은 `{62, 65, 68, 70, 72, 75}` **여섯 개**로 늘었다.
+
+- **일치하는 부분**: `72`가 이번에도 압도적 최빈값이다(9/20,
+  45%) — 1차에서도 최빈값(4/8, 50%)이었다. `68`도 이번에 다시
+  등장했다(1/20).
+- **어긋나는 부분**: 1차엔 없던 `62`·`70`·`75`가 새로 나타났다
+  — 특히 `70`(정확히 임계값과 같은 값!)이 4/20(20%)으로 꽤
+  자주 나왔다. 1차의 세 앵커만으로 수렴한다는 그림과는 안
+  맞는다.
+- **결론(가설은 확정하지 않는다)**: "몇 개의 고정된 서사로
+  수렴한다"는 그림은 부분적으로만 맞는다 — `72`가 강한 단일
+  최빈값이라는 점은 재현됐지만, 전체 분포는 1차보다 **넓어졌다**
+  (고유값 3→6개). §6-가 2차 측정 설계의 등록된 해석 규칙("넓게
+  퍼지면 1차의 이산성은 작은 표본이 만든 우연일 가능성이
+  커진다")을 적용하면, **1차의 정확히 세 값(65·68·72)이라는
+  그림은 작은 표본(n=8)이 만든 우연에 가까웠던 것으로 보이지만,
+  "이산적이고 소수의 값에 쏠린다"는 더 일반적인 성질 자체는
+  6개 값·20개 관측에서도 여전히 유지된다**(20개 관측에 6개
+  값뿐이고 그중 하나가 45%를 차지 — 연속분포라면 나오기 어려운
+  쏠림). 가설을 확정하지 않는다.
+
+### 블록 간 드리프트 점검 (확정 아님, 관측만)
+
+| 조건 | 블록1 평균(SD) | 블록2 평균(SD) | 차이(2−1) | Welch p(블록간) |
+|---|---|---|---|---|
+| F | 70.5(3.21) | 68.8(3.65) | −1.7 | 0.283 |
+| L | 78.0(4.83) | 81.0(5.16) | +3.0 | 0.196 |
+
+두 조건 다 블록 간 차이가 통계적으로 유의하지 않다(p>0.19) —
+**시간대 교란이 뚜렷하게 남아 있다는 증거는 이번 실행에서는
+안 보인다.** 다만 블록당 n=10으로 검정력이 낮아(§6-가 2차 측정
+설계 (B)의 검출력 표 기준, n=10/그룹이면 20/그룹보다 MDE가
+√2배 커진다) **"차이 없음"이 아니라 "이 표본 크기로는 뚜렷한
+드리프트를 못 봤다"는 수준으로만 읽는다.** 전체 실행이 4분
+24초로 매우 짧게 끝난 것(1차의 5분 3초와 비슷한 규모)도 시간대
+교란이 컸다면 나타났을 조건이 애초에 약했다는 정황과 맞는다 —
+**업스트림이 이번 실행 구간 내내 조용했다**는 위 "실패 0건"
+관측과 같은 방향이다.
+
+### 사전 예측치 대조 (참값 아님, 관측만 — 어긋나도 사후 설명 안 지음)
+
+| 항목 | 1차 근사(§6-가 2차 측정 (B) 정정) | 1차 원자료 직접계산 | 2차 실측 | 근접도 |
+|---|---|---|---|---|
+| μ_F | 70(가정값) | 68.875 | **69.65** | 근접(원자료 계산과 0.78 차이) |
+| μ_L | 77.58 | 78.33 | **79.5** | 근접(원자료 계산과 1.17 차이) |
+| Δ(L−F) | 7.58 | 9.46 | **9.85** | 원자료 계산과 매우 근접(0.39 차이) |
+| 조건 내 SD(공통 가정) | 5.23 | 4.42(합동) | F=3.45, L=5.10(합동 4.36) | 합동값은 근접(4.42 vs 4.36), 개별 조건은 갈림(F<L) |
+
+전반적으로 1차의 **원자료 직접계산**(근사치가 아니라 8·12건의
+실측 그룹 평균에서 나온 값)이 근사치보다 2차 실측에 더 가까웠다
+— 특히 Δ(9.46 vs 9.85)와 합동 SD(4.42 vs 4.36)는 거의 일치한다.
+다만 **조건별로 SD가 다르다**(F 3.45 ≠ L 5.10)는 것은 1차의
+어느 추정치도 몰랐던 부분이다 — 1차는 공통 "조건 내 SD" 하나로
+뭉뚱그렸는데, 실제로는 조건마다 다르다(이것이 Welch's t-test를
+쓴 원래 근거 — 등분산 가정을 안 한 것 — 를 실측으로 뒷받침한다).
