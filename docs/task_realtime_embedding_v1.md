@@ -886,3 +886,107 @@ torchvision으로 리사이즈한다, 기본값 `antialias=True`.** 즉 §10의
 `embeddingspike` 코드베이스 임시 등록, (3) `firebase deploy
 --only functions:embeddingspike` 실행. **배포 명령 자체는 실행
 직전에 다시 한번 확인받는다**(금지 사항).
+
+## 14. 배포 직전 마지막 로컬 측정 — torchvision 직접 호출 변형 (2026-08-13)
+
+**동기**: §11(추가 로컬 측정)이 병목을 `transformers` 패키지
+자체(임포트 + `CLIPProcessor.from_pretrained()`)로 좁혔다. 우리가
+`transformers`에서 실제로 쓰는 건 `CLIPImageProcessor`(정확한
+설정값은 이미 코드로 확인됨, §9/§11) 하나뿐이고, §11(a)가 원인을
+`torchvision.transforms.v2.functional.resize(antialias=True)`로
+이미 지목했다 — **`transformers`를 거치지 않고 그 함수를 직접
+부르면 파리티가 나올 개연성이 있다는 뜻**이므로 "미검증 후보"가
+아니라 "이제 검증 가능해진 후보"다.
+
+**판정 기준(결과 보기 전 고정, 낮추지 않는다)**: 5건 전부
+코사인 유사도 **≥ 0.9999997**(§11이 실제로 도달한 수준)이면
+"파리티 통과" → 콜드스타트를 마저 측정한다. **하나라도 미달이면
+그 자리에서 폐기** — 원인을 더 파지 않고 검증된 경로
+(`CLIPProcessor`+`onnxruntime`)로 스파이크한다. 이 트랙은 변형을
+**하나만** 만든다.
+
+### (a) 전처리 로직 — 코드에서 그대로 옮김(기억·문서 참조 아님)
+
+`image_processing_backends.py`의 `get_resize_output_image_size`와
+`TorchvisionBackend.center_crop`을 이번에 다시 직접 읽고, **§10에서
+놓쳤던 세부 사항 하나를 더 발견했다**:
+
+```python
+# get_resize_output_image_size — 반올림(round)이 아니라 절삭(int)이다
+new_short, new_long = requested_new_short, int(requested_new_short * long / short)
+```
+```python
+# TorchvisionBackend.center_crop — 여기도 절삭(int)이다
+crop_top = int((image_height - crop_height) / 2.0)
+crop_left = int((image_width - crop_width) / 2.0)
+```
+
+§10의 수작업 구현은 두 곳 다 `round()`를 썼다 — 안티앨리어싱
+유무(§11(a)가 이미 지목)에 더해 **반올림/절삭 차이도 있었다**는
+뜻이다. 이번 변형은 리사이즈를 `tvF.resize(..., interpolation=
+BICUBIC, antialias=True)`로, 크롭 좌표 계산을 `int()` 절삭으로,
+전부 이 코드 그대로 옮겼다.
+
+### (b)(c) 실행 결과 — 파리티 통과, 콜드스타트는 경계선
+
+**파리티(같은 5건, 같은 선정 규칙)**:
+
+| 카테고리 | itemId | 코사인 유사도 | 판정 |
+|---|---|---|---|
+| 상의 | `09v2UrBJX8GmeqMs5IBz` | 0.9999997920 | PASS |
+| 신발 | `2efbE3mfLC08D3OlEQDK` | 0.9999997579 | PASS |
+| 아우터 | `665OXTTw9jJB8uCxWfPf` | 1.0000001374 | PASS |
+| 액세서리 | `08IS2RoIPQgmoEsxbSeP` | 0.9999998861 | PASS |
+| 하의 | `0PGRnY39FstR95fRVNTZ` | 0.9999999435 | PASS |
+
+**5건 전부 목표(≥0.9999997) 통과.** §14(a)에서 코드로 다시 확인한
+두 가지(안티앨리어싱 + 절삭 반올림)를 정확히 반영하니 §11(c)와
+같은 수준(§9 수준)으로 재현됐다 — 가설이 실측으로 재확정됐다.
+
+**콜드스타트(새 프로세스 3회, `transformers` 임포트 없음)**:
+
+| # | import torch | import torchvision | import onnxruntime | 세션 로드 | 첫 추론 | 콜드스타트 총합 |
+|---|---|---|---|---|---|---|
+| 1 | 1.847s | 1.488s | 0.082s | 0.608s | 0.124s | **4.829s** |
+| 2 | 2.190s | 1.734s | 0.083s | 0.649s | 0.239s | **5.215s** |
+| 3 | 1.684s | 1.650s | 0.057s | 0.621s | 0.243s | **4.545s** |
+
+3회 평균 **~4.86초**. RSS 685.8~686.5MB(측정 시점).
+
+**§7·§10·§11·§14 종합 비교표**:
+
+| 경로 | 콜드스타트(3회 평균) | 벡터 정확성 | RSS |
+|---|---|---|---|
+| §7 torch+transformers(`CLIPModel`+`CLIPProcessor`) | ~11.5초 | 기준(정의상 정확) | ~772MB |
+| §10 onnxruntime+수작업 PIL 전처리 | ~1.23초 | **틀림**(§11에서 확인, 0.995~0.999) | ~434MB |
+| §11 onnxruntime+`CLIPProcessor`("검증된 경로") | ~10.1~10.7초(§11 격리 측정) | ✅ ≥0.9999997 | ~414~434MB |
+| **§14 onnxruntime+torchvision 직접 호출** | **~4.86초** | ✅ ≥0.9999997 | ~686MB |
+
+**판정(§7 기준, 5초/20초 문턱)**: 3회 중 2회(4.83초, 4.55초)는
+5초 미만, 1회(5.22초)는 5초를 살짝 넘었다 — **평균은 5초 문턱
+바로 아래(~4.86초)지만 개별 회차가 경계를 넘나든다.** 이걸
+"5초 미만 구간"으로 깔끔하게 분류하지 않는다 — 검증된 경로
+(~10.1~10.7초)보다는 명백히 가볍지만, §10이 보여줬던 극적인
+개선(9.4배)에는 못 미친다(실제 개선은 §7 대비 ~2.4배). `torch`+
+`torchvision` 임포트(합계 ~3.2~3.9초)가 남은 콜드스타트의
+대부분을 차지한다 — `transformers`를 걷어냈지만 `torch` 생태계
+자체의 임포트 비용은 못 없앴다(§12가 이미 예고한 대로).
+
+**RSS는 오히려 올라갔다**(686MB vs §11의 414~434MB) — `torchvision`
+자체의 런타임 오버헤드로 보인다(확정 안 함, 원인 조사는 범위 밖).
+
+### 스파이크 대상 확정
+
+**torchvision 직접 호출 변형으로 스파이크한다.** 근거: 파리티
+통과(재구현 위험 해소), 로컬 콜드스타트가 검증된 경로 대비
+확실히 가볍다(~10.4초→~4.86초, 개선은 있으나 §10이 보여준
+것만큼 극적이지 않다는 점을 감안해도 순방향). §7의 원칙("로컬로
+클라우드를 추정하지 않는다")에 따라 이 로컬 수치 자체로 최종
+결론을 내리지 않는다 — 클라우드 스파이크가 실제 값을 낸다.
+
+**스파이크에 실을 것**: 이 트랙에서 검증한 `preprocess_torchvision`
+(torch+torchvision 직접 호출, `transformers` 미사용) + ONNX 이미지
+인코더(§10(a) 산출물과 동일 구조) + onnxruntime 추론. §13 설계의
+의존성 패키지 행을 `onnxruntime`+`torch`+`torchvision`+`numpy`+
+`pillow`로 갱신한다(`transformers` 제외 — §13 작성 시점엔 아직
+검증된 경로만 알려져 있었다).
