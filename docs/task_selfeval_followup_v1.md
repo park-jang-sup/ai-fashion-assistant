@@ -722,10 +722,13 @@ as bool? ?? false`가 `false`로 복원한다 — **읽기 경로 기준으로�
 - **반복 재설치 시 App Check 거동** — 이번 검증은 단일 설치·단일
   기동이었다. `task_hardening_v2.md` §3-1-4의 "반복 재설치가
   트리거였을 수 있다" 가설은 확인도 반증도 안 됐다.
-- **503/429 상태코드** — 이번 실기기 검증에서 자연 발생 폴백
-  (속성 추출 단계, 503 1건 관측)이 있었지만 자기평가 경로가
-  아니었다(§8 부수 관찰). `task_selfeval_validity_v1.md` §6-가가
-  남긴 미확정은 그대로다.
+- **503/429 상태코드 — [갱신, 2026-08-13, §11]** 이번 실기기
+  검증에서 자연 발생한 폴백(속성 추출 단계, `extractAttributes`)의
+  서버 로그(`upstreamStatus`)를 대조해 **503임을 실측으로 확정**했다
+  (§11 참고, 자기평가 경로는 아님). **429는 여전히 미확정**(관측
+  기회 없음, 표본 1건이라 503만 나고 429는 안 난다고 확정하지도
+  않는다). `task_selfeval_validity_v1.md` §6-가의 미확정 서술은
+  그 문서에서 직접 고치지 않았다(이번 등록지는 이 문서).
 - **자기 수리 재평가의 판정 유보 흐름 실측** — 코드·단위 테스트로만
   확인했고 실기기에서 관찰하지 못했다(§8 (e)).
 - **최종 추천 선택의 라우팅 편향(§9 (b))** — 결함으로 등록만 했고
@@ -840,3 +843,118 @@ northeast3`, `min_instances=0`)로 서버에서 자동으로 도는 구조다
 
 **이 단계는 인계 기록까지다.** 조사·구현은 사용자 승인 후 별도
 트랙에서 시작한다.
+
+## 11. 자연 발생 폴백 상태코드 규명 (2026-08-13, 무료, 사용자 개입 없음)
+
+**목적**: §8 정상 경로 회귀 검증 중 자연 발생한 폴백 2건(인위 유발
+아님)의 서버 쪽 `upstreamStatus` 로그를 대조해, (i) 2026-08-12에
+배포한 `upstreamStatus` 로깅이 실제로 작동하는지, (ii)
+`task_selfeval_validity_v1.md` §6-가가 미확정으로 남긴 503/429
+상태코드 질문에 답이 되는지 확인한다. **인위로 실패를 만들지
+않았다** — §8에서 이미 자연 발생한 것을 사후에 서버 로그로만
+대조했다.
+
+### (a) 구간 특정
+
+§8 기록: 설치 완료 `2026-08-13T02:33:35Z`, 새 옷 등록 흐름 실행
+`~02:33Z~02:41Z`(기기 로컬 11:33~11:41 KST). 클라이언트 로그의
+두 폴백 이벤트: `11:40:26.418`(FormatException), `11:41:01.967`
+(statusCode=503) — 기기 로컬(UTC+9) 기준이므로 UTC로는 각각
+`02:40:26Z`, `02:41:01Z` 부근.
+
+### (b)(c) `firebase functions:log --only callGeminiText`로 대조 — 로깅 작동 확인, 상태코드 확정
+
+같은 구간의 서버 로그를 조회했다(재현 코드 원칙 — 명령 그대로):
+`firebase functions:log --only callGeminiText -n 500`.
+
+**이벤트 1(클라이언트: FormatException, `11:40:26.418`) — 503/429와
+무관함을 확정.**
+
+```
+02:40:06.296Z [callGeminiText] start reqId=9a25a0d1 model=gemini-3.5-flash requestBytes=99273
+02:40:26.377Z [callGeminiText] done  reqId=9a25a0d1 elapsedMs=20080 outcome=success upstreamStatus=200 responseBytes=905
+02:40:26.931Z [callGeminiText] start reqId=dcbdbbf3 model=gemini-3.1-flash-lite requestBytes=99273  ← 폴백
+02:40:28.001Z [callGeminiText] done  reqId=dcbdbbf3 elapsedMs=1070  outcome=success upstreamStatus=200 responseBytes=904
+```
+
+주 모델 호출(`9a25a0d1`)이 **`upstreamStatus=200`(성공)** 으로
+끝났다 — 업스트림 오류가 아니다. 이 요청은 `requestBytes=99273`
+(이미지 포함 큰 페이로드)로 `extractSizeFromChart`(사이즈표
+OCR, `wardrobe_screen.dart:118`, 1단계 (b)가 이미 "자기평가와
+무관"으로 분류한 호출자)와 일치한다. `gemini_service.dart:638`의
+`_parseJsonObject`가 `FormatException('응답에서 JSON 객체를 찾을
+수 없습니다: ...')`을 던지는 지점이 이 함수의 유일한 발생원이다
+— 즉 **Gemini는 200으로 정상 응답했으나 그 응답 텍스트에 파싱
+가능한 JSON이 없어 클라이언트가 실패로 처리**했다는 뜻이다.
+`withTextModelFallback`의 `on FormatException` 분기(재시도
+가능 오류로 간주해 대체 모델로 넘어감)가 정확히 이 상황을
+위해 존재한다(주석 참고: "1차 모델이 JSON을 다 못 쓰고 잘리는
+경우"). **이 이벤트는 503/429 질문과 무관하다** — 애초에
+업스트림 오류가 아니었다.
+
+**이벤트 2(클라이언트: `statusCode=503`, `11:41:01.967`) —
+503으로 확정.**
+
+```
+02:40:35.500Z [callGeminiText] start reqId=3eb7943c model=gemini-3.5-flash requestBytes=45920
+02:41:01.941Z [callGeminiText] done  reqId=3eb7943c elapsedMs=26441 outcome=error
+                upstreamStatus=503 code=internal
+                message=This model is currently experiencing high demand. Spikes in
+                demand are usually temporary. Please try again later.
+02:41:02.566Z [callGeminiText] start reqId=94d94600 model=gemini-3.1-flash-lite requestBytes=45920  ← 폴백
+02:41:04.543Z [callGeminiText] done  reqId=94d94600 elapsedMs=1977  outcome=success upstreamStatus=200 responseBytes=1012
+```
+
+**`upstreamStatus=503`이 서버 로그에 명시적으로 찍혔다** — 이
+저장소에서 503/429 논쟁을 실측으로 종결한 첫 사례다. 클라이언트
+로그(`[GEMINI] gemini-3.5-flash 실패(statusCode=503) - ...`,
+`e.statusCode`에서 나온 값)와 서버 로그(`upstreamStatus=503`)가
+서로 독립적으로 일치한다. 이 요청은 `requestBytes=45920`으로
+`[RECOMMEND] 속성 추출 시작`(`11:40:34.698`)~`완료`(`11:41:04.566`)
+구간에 걸려 있어 `extractAttributes`(`agent_planner.dart:807`,
+1단계 (b)의 "자기평가와 무관" 분류 대상)와 일치한다 — **자기평가
+(`OutfitSelfEvaluator`) 호출이 아니다.** 다만 `withTextModelFallback`/
+`GeminiApiException.isRetryable`은 6개 호출자 전부가 공유하는
+동일한 메커니즘이므로(1단계 (b) 전수 확인), 어느 호출자에서
+관측되든 "503/429 중 어느 쪽이 재시도를 유발하는가"라는 질문
+자체에는 동일하게 답이 된다.
+
+**(c) 의미 등록**:
+- **503 = 업스트림(Gemini) 혼잡.** 메시지("high demand...")가
+  그대로 이를 말한다. 우리가 고칠 수 있는 종류의 오류가 아니고,
+  폴백이 정확히 설계된 대로 작동해 26.4초 실패 후 2초 안에 대체
+  모델로 복구했다 — **폴백이 제 역할을 한 사례로 등록한다.**
+- 429는 이번 관측 대상이 아니었다 — **429가 아예 발생하지 않는다는
+  뜻은 아니다**(표본 1건). 429가 나오면 그 함의(우리 쪽 할당량
+  — 대량 이미지 처리를 전제하는 임베딩 작업 설계에 직접 영향)는
+  다음에 429가 실제로 관측될 때 등록한다.
+- `task_selfeval_validity_v1.md` §6-가 "폴백 상태코드 규명 시도"가
+  미확정으로 남긴 질문에 대해: **이번 관측으로 503이 실제로
+  발생하는 상태코드 중 하나임이 처음으로 직접 확인됐다.** "503만
+  발생하고 429는 전혀 안 난다"까지는 확정하지 않는다(그 문서는
+  이 저장소가 손대지 않는다 — 이번 등록지는 이 문서다, 지시대로).
+
+### (d) 로깅 결함 여부 — 없음
+
+두 이벤트 모두 로깅이 정상 작동했다: 성공 라인은 `upstreamStatus=200`
+을, 실패 라인은 `upstreamStatus=503`을 빠짐없이 찍었다. 2026-08-12
+배포한 로깅에 결함을 등록할 것이 없다.
+
+### (e) 클라이언트 `[GEMINI]` 로그 — 이미 확인됨(§8에서 재조회 불필요)
+
+`logcat` 캡처 파일은 §8 정리 과정에서 이미 삭제했지만, 그 두
+줄은 삭제 전에 §8에 원문 그대로 인용해 뒀다(위 654행 부근):
+
+```
+11:40:26.418 [GEMINI] gemini-3.5-flash 응답 파싱 실패(FormatException) - gemini-3.1-flash-lite로 폴백
+11:41:01.967 [GEMINI] gemini-3.5-flash 실패(statusCode=503) - gemini-3.1-flash-lite로 폴백
+```
+
+재조회가 필요 없었다 — 이미 확인됨.
+
+### 미검증 목록 갱신
+
+`§9 (d)`의 "503/429 상태코드" 항목을 갱신한다: **미확정 → 503
+1건 실측 확정(자기평가 경로 아님, `extractAttributes`), 429는
+여전히 미확정(관측 기회 없었음).** 원문은 지우지 않고 이 절을
+참고로 남긴다.
