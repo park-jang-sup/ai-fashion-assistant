@@ -239,3 +239,113 @@ SDK 로그다.**
 **결론**: 이번 확인은 결함으로 등록할 것을 찾지 못했다 — 토큰은
 SDK 소관이고 릴리스에서는 애초에 안 찍히며, 우리 로그는 토큰을
 담지 않는다. 조치 후보 없음(등록만).
+
+## 5. 2단계 1단계 — 설계 결정 보고 (2026-08-13, 구현 안 함, 승인 대기)
+
+### (a) 점수 표시 정책
+
+**먼저 총점이 실제로 UI 어디에 노출되는지 코드로 전수 확인했다.**
+자기평가 루프(`OutfitSelfEvaluator`)는 호출자가 둘뿐이다 —
+`agent_planner.dart:435`(일정 기반 선제 추천/주간 플랜 경로) 와
+`agent_planner.dart:859`(새 옷 등록 추천 경로, `enableRepair: true`).
+**둘 다 사용자에게 노출되는 지점은 다음 세 곳으로 좁혀진다** — 그 외
+경로는 없다:
+
+1. **`agent_log_screen.dart`(활동 로그 화면) — 후보별 원점수, 매
+   후보마다.** 두 호출부의 `onStep` 콜백(`agent_planner.dart:439-459`,
+   `:866-886`)이 `'$score점 — $verdict'`(예: `72점 — 기준 통과, 채택`
+   또는 `65점 — 기준 미달`) 형태로 `AgentLogEntry.message`를 만들어
+   Firestore `agent_logs`에 쓰고, `agent_log_screen.dart:323`이
+   `event.message`를 그대로 렌더링한다. **평가된 후보 전부**(채택
+   여부와 무관)가 이 화면에 원점수와 함께 남는다 — 즉 폴백 응답으로
+   나온 점수도 지금은 다른 후보와 구분 없이 그대로 찍힌다.
+2. **같은 화면 — 진단-수리 서사에도 점수가 포함된다.**
+   `enableRepair` 경로의 `onNarrative` 콜백(`agent_planner.dart:889-900`)이
+   `outfit_self_evaluator.dart:231-232`("후보 $i: 총점 $score —
+   ${축}점수 ${값}가 원인으로 진단됐습니다")와 `:255-257`("수리 후
+   $repairedScore점 — ...")의 문장을 그대로 활동 로그에 옮긴다.
+3. **`home_screen.dart`(홈 화면 "오늘의 추천" 카드) — `fallbackNote`,
+   미달일 때만.** `agent_planner.dart:198-216`의 `buildFallbackNote`가
+   `bestScore < _lowScoreFloor`(=threshold=70)일 때만 `"...조합 궁합
+   점수가 낮아($bestScore점) 차선으로 준비했어요"`를 만들고,
+   `home_screen.dart:367-378`이 이를 렌더링한다. **통과한 조합은
+   숫자가 카드에 노출되지 않는다** — `summaryText`(모델이 쓴 서사,
+   `stripScoreLine`으로 점수 줄을 이미 제거한 텍스트)만 보인다
+   (`home_screen.dart:478-486`).
+
+**주의 — 다른 화면의 점수 배지는 이 트랙과 무관하다.** `fitting_room_screen.dart`의
+"AI 코디 분석 결과" 원형 점수 배지(1324행 부근)는 `OutfitSelfEvaluator`를
+전혀 거치지 않는다 — `fitting_job_controller.dart:92`가 직접
+`GeminiService.analyzeOutfitFromAttributesStream`(사진 버전 프롬프트,
+`_buildAttributeAnalysisPromptWithPhoto`)을 부르고, 스트리밍 실패
+시에만 `:118`에서 `withTextModelFallback`으로 폴백한다. 이 프롬프트는
+`[점수]`/`[분위기점수]`/`[분위기]` 형식으로 `threshold`·자기 수리
+개념 자체가 없는 별개 기능이다(단발 평가, 재시도 없음). 이번 결정은
+이 배지에는 적용되지 않는다 — 범위를 혼동하지 않기 위해 명시해 둔다.
+
+**두 안 비교**:
+
+| | (i) 점수 표시 유지, 수리만 미발동 | (ii) 폴백이면 점수 표시도 유보 |
+|---|---|---|
+| 활동 로그(1) | 원점수 그대로 노출, **판정 문구만** "기준 통과/미달"에서 "판정 보류(대체 모델 응답)" 등으로 교체 | 원점수 대신 "판정 불가"만 노출, 숫자 자체를 감춤 |
+| 진단 서사(2) | 폴백 응답이면 진단-수리 자체를 안 돌리므로(2단계 방침) 이 문구가 애초에 안 나옴 — 두 안 동일 | 동일 |
+| 홈 카드 fallbackNote(3) | 폴백 응답의 점수가 미달이면 지금처럼 숫자 포함 문구 노출 가능 | 폴백 응답이면 숫자를 빼고 "판정을 보류했어요" 계열 문구로 교체 |
+| 사용자 체감 | "이 조합은 대체 모델이 평가해 수리는 건너뛰었습니다"에 가까움 — 정보 손실 없음 | 화면에서 숫자가 사라지는 경우가 생김 — 기능이 줄어든 것처럼 보일 위험 |
+| 구현 비용 | 낮음 — 판정 문구 분기만 추가 | 약간 더 높음 — 숫자 표시 여부까지 조건부 처리해야 함 |
+
+**코드 확인 결과가 사용자의 잠정 판단 (i)을 뒤집을 근거는 찾지
+못했다.** 오히려 뒷받침하는 사실이 하나 나왔다 — 폴백 응답(lite)이
+관측된 범위에서 미달을 낸 적이 없으므로(1차 12/12, 2차 20/20 모두
+70 이상, 직전 트랙 확정 사실), **fallbackNote의 점수-숫자 노출(3번
+경로)은 폴백 응답에서는 실무적으로 거의 발동하지 않는다** — 그
+경로의 노출 빈도 자체가 낮아, (ii)로 얻는 이득이 이론상으로는
+있어도 실제 화면 변화는 드물 것으로 보인다. 반대로 활동 로그(1번
+경로)는 매 후보마다 항상 노출되므로 여기서 "판정 불가" 문구가
+제대로 붙는 것이 실질적으로 더 중요하다.
+
+**→ (i)로 진행할 것을 제안한다 — 승인을 요청한다.** 승인되면
+2단계 구현은: (1) 활동 로그의 판정 문구를 폴백 응답 여부에 따라
+분기(숫자는 유지), (2) 진단-수리는 폴백 응답이면 아예 진입하지
+않음(2단계 방침에 이미 포함), (3) `isFallback`/`fallbackNote`
+로직도 "폴백 응답이라 판정 불가"인 경우를 "미달"과 구분해 문구를
+따로 정한다(둘 다 숫자는 보여주되 문구가 다름 — 예: "차선으로
+준비했어요" vs "대체 모델이 평가해 판정을 보류했어요").
+
+### (b) `withTextModelFallback` 호출자 전수 확인
+
+`GeminiService.withTextModelFallback`의 실제 호출자는 코드베이스
+전체에서 **6곳**이다(주석 제외, `grep` 전수 확인):
+
+| # | 위치 | 감싸는 호출 | 자기평가와의 관계 |
+|---|---|---|---|
+| 1 | `wardrobe_screen.dart:118` | `extractSizeFromChart`(사이즈표 OCR) | 무관 |
+| 2 | `agent_planner.dart:726` | `planWeeklyOutfits`(주간 플랜 JSON 생성) | 무관 |
+| 3 | `agent_planner.dart:807` | `extractAttributes`(새 옷 등록 속성 추출) | 무관 |
+| 4 | `fitting_job_controller.dart:118` | `analyzeOutfitFromAttributes`(사진 버전, "AI 코디 분석하기" 스트리밍 실패 폴백) | 무관 — 위에서 확인한 별개 기능(`[점수]` 단일 프롬프트, threshold 없음) |
+| 5 | `fitting_job_controller.dart:194` | `extractAttributes`(동기 분석 흐름의 캐시 없는 속성 추출) | 무관 |
+| 6 | `outfit_self_evaluator.dart:147` | `analyzeOutfitFromAttributes`(속성 전용 버전, 자기평가 루프) | **이번 변경 대상** |
+
+**핵심 발견 — `withTextModelFallback` 자체를 손댈 필요가 없다.**
+`OutfitSelfEvaluator.evalOne`(`outfit_self_evaluator.dart:143-167`)은
+이미 `withTextModelFallback`에 넘기는 클로저 안에서 `usedModel =
+model`로 실제 응답 모델을 캡처하고 있고(147-159행), 그 값을
+`SelfEvalOutcome.candidateModels`에 이미 저장하고 있다(24행 필드,
+193행·252행에서 `evalResult.model`을 추가). **즉 "어느 모델이
+응답했는지 호출자가 알 수 있게 한다"는 요구사항은 함수 시그니처를
+바꾸지 않고도 이미 충족되어 있다** — `evalResult.model`(또는
+`candidateModels`의 해당 인덱스)을 `GeminiService.textModelFallback`
+(공개 상수, `'gemini-3.1-flash-lite'`)과 비교하기만 하면 "이 후보는
+폴백 응답인가"를 판정할 수 있다.
+
+**최소 변경 설계**: `withTextModelFallback`의 시그니처·동작은
+전혀 바꾸지 않는다. 변경은 `outfit_self_evaluator.dart` 내부에
+국한된다 — `evalOne`이 이미 아는 `usedModel`을 이용해 판정 분기를
+추가하고(현재 `passed = score != null && score >= threshold`인
+자리에, 폴백 응답이면 `passed`를 만들기 전에 "판정 불가" 상태로
+따로 분류), `candidateModels`는 그대로 두되 판정 결과를 표현할
+새 필드(예: `List<bool> candidateIsFallbackModel` 또는 열거형)를
+추가하는 정도로 끝난다. **위 표의 1~5번 호출자는 이 변경의 영향을
+전혀 받지 않는다** — 함수 시그니처가 그대로이므로 컴파일 타임에도
+런타임에도 부작용이 없다.
+
+여기서 멈추고 보고한다. **1단계 (a) 승인 전에는 구현하지 않는다.**
