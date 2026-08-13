@@ -65,29 +65,29 @@ void main() async {
     // §3-1-1). 즉 이 커밋은 App Check를 작동시키는 커밋이 아니라 작동시킬
     // 수 있게 만드는 커밋이다. 실제 활성화 조건과 강제(enforce) 보류 사유는
     // docs/task_hardening_v2.md §3-1-3 참고.
-    // [진단 전용, docs/task_selfeval_validity_v1.md §6-가 진단 C]
-    // --dart-define=SKIP_APPCHECK=true로 빌드하면 이 activate() 호출을
-    // 건너뛴다 - 스플래시 정지가 이 호출과 인과가 있는지 이분법으로
-    // 확인하기 위한 임시 플래그였다. 기본값 false라 일반 빌드에는 영향
-    // 없음.
     //
-    // [2026-08-12] 이분법 결과 activate()가 스플래시 정지의 원인으로
-    // 확정됐다(docs/task_hardening_v2.md §3-1-4). 하지만 이 activate()
-    // 호출 자체는 여전히 기본값(skipAppCheck=false)에서 앱을 막는
-    // 상태 그대로다 - 세 조치 후보(디버그 토큰 등록 / fire-and-forget
-    // 전환 / 디버그 빌드에서 생략) 중 아무것도 아직 결정되지 않았다.
-    // 그래서 이 플래그를 지금 지우지 않는다 - 지우면 진단 이전 상태
-    // (막힘)로 그냥 돌아갈 뿐이다. §3-1-4가 조치를 확정하면 그때
-    // 이 플래그와 분기를 정리한다.
-    const skipAppCheck = bool.fromEnvironment('SKIP_APPCHECK');
-    if (!skipAppCheck) {
-      await FirebaseAppCheck.instance.activate(
-        androidProvider:
-            kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
-        appleProvider:
-            kReleaseMode ? AppleProvider.appAttest : AppleProvider.debug,
-      );
-    }
+    // [조치 확정, 2026-08-13, docs/task_hardening_v2.md §3-1-4 +
+    // docs/task_selfeval_followup_v1.md 1단계] 이 activate() 호출이 수 분간
+    // 스플래시를 벗어나지 못하게 막는 사례가 실기기에서 관측됐다(원인은
+    // 확정하지 못함 - 디버그 App Check 공급자의 재시도·백오프가 유력한
+    // 가설이나 미확정, §3-1-4 참고). App Check 성패가 앱 기동 자체를
+    // 막는 결합을 없애기 위해 await하지 않는다(fire-and-forget). 세
+    // 조치 후보(디버그 토큰 콘솔 등록 / fire-and-forget 전환 / 디버그
+    // 빌드에서 생략) 중 fire-and-forget을 채택했다(사용자 결정 —
+    // 나머지 둘은 각각 사용자 개입·초기화 경로 분기라는 이유로
+    // 기각, §3-1-4 조치 확정 블록 참고). 실패해도 조용히 삼키지
+    // 않는다 - App Check가 실제로 걸렸는지 나중에 로그로 확인할
+    // 수 있어야 하므로 성공·실패 둘 다 로그를 남긴다.
+    unawaited(FirebaseAppCheck.instance
+        .activate(
+          androidProvider: kReleaseMode
+              ? AndroidProvider.playIntegrity
+              : AndroidProvider.debug,
+          appleProvider:
+              kReleaseMode ? AppleProvider.appAttest : AppleProvider.debug,
+        )
+        .then((_) => debugPrint('[APPCHECK] activate() 성공'))
+        .catchError((e) => debugPrint('[APPCHECK] activate() 실패(무시하고 진행): $e')));
   }
 
   // [검증 전용] --dart-define=RUN_SIMILARITY_CHECK=true 로 빌드했을 때만 실행.

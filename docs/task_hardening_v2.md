@@ -603,6 +603,30 @@ VM은 기동했으나 `runApp()`에 도달하지 못함). `--dart-define`으로
 종료됐고, 이 절은 다음에 App Check를 다시 다룰 때 참고할 등록으로
 남긴다.
 
+### [조치 확정, 2026-08-13, `docs/task_selfeval_followup_v1.md` 1단계]
+
+**fire-and-forget 전환을 채택했다(사용자 결정).** 위 세 후보 중:
+
+- **채택 — fire-and-forget 전환.** `activate()`를 `await`하지 않아
+  그 성패가 앱 기동을 막지 못하게 한다. 앱 기동이 App Check
+  성패에 묶여 있던 결합 자체를 없앤다.
+- **기각 — 디버그 토큰 콘솔 등록.** 사용자 개입이 필요하고
+  재설치마다 토큰이 바뀌는 문제가 남는다(§3-1-3 근거 3과 같은
+  계열의 위험). 기록만 남기고 채택하지 않는다.
+- **기각 — 디버그 빌드에서 생략(`SKIP_APPCHECK` 영구화).**
+  릴리스와 디버그의 초기화 경로를 갈라놓는다 — 이 트랙 자체가
+  "재빌드 대조"(검증 대상=실행 대상 일치)를 원칙으로 못 박았는데,
+  디버그에서만 다른 초기화 경로를 타면 디버그 빌드 검증이 릴리스
+  동작을 대표하지 못하게 된다. 기록만 남기고 채택하지 않는다.
+
+**조치 내용**: `lib/main.dart`의 `FirebaseAppCheck.instance.activate()`
+호출을 `unawaited(...)`로 감싸고 `.then`/`.catchError`로 성공·실패
+둘 다 로그를 남기도록 바꿨다(조용히 삼키지 않는다). **진단용
+`SKIP_APPCHECK` 플래그를 제거했다** — 이 조치(fire-and-forget)가
+플래그의 존재 이유(activate()가 앱 기동을 막는 문제)를 없앴으므로
+더 이상 우회 수단이 필요 없다. 상세 코드 근거·검증 기록은
+`docs/task_selfeval_followup_v1.md` 1단계 참고.
+
 ### 3-2. S2-a 계측 설계
 
 **6개 onCall 함수**(`callGeminiText`, `generateFittingImage`,
