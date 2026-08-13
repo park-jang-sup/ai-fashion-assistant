@@ -49,6 +49,10 @@ firebase_functions.core.init 훅으로 무거운 초기화를 감싸 로컬
 import os
 import time
 
+# 재배포용 마커(기능 무변) — 콜드스타트를 자연 스케일다운 대기 없이
+# 강제로 재현하려고 새 리비전을 만들기 위한 것뿐, 다른 설정은 전부
+# 동일하게 유지한다(§2-6 방법론). 재배포마다 값만 올린다: 3
+
 from firebase_functions import core, https_fn, options
 
 _ADMIN_SA = "firebase-adminsdk-fbsvc@ai-fashion-assistant-personal.iam.gserviceaccount.com"
