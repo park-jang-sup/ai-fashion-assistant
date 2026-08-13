@@ -1187,3 +1187,66 @@ coldstart_spike`가 만든 컨테이너 이미지가 지금도 Artifact Registry
 위 (a)~(e) 전부 **등록일 뿐, 스파이크 진행 여부에 영향을 주지
 않는다.** 스파이크는 사용자 승인대로 예정대로 진행한다 — §17
 (배포)로 넘어간다.
+
+## 17. 배포 직전 확인 (2026-08-13, 무료 — 배포 전)
+
+### (a) 호출 인증 경로 — 명령을 손에 쥔 상태로 배포에 들어간다
+
+배경 제거 스파이크가 실제로 쓴 호출 명령은 문서에 남아 있지
+않았다(`task_background_removal_v1.md`/`handoff_2026-08-04.md`
+전수 검색, 못 찾음) — **재사용할 전례 명령이 없어서 새로
+준비했다.**
+
+`invoker=[_ADMIN_SA]`(Cloud IAM 수준 제한)를 호출하려면 그
+서비스 계정 자격으로 발급된 **OIDC ID 토큰**(대상 함수 URL을
+audience로 함)이 필요하다. `gcloud` CLI가 이 환경에 없으므로
+(§15(a)에서 이미 확인), **서비스 계정 키 파일로 Python에서 직접
+ID 토큰을 발급**하는 경로를 준비했다(`google.oauth2.service_account.
+IDTokenCredentials.from_service_account_file`, `google-auth`
+라이브러리 — 이미 `firebase_admin`의 의존성으로 설치돼 있어
+추가 설치 없이 사용 가능함을 확인).
+
+**호출 스크립트를 미리 작성해 뒀다**(저장소 밖 스크래치, 배포
+후 함수 URL만 채워 넣으면 즉시 실행): 서비스 계정 키로 대상
+URL을 audience로 하는 ID 토큰을 얻어 `Authorization: Bearer`
+헤더로 POST한다.
+
+**요청 본문**: 실제 옷장 이미지 1장(§9/§11/§14 검증에 쓴 것과
+같은 상의 아이템 `09v2UrBJX8GmeqMs5IBz`, `export.py`의 다운로드
+함수로 이미 받아 로컬에 준비해 뒀다 — 27,843바이트 JPEG). 바디가
+없을 때의 1x1 JPEG 폴백(`main.py`에 이미 구현됨)은 순수 콜드스타트
+핑 전용으로 남겨 두고, 실제 측정은 이 실사진으로 한다.
+
+### (b) ONNX 모델 해시 — 배포 산출물의 동일성 기록
+
+배포할 `fashionclip_vision.onnx`(+`.onnx.data`)의 SHA-256과
+바이트 크기를 기록한다(재현 코드 원칙):
+
+```
+fashionclip_vision.onnx       sha256=0106076a0df2ce650d21a56b759d6b23477a39d6c57c5f5c4a1e7273da747288  (1,391,689 bytes)
+fashionclip_vision.onnx.data  sha256=aadf27eec3383a189090db92bb8c52bae4145d82534bfeee9be2b9a97d6f36d1  (351,404,032 bytes)
+```
+
+`export_onnx.py`(git에 커밋됨, 산출물만 `.gitignore`)의 docstring에
+같은 해시와 "다시 돌렸을 때 대조할 것"이라는 안내를 추가했다 —
+다른 머신에서 재생성한 모델이 이번에 파리티 검증(§14)을 통과한
+그 모델과 같다는 보장이 이전엔 전혀 없었다.
+
+### (c) 롤백 절차에 `firebase.json` 원복 추가
+
+§13(e)의 롤백 절차(1~4번, 이후 §15(c)가 5·6번을 추가)에 **7번을
+덧붙인다**: 함수·이미지를 지워도 `firebase.json`의 `embeddingspike`
+코드베이스 항목이 남으면 설정만 남는다 — 정리 시 이 항목을 원복
+(`git diff`/`git checkout`으로 이번 커밋 이전 상태로 되돌리거나
+직접 항목을 제거)하는 것을 롤백 절차에 포함한다. §19(정리 단계)
+에서 실제로 수행한다.
+
+### `requirements.txt` 최종 확인
+
+배포 직전 CPU 전용 torch 인덱스가 들어 있는지 다시 확인했다
+— `tools/embedding_spike/cloud_run_spike/requirements.txt`에
+`--extra-index-url https://download.pytorch.org/whl/cpu`와
+`torch==2.12.1`/`torchvision==0.27.1` 고정 그대로 있음(커밋
+`fe8ef42`에서 이미 작성, 변경 없음).
+
+**배포 준비 완료 — §18로 넘어간다.**

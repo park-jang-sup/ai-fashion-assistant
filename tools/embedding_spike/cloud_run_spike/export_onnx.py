@@ -11,6 +11,17 @@ FashionCLIP(patrickjohncyh/fashion-clip) 이미지 인코더만 감싸는 래퍼
 사용법:
     pip install torch torchvision transformers onnx onnxscript
     python export_onnx.py
+
+**재생성 시 해시 대조** — 이 스크립트를 다시 돌려서 나온 파일이
+스파이크가 실제로 배포했던 그 모델과 같은지 확인하려면 아래
+SHA-256과 대조한다(2026-08-13 배포분, `patrickjohncyh/fashion-clip`
+가중치가 그대로면 결정론적으로 같은 값이 나와야 한다 — torch/
+onnx/onnxscript 버전이 달라지면 그래프 직렬화가 달라져 해시가
+바뀔 수 있다, 그 경우 docs/task_realtime_embedding_v1.md §17에
+같은 5건 파리티 재검증 결과를 등록한다):
+
+    fashionclip_vision.onnx       sha256=0106076a0df2ce650d21a56b759d6b23477a39d6c57c5f5c4a1e7273da747288  (1,391,689 bytes)
+    fashionclip_vision.onnx.data  sha256=aadf27eec3383a189090db92bb8c52bae4145d82534bfeee9be2b9a97d6f36d1  (351,404,032 bytes)
 """
 import os
 
