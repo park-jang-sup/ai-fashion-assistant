@@ -436,10 +436,24 @@ class AgentPlanner {
       match.candidates,
       recentHistoryText: feedbackText,
       isRelevanceRanked: !history.isFallback,
-      onStep: ({required index, required total, score, required passed, required wasError}) {
+      onStep: ({
+        required index,
+        required total,
+        score,
+        required passed,
+        required wasError,
+        required verdictWithheld,
+      }) {
         final String message;
         if (wasError) {
           message = '후보 ${index + 1} 평가: Gemini 호출 실패로 건너뛰고 다음 후보 검토';
+        } else if (verdictWithheld) {
+          // 폴백(주 모델이 아닌) 모델이 응답해 점수는 있어도 판정에 안 썼다.
+          // "기준 미달"이라고 적으면 실제 미달과 구분이 안 되므로(나중에 이
+          // 로그로 발생 빈도를 셀 때 판정이 내려진 적 없는 건과 실제 미달이
+          // 섞인다), 통과·미달 어느 쪽으로도 안 읽히는 라벨을 쓴다.
+          final scoreText = score != null ? '$score점' : '점수 파싱 실패';
+          message = '후보 ${index + 1} 평가: $scoreText — 판정 불가(대체 모델 응답, 자기 수리 미발동)';
         } else {
           final scoreText = score != null ? '$score점' : '점수 파싱 실패';
           final verdict = passed
@@ -454,6 +468,7 @@ class AgentPlanner {
             eventType: AgentLogEntry.typeCandidateEvaluated,
             message: message,
             relatedDocId: plan.id,
+            verdictWithheld: verdictWithheld,
           ),
         ));
       },
@@ -863,10 +878,22 @@ class AgentPlanner {
         enableRepair: true,
         anchorItem: newItem,
         wardrobe: existingItems,
-        onStep: ({required index, required total, score, required passed, required wasError}) {
+        onStep: ({
+          required index,
+          required total,
+          score,
+          required passed,
+          required wasError,
+          required verdictWithheld,
+        }) {
           final String message;
           if (wasError) {
             message = '후보 ${index + 1} 평가: Gemini 호출 실패로 건너뛰고 다음 후보 검토';
+          } else if (verdictWithheld) {
+            // agent_planner.dart의 다른 onStep 콜백과 같은 이유로 같은 라벨을
+            // 쓴다 — "기준 미달"로 적으면 실제 미달과 구분이 안 된다.
+            final scoreText = score != null ? '$score점' : '점수 파싱 실패';
+            message = '후보 ${index + 1} 평가: $scoreText — 판정 불가(대체 모델 응답, 자기 수리 미발동)';
           } else {
             final scoreText = score != null ? '$score점' : '점수 파싱 실패';
             final verdict = passed
@@ -881,6 +908,7 @@ class AgentPlanner {
               eventType: AgentLogEntry.typeCandidateEvaluated,
               message: message,
               relatedDocId: newItem.id,
+              verdictWithheld: verdictWithheld,
             ),
           ));
         },

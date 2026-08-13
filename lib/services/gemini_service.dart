@@ -62,6 +62,13 @@ class GeminiService {
   // preview 특유의 불안정함이 반복 확인돼 안정적인 gemini-3.5-flash로 되돌림.
   static const _textModel = 'gemini-3.5-flash';
 
+  // _textModel의 공개 별칭 — 자기평가 루프(OutfitSelfEvaluator, 다른 파일)가
+  // "이 응답이 주 모델에서 왔는가"를 판정하려면 이 값이 필요한데 _textModel은
+  // 비공개다. 문자열을 새로 하드코딩하면 _textModel이 바뀔 때 이 값만 조용히
+  // 벌어질 수 있어 값을 그대로 참조한다(docs/task_selfeval_followup_v1.md
+  // 2단계 조건 1).
+  static const primaryTextModel = _textModel;
+
   // 기본 텍스트 모델이 과부하(503)·요청 급증(429)·타임아웃으로 실패했을 때
   // 같은 모델로 다시 두드리는 대신 바꿔 타는 대체 모델.
   // gemini-2.5-flash가 "no longer available to new users" 오류로 막혀

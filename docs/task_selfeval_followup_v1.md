@@ -349,3 +349,153 @@ model`로 실제 응답 모델을 캡처하고 있고(147-159행), 그 값을
 런타임에도 부작용이 없다.
 
 여기서 멈추고 보고한다. **1단계 (a) 승인 전에는 구현하지 않는다.**
+
+## 6. 2단계 구현 (2026-08-13, 승인 후 — (a)(i)안·(b)최소변경설계 승인됨)
+
+**승인된 조건 반영**: (조건 1) 화이트리스트로 뒤집었다 — 주 모델과
+같을 때만 점수를 판정에 쓴다(fail-closed), 폴백 상수와 비교하는
+블랙리스트는 쓰지 않았다. (조건 2) 활동 로그의 판정 라벨만
+"판정 불가(대체 모델 응답, 자기 수리 미발동)"로 바꾸고 숫자는
+그대로 뒀다.
+
+### (a) 주 모델 상수를 공개하고, 화이트리스트로 판정
+
+`GeminiService`의 `_textModel`(비공개)은 다른 파일에서 참조할 수
+없어, 그 값을 그대로 가리키는 공개 별칭을 추가했다
+(`gemini_service.dart:63-69`):
+
+```dart
+static const _textModel = 'gemini-3.5-flash';
+
+// _textModel의 공개 별칭 — ... 문자열을 새로 하드코딩하면 _textModel이
+// 바뀔 때 이 값만 조용히 벌어질 수 있어 값을 그대로 참조한다.
+static const primaryTextModel = _textModel;
+```
+
+`OutfitSelfEvaluator`에 순수 함수 `judgeCandidate`를 새로 추가했다
+(`outfit_self_evaluator.dart:108-141`) — 응답 모델이
+`GeminiService.primaryTextModel`과 **같을 때만** 점수를 판정에
+쓴다:
+
+```dart
+static ({bool passed, bool verdictWithheld}) judgeCandidate({
+  required int? score,
+  required String? respondingModel,
+}) {
+  if (respondingModel != GeminiService.primaryTextModel) {
+    return (passed: false, verdictWithheld: true);
+  }
+  return (passed: score != null && score >= threshold, verdictWithheld: false);
+}
+```
+
+블랙리스트를 쓰지 않은 근거는 함수 바로 위 주석에 그대로
+남겼다(향후 세 번째 모델·폴백 상수 변경 시에도 안전한 방향으로
+무너지도록). `score == null`(파싱 실패)은 이 화이트리스트와 무관하게
+기존 그대로 "판정 없음"으로 떨어지고 `verdictWithheld=false`다 —
+모델을 못 믿어서가 아니라 응답을 못 읽어서이므로 서로 다른 원인을
+같은 라벨로 뭉개지 않는다.
+
+**두 자리에 적용**: (1) 원본 후보 평가(`run()`의 메인 루프,
+236-265행) — `judgeCandidate`로 `passed`·`verdictWithheld`를 정하고,
+`verdictWithheld`이면 진단-수리 블록에 아예 안 들어가도록 조건에
+`!judgment.verdictWithheld`를 추가했다(276행). (2) **수리 재평가
+결과(316-339행) — 지시서가 명시하지 않은 두 번째 자리, 발견해서
+추가로 적용했다.** 원래 후보가 신뢰 모델·미달이라 수리가
+시작됐더라도, 수리 재평가 자체가 새 Gemini 호출이라 이번에도
+폴백이 걸릴 수 있다. 여기에 같은 화이트리스트를 안 걸면 "신뢰
+못 할 모델의 점수로 판정한다"는 원래 문제가 형태만 바뀌어
+재발한다 — 코드 주석([발견, 2026-08-13] 블록)에 이 경위를 남겼다.
+
+### (b) 보정 오프셋 미사용 확인
+
+`judgeCandidate`는 `(passed, verdictWithheld)` 두 불리언만 반환하고
+점수 자체를 다루는 자리가 없다 — 애초에 점수를 더하거나 빼는
+연산이 들어갈 표면이 코드에 없다. `bestScore`/`candidateScores`에는
+여전히 원점수가 그대로 들어간다(236-240행 raw-max 비교는 손대지
+않았다) — 홈 카드 `fallbackNote`·`colorScore` 등에 보이는 숫자는
+승인된 (i)안대로 감추거나 보정하지 않는다.
+
+### (c) 성질 구분 — 주석·문서에 명시
+
+`outfit_self_evaluator.dart`의 `judgeCandidate` 주석과 진단-수리
+게이팅 부분(268-271행)에 "verdictWithheld(폴백 응답)면 애초에
+'미달'이 아니라 '판정 불가'"라고 명시했다. `agent_planner.dart`의
+두 `onStep` 콜백에도 같은 구분을 주석으로 남겼다 — "'기준
+미달'이라고 적으면 실제 미달과 구분이 안 된다"는 이유까지 함께.
+활동 로그 문구 자체도 "기준 미달"이 아니라 "판정 불가(대체 모델
+응답, 자기 수리 미발동)"로 써서, 부풀려진/낮은 점수를 근거로
+"좋다/나쁘다"를 결론지은 것이 아니라 판정을 유보했다는 것이
+문구에서부터 드러나게 했다.
+
+### (d) 계측 — 위치·형식 결정과 근거
+
+**결정: `agent_logs`(Firestore, 기존 컬렉션)의 `typeCandidateEvaluated`
+이벤트에 `verdictWithheld`(bool) 필드를 추가한다.** 새 컬렉션이나
+카운터를 만들지 않았다 — 이 이벤트는 이미 매 후보 평가마다 쓰이고
+있었으므로(1단계 (a) 조사에서 이미 확인), 여기에 구조화된 필드
+하나를 얹는 것이 최소 변경이다.
+
+- `AgentLogEntry`(`lib/models/agent_log_entry.dart`)에 `verdictWithheld`
+  필드 추가(기본 `false`, `true`일 때만 Firestore에 씀 — 기존
+  `repairAttempted`/`isFallback` 등과 같은 관례).
+- `agent_planner.dart`의 두 `onStep` 콜백이 `judgeCandidate`가 돌려준
+  `verdictWithheld`를 그대로 `AgentLogEntry`에 실어 쓴다.
+
+**릴리스에서도 남는 방식을 택한 이유(0단계 반영)**: 이건 콘솔
+로그(`debugPrint`)가 아니라 **Firestore 문서 쓰기**다 — 0단계가
+등록한 "릴리스에서 `debugPrint`가 남을 가능성은 높지만 미확정"이라는
+불확실성 자체가 애초에 적용되지 않는 경로를 골랐다. Firestore
+쓰기는 `kReleaseMode`와 무관하게 항상 발생한다.
+
+**"업스트림 건강도의 대리 지표"로 쓰는 법**: 이후 어느 uid의 최근
+`agent_logs`를 `eventType == typeCandidateEvaluated`로 필터링해
+`verdictWithheld == true`인 비율을 세면 그 기간의 폴백 발생률을
+근사할 수 있다(직전 트랙이 프록시 로그를 수동 대조하던 것과 같은
+분석을, 이제는 클라이언트가 스스로 구조화된 필드로 남긴다).
+
+**등록된 한계 — 전량 커버는 아니다.** 이 필드는 `onStep`이 도는
+**원본 후보 평가**만 정확히 센다. 위 (a)에서 다룬 **수리 재평가**의
+판정 유보는 `onNarrative`(자유 문장, `AgentActivity`/활동 로그에
+그대로 텍스트로만 남는다) 경로로만 나가고 구조화된 필드가 없다 —
+`onNarrative`의 시그니처(`void Function(String message)`)를 바꾸는
+것은 이번 변경 범위를 넘어선다고 판단해 하지 않았다. 즉 이 계측은
+"폴백 발생 빈도"의 **하한**(원본 평가분)이지 전량이 아니다 — 이
+격차를 감추지 않고 여기 등록해 둔다.
+
+### (e) 단위 테스트
+
+`test/outfit_self_evaluator_verdict_test.dart` 신설(8개, 순수 함수라
+Firestore/Gemini 없이 결정적) — `agent_planner_fallback_note_test.dart`와
+같은 관례(그룹화, 한국어 테스트명에 판단 근거 포함)를 따랐다:
+
+- 주 모델 + 임계값 이상/미만/경계(`>=`) 3건
+- 주 모델 + 점수 파싱 실패(`score=null`)는 `verdictWithheld=false`로
+  남는다(모델 불신과 파싱 실패를 같은 라벨로 안 뭉갬)
+- **알려진 폴백 모델**이 응답하면 점수가 임계값 이상(85)이어도
+  `passed=false`(fail-closed 확인)
+- **화이트리스트 설계를 직접 검증**: 주 모델도 알려진 폴백 모델도
+  아닌 미지의 모델명("gemini-9-hypothetical-future-model")이 와도
+  판정을 유보한다 — 블랙리스트였다면 "폴백이 아니니까 신뢰"로
+  잘못 판정됐을 값이라는 점을 테스트 설명에 명시했다
+- 응답 모델이 `null`이면 판정 유보
+- 보정 오프셋 부재를 반환 타입 자체(두 불리언뿐)로 확인하는
+  테스트 1건
+
+### (f) `flutter analyze`·전체 테스트
+
+- `flutter analyze` — **통과**(`No issues found!`, 두 차례 확인).
+- `flutter test`(전체) — **174/174 통과**(기존 166 + 신규 8, 회귀
+  없음).
+
+### 실기기 검증 — 미실행, 사용자 확인 후
+
+인위로 폴백을 유발하지 않는다(금지 사항)는 지시에 따라, 이번엔
+코드·단위 테스트로 배선만 확인했다. 자연 발생 폴백이 있어야
+`verdictWithheld=true` 경로가 실기기에서 실제로 타는지 볼 수 있다
+— 그건 이번에 인위로 만들지 않고 자연 발생을 기다리며 **미검증으로
+남긴다.** 사용자가 원하면 다음을 확인할 수 있다(요청 시에만):
+새 옷 등록 또는 주간 플랜 생성 실기기 흐름 실행 → `flutter
+analyze`/빌드 확인 → 활동 로그 화면에서 기존 문구("기준 통과/미달")가
+그대로 보이는지(정상 케이스에서 회귀 없음 확인) — 폴백이 자연
+발생하기 전까지는 "판정 불가" 문구 자체를 볼 수는 없다.

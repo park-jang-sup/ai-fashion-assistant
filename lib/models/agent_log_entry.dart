@@ -27,6 +27,14 @@ class AgentLogEntry {
   // 추천 파이프라인은 트리거된 옷 id를 공유 id로 쓴다(등록 문서 id는 마지막에야
   // 생기므로). 단발 이벤트(분석/피팅 완료)는 null.
   final String? relatedDocId;
+  // [docs/task_selfeval_followup_v1.md 2단계] typeCandidateEvaluated
+  // 이벤트에서, 이 후보를 평가한 모델이 주 모델이 아니어서(폴백 응답)
+  // 점수는 있어도 통과/미달 판정에 쓰지 않았다는 표시. message 문구는
+  // 사람이 읽는 서사라 나중에 바뀔 수 있으므로, "판정 불가가 얼마나
+  // 자주 발생하는지"(업스트림 건강도의 대리 지표)를 셀 때는 이 필드를
+  // 쓴다 — message 문자열 매칭에 의존하지 않는다. 다른 이벤트 타입에는
+  // 의미가 없어 항상 false.
+  final bool verdictWithheld;
 
   const AgentLogEntry({
     required this.id,
@@ -34,6 +42,7 @@ class AgentLogEntry {
     required this.eventType,
     required this.message,
     this.relatedDocId,
+    this.verdictWithheld = false,
   });
 
   factory AgentLogEntry.fromFirestore(DocumentSnapshot doc) {
@@ -44,6 +53,7 @@ class AgentLogEntry {
       eventType: data['eventType'] as String? ?? '',
       message: data['message'] as String? ?? '',
       relatedDocId: data['relatedDocId'] as String?,
+      verdictWithheld: data['verdictWithheld'] as bool? ?? false,
     );
   }
 
@@ -52,6 +62,7 @@ class AgentLogEntry {
         'eventType': eventType,
         'message': message,
         if (relatedDocId != null) 'relatedDocId': relatedDocId,
+        if (verdictWithheld) 'verdictWithheld': verdictWithheld,
         'createdAt': FieldValue.serverTimestamp(),
       };
 }
