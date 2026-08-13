@@ -1250,3 +1250,74 @@ fashionclip_vision.onnx.data  sha256=aadf27eec3383a189090db92bb8c52bae4145d82534
 `fe8ef42`에서 이미 작성, 변경 없음).
 
 **배포 준비 완료 — §18로 넘어간다.**
+
+## 18. 배포 (2026-08-13)
+
+### 장애물 — 로컬 배포 검사 10초 타임아웃, `core.init`으로 우회
+
+**1차 배포 시도가 실패했다**: `firebase deploy --only
+functions:embeddingspike:embedding_coldstart_spike` 실행 직후
+`Error: User code failed to load. Cannot determine backend
+specification. Timeout after 10000`. `firebase-debug.log`를 직접
+읽어 원인을 좁혔다 — `functions.yaml`이 없으면 Firebase CLI가
+**로컬에서 함수를 한 번 임포트해(HTTP discovery) 시그니처를
+알아내는 단계**를 거치는데, 이게 10초 안에 끝나야 한다. 우리
+모듈 스코프의 무거운 임포트(`torch`+`torchvision`+`onnxruntime`)와
+352.8MB ONNX 모델 로딩이 이 10초를 넘겼다 — **실제 Cloud Run
+콜드스타트와는 별개의, 로컬 전용 제한**이다.
+
+Firebase 공식 문서("avoid deployment timeouts during
+initialization")를 확인해 원인과 해법을 대조했다: 무거운 초기화를
+`firebase_functions.core.init` 훅으로 감싸면 **로컬 배포 검사
+단계에서는 건너뛰고, 실제 배포된 인스턴스가 뜰 때만 실행된다.**
+`main.py`를 이 패턴으로 재구성했다(로직은 그대로, 실행 위치만
+모듈 스코프→`@core.init` 콜백으로 이동, 커밋 `b1dc67e`) — **콜드
+스타트 측정 유효성에는 영향 없다**: 공식 문서가 `init` 훅을
+"인스턴스당 1회, 함수 코드 실행 전"으로 명시하고 있어 여전히
+콜드스타트에 포함된다.
+
+**부수 발견 — 로컬 배포에도 venv가 필요하다.** 위 discovery
+단계는 `tools/embedding_spike/cloud_run_spike/venv/`(로컬 가상
+환경, `requirements.txt` 설치됨)를 전제로 한다 —
+`functions_bg_removal/venv/`(기존, 커밋 안 됨)와 같은 요구사항.
+처음엔 이 디렉터리가 없어 `ENOENT`로 실패했다 — `python -m venv
+venv` + `venv에 requirements.txt 설치`로 해소.
+
+### 배포 실행 결과
+
+```
+firebase deploy --only functions:embeddingspike:embedding_coldstart_spike
+```
+
+- **시작**: `2026-08-13T07:31:31Z`(재시도 2차, `core.init` 수정
+  반영 후). **완료 관측**: `2026-08-13T07:37:50Z` — 약 **6분
+  19초**(로컬 discovery + 업로드 + Cloud Build + 배포 전체 포함,
+  세부 구간별 시간은 배포 로그에 구분되어 있지 않음).
+- **업로드 패키지 크기**: **205.43 MB**(`functions: packaged ...
+  (205.43 MB) for uploading` 로그 원문). ONNX 파일 자체가
+  352.8MB(§10(a)/§17(b))인데 패키지가 더 작게 나온 것은 **미확정
+  — 압축(gzip 등) 때문으로 추정되나 실측 확인 안 함**, 추정으로
+  단정하지 않는다.
+- **함수 URL**: `https://asia-northeast3-ai-fashion-assistant-personal.cloudfunctions.net/embedding_coldstart_spike`
+- **메모리**: `firebase functions:list` 결과 `1024`(MiB, 설계대로
+  1GiB) — 배포 성공.
+- **다른 코드베이스 불변 확인**: `firebase functions:list`로 전체
+  10개 함수 확인 — 기존 9개(`default` 8개 + `bg_removal_on_upload`
+  1개)는 그대로이고 `embedding_coldstart_spike` 1개만 새로
+  추가됐다. `default`/`bgremoval` 코드베이스는 이번 배포로 건드리지
+  않았다.
+
+**새 리비전 이름 — 미확인.** Cloud Run Admin API
+(`run.googleapis.com`)와 Cloud Functions v2 API
+(`cloudfunctions.googleapis.com`) 둘 다 우리 서비스 계정(Firebase
+Admin SDK용, Firestore/Storage/Auth 관리 권한만 있음)으로 조회를
+시도했으나 **둘 다 403 Permission Denied**(`run.services.get`/
+`cloudfunctions.functions.get` 권한 없음) — `gcloud` CLI도 이
+환경에 없다(§15(a)에서 이미 확인). **리비전 이름 자체는 미확인으로
+남긴다** — 2026-08-08 세션이 리비전을 남겨 시점 대조에 썼다는
+선례(사용자 지적)를 이번엔 재현하지 못했다. 대신 §19의 콜드스타트
+반복 측정에서는 **마커 주석을 바꾼 재배포마다 응답의
+`moduleImportTotalSeconds`/`sessionLoadSeconds` 값 자체가 매번
+달라지는지**로 "진짜 새 인스턴스였는지"를 간접 확인한다(배경
+제거 §2-6이 `moduleImportSeconds` 값 변화로 진짜 새 인스턴스임을
+자체 확인한 것과 같은 방법).
