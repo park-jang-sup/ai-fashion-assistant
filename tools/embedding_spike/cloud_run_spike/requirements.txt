@@ -1,0 +1,13 @@
+firebase-functions>=0.4.0
+onnxruntime>=1.28.0
+numpy>=2.5.0
+pillow>=12.2.0
+
+# CPU 전용 torch/torchvision — 기본 PyPI 인덱스의 torch는 CUDA 빌드를
+# 같이 끌고 와 이미지가 훨씬 커진다(docs/task_realtime_embedding_v1.md
+# §15(b) 빌드 노트). --extra-index-url은 기존 PyPI 인덱스를 대체하지
+# 않고 추가한다 — onnxruntime/numpy/pillow 등 다른 패키지 해석에는
+# 영향 없음.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.12.1
+torchvision==0.27.1

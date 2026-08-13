@@ -19,6 +19,12 @@
       "codebase": "bgremoval",
       "runtime": "python312",
       "ignore": ["venv", "__pycache__", "*.pyc"]
+    },
+    {
+      "source": "tools/embedding_spike/cloud_run_spike",
+      "codebase": "embeddingspike",
+      "runtime": "python312",
+      "ignore": ["venv", "__pycache__", "*.pyc"]
     }
   ],
   "emulators": {
