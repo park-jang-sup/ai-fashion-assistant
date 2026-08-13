@@ -579,3 +579,96 @@ if (repairedPassed) break;
 `null` 반환(재시도 태스크 생성 경로, `wardrobe_screen.dart:99-108`)이
 유지된다 — 그 분기까지 함께 설계해야 하는 작지 않은 변경이라
 **이번엔 제안만 하고 착수하지 않는다.**
+
+## 8. 3단계 1단계 — 정상 경로 회귀 확인, 실기기 (2026-08-13)
+
+**폴백을 인위로 유발하지 않았다** — 아래 자연 발생 폴백 1건(속성
+추출 단계, 자기평가 무관)은 관찰만 했다.
+
+**빌드·설치·대조(§0 승계 규약)**: 대상 커밋 `db75aa0`(커밋 시각
+`2026-08-13T11:28:38+09:00`). `flutter build apk --debug` 완료
+(Gradle 15.6초). `adb install -r` 완료(`2026-08-13T02:33:35Z`).
+`lastUpdateTime=2026-08-13 11:33:35`(기기 로컬, UTC+9 →
+`02:33:35Z`)가 install 완료 시각과 정확히 일치 — **대조 통과.**
+기기 `R3CW10DF8CW`.
+
+**트리거 방법**: 홈 화면에 이미 있던 추천은 이전 세션에서 생성된
+것이라 이번 빌드의 검증이 못 됐다. "즉시 실행(테스트)" 버튼(설정
+화면, `Workmanager().registerOneOffTask('proactiveCheck',
+inputData:{'force':true})`)을 먼저 눌렀으나, 이 계정에 예정된
+일정(캘린더/TPO)이 없어 `AgentPlanner.runProactiveCheck`가 후보
+없이 곧바로 끝났다(WorkManager 8초 만에 SUCCESS, `[PLAN]` 로그
+없음) — **자기평가가 실제로 도는 걸 보려면 다른 트리거가
+필요했다.** 그래서 **새 옷 등록**(갤러리에서 사진 선택 → 자동
+속성 추출 → 등록, `wardrobe_screen.dart`/`agent_planner.dart:859`
+경로)을 실행했다 — 이 저장소가 자기평가를 관측할 때 항상 써 온
+표준 트리거이며, 인위로 실패·폴백을 만드는 행위가 아니다.
+
+**(b) 홈 화면 추천 정상 생성 — 통과.** 새 옷(버건디 상의, id
+`ftwiK1OrY9lQrpVAPR2o`) 등록 후 파이프라인이 자동으로 돌아
+`docId=93h537HI3sqIWYqZIXoG`로 저장됐고, 홈 화면을 다시 열자
+"오늘의 추천 셋업" 카드가 이 버건디 상의를 반영한 새 서사로
+갱신되어 있었다(`uiautomator dump`로 확인).
+
+**(c) 활동 로그 라벨 — 예전 형식 그대로, 통과.** Firestore Admin
+SDK(`C:\Users\hse09\key\...-47679dd51a.json`)로 이 파이프라인의
+`agent_logs`(`relatedDocId=ftwiK1OrY9lQrpVAPR2o`) 5건을 직접
+조회했다(재현 코드 원칙):
+
+```
+{"eventType":"new_item_detected","message":"새 옷(버건디 상의) 등록을 감지했습니다"}
+{"eventType":"candidates_generated","message":"옷장 139벌과 대조해 후보 3개 조합을 생성했습니다"}
+{"eventType":"candidate_evaluated","message":"후보 1 평가 중..."}
+{"eventType":"candidate_evaluated","message":"후보 1 평가: 75점 — 기준(70점) 통과, 채택"}
+{"eventType":"recommendation_registered","message":"옷장 분석으로 75점 조합을 추천으로 등록했습니다"}
+```
+
+`"후보 1 평가: 75점 — 기준(70점) 통과, 채택"` — 2단계 변경
+이전과 **글자 하나 다르지 않은 형식**이다. `logcat`의
+`[SELF-EVAL]` 디버그 로그도 동일하게 `후보 1/3 → 점수 75 (기준
+통과, 채택)`을 찍었다. 이 후보를 평가한 모델이 주 모델
+(`gemini-3.5-flash`)이었다는 뜻이다(`judgeCandidate`가
+`verdictWithheld=false`를 돌려줬고, 그래서 라벨 분기가 기존
+문구 쪽으로 갔다).
+
+**(d) Firestore `verdictWithheld` — false로 정확히 해석됨, 다만
+문서엔 필드 자체가 없다(설계대로).** 위 4번째 문서(75점 통과)에
+`verdictWithheld` 필드가 **존재하지 않는다** — 이는 버그가 아니라
+설계 그대로다: `AgentLogEntry.toFirestore()`가 `if (verdictWithheld)
+'verdictWithheld': verdictWithheld`로 **true일 때만** 쓰도록
+했다(`repairAttempted`/`isFallback`과 같은 기존 관례). 필드가
+없으면 `AgentLogEntry.fromFirestore()`의 `data['verdictWithheld']
+as bool? ?? false`가 `false`로 복원한다 — **읽기 경로 기준으로는
+정확히 "false로 기록된 것"과 동일하게 동작함을 실측으로
+확인했다.** `verdictWithheld=true`가 실제로 Firestore에 `true`
+값으로 찍히는 사례는 이번엔 관찰하지 못했다(폴백이 자기평가
+단계에서 안 걸렸으므로) — **미검증으로 남긴다.**
+
+**(e) 자기 수리 — 자연히 안 나옴, 미검증.** 후보 1/3이 첫 시도에
+바로 통과(75점 ≥ 70점)해 나머지 2개 후보도, 진단-수리 루프도
+돌지 않았다(`[SELF-EVAL] 완료: 1개 평가`). 억지로 미달을 만들지
+않았으므로 수리 경로·수리 재평가의 `verdictWithheld` 처리(§7이
+등록한 "발견")는 이번 실기기 검증으로 관찰되지 않았다 —
+**미검증.**
+
+**부수 관찰(자연 발생, 인위 아님) — 속성 추출 단계에서 폴백
+2건.** 새 옷 등록 도중 `logcat`에 다음이 자연히 찍혔다:
+
+```
+11:40:26.418 [GEMINI] gemini-3.5-flash 응답 파싱 실패(FormatException) - gemini-3.1-flash-lite로 폴백
+11:41:01.967 [GEMINI] gemini-3.5-flash 실패(statusCode=503) - gemini-3.1-flash-lite로 폴백
+```
+
+둘 다 `extractSizeFromChart`/`extractAttributes`(속성·사이즈 추출)
+경로에서 났다 — **자기평가(`OutfitSelfEvaluator`) 호출이 아니다**
+(1단계 (b)가 이미 확인한 "withTextModelFallback의 6개 호출자 중
+5개는 자기평가와 무관"이 실기기에서도 그대로 확인된 사례). 이
+502가 아니라 503 하나는 자연 발생 상태코드 확인이라는 점에서
+`task_selfeval_validity_v1.md` §6-가가 미확정으로 남긴 503/429
+질문에 참고가 될 수 있으나, **자기평가 경로가 아니므로 그 질문에
+직접 답하지는 않는다** — 관측으로만 등록한다.
+
+**요약**: (a)(b)(c) 통과. (d)는 부분 확인(false 경로만, true
+경로는 자연 발생을 못 봐 미검증). (e)는 자연히 안 나와 미검증.
+정상 경로(주 모델이 실제로 응답하는 평범한 경우)에서 이번 2단계
+변경이 만든 회귀는 없다.
