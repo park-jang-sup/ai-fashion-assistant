@@ -30,43 +30,31 @@ get_resize_output_image_size/center_crop을 그대로 따랐다):
 시간만 재기 위한 내장 1x1 JPEG로 대체한다(배경 제거 스파이크와
 동일 패턴).
 출력: JSON — 타이밍 breakdown + 512차원 벡터.
+
+[배포 시행착오, 2026-08-13] 무거운 임포트(torch/torchvision/
+onnxruntime)+모델 로딩을 모듈 스코프에 그대로 두면 `firebase
+deploy`의 로컬 배포 검사(discovery) 단계가 실패한다 —
+"User code failed to load. Cannot determine backend specification.
+Timeout after 10000"(Firebase 공식 문서 "avoid deployment timeouts
+during initialization" 항목과 정확히 일치). 로컬 discovery는 실제
+Cloud Run 콜드스타트가 아니라 별도의 10초 제한 검사이고, 이 제한은
+firebase_functions.core.init 훅으로 무거운 초기화를 감싸 로컬
+검사 단계에서는 건너뛰고 **실제 배포된 인스턴스가 뜰 때만**
+실행되게 하는 것으로 우회한다(공식 권장 패턴 — 환경변수로 타임아웃을
+늘리는 대안도 있으나, 이 방식이 로컬 검사 자체의 성격과 더
+맞는다). 콜드스타트 측정 유효성에는 영향 없다 — init 훅은 "인스턴스당
+1회, 함수 코드 실행 전"에 실제로 도는 것으로 문서화돼 있어 여전히
+콜드스타트에 포함된다.
 """
 import os
 import time
 
-# 재배포용 마커(기능 무변) — 콜드스타트를 자연 스케일다운 대기 없이
-# 강제로 재현하려고 새 리비전을 만들기 위한 것뿐, 다른 설정은 전부
-# 동일하게 유지한다(§2-6 방법론). 재배포마다 값만 올린다: 1
+from firebase_functions import core, https_fn, options
 
-_t_module_start = time.perf_counter()
+_ADMIN_SA = "firebase-adminsdk-fbsvc@ai-fashion-assistant-personal.iam.gserviceaccount.com"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _MODEL_PATH = os.path.join(BASE_DIR, "fashionclip_vision.onnx")
-
-import torch  # noqa: E402
-
-_t_torch_imported = time.perf_counter()
-
-from torchvision.transforms.v2 import functional as tvF  # noqa: E402
-
-_t_torchvision_imported = time.perf_counter()
-
-import onnxruntime as ort  # noqa: E402
-
-_t_onnxruntime_imported = time.perf_counter()
-
-import numpy as np  # noqa: E402
-from PIL import Image  # noqa: E402
-from firebase_functions import https_fn, options  # noqa: E402
-
-_t_import_done = time.perf_counter()
-
-# 콜드스타트 시(컨테이너 인스턴스 시작 시) 모듈 스코프에서 딱 한 번
-# 로드된다 — 요청마다 다시 로드하지 않는다(배경 제거 스파이크와
-# 동일 패턴, 웜 인스턴스에서는 재사용됨).
-_session = ort.InferenceSession(_MODEL_PATH, providers=["CPUExecutionProvider"])
-
-_t_session_ready = time.perf_counter()
 
 # CLIPImageProcessor(patrickjohncyh/fashion-clip)에서 직접 확인한 값
 # (docs/task_realtime_embedding_v1.md §9/§11 — 하드코딩이 아니라 그대로
@@ -76,11 +64,69 @@ _STD = [0.26862954, 0.26130258, 0.27577711]
 _TARGET_SHORT = 224
 _CROP_SIZE = 224
 
+# 바디 없는 요청(순수 콜드스타트 핑)용 — 1x1 JPEG(배경 제거 스파이크와 동일).
+_TINY_JPEG = bytes.fromhex(
+    "ffd8ffe000104a46494600010100000100010000ffdb004300030202020202"
+    "03020202030303030406040404040408060605070908080807080808090a0c"
+    "0a0a0b0a08080c100c0a0c0e0d0e0f0f0f090b1119110f180f0f0e00ffc9000"
+    "b0800010001010011ffcc00060010100000ffda0008010100003f00d2cff03"
+    "fffd9"
+)
 
-def _preprocess(img: Image.Image) -> np.ndarray:
+# 무거운 임포트·모델 로딩 결과를 담는 상태 — @core.init이 실제 Cloud Run
+# 인스턴스에서만 채운다(로컬 배포 검사에서는 이 함수 자체가 안 불린다).
+_state: dict = {}
+
+
+@core.init
+def _initialize() -> None:
+    t_module_start = time.perf_counter()
+
+    import torch
+
+    t_torch_imported = time.perf_counter()
+
+    from torchvision.transforms.v2 import functional as tvF
+
+    t_torchvision_imported = time.perf_counter()
+
+    import onnxruntime as ort
+
+    t_onnxruntime_imported = time.perf_counter()
+
+    import numpy as np
+    from PIL import Image
+
+    t_import_done = time.perf_counter()
+
+    session = ort.InferenceSession(_MODEL_PATH, providers=["CPUExecutionProvider"])
+
+    t_session_ready = time.perf_counter()
+
+    _state.update(
+        torch=torch,
+        tvF=tvF,
+        np=np,
+        Image=Image,
+        session=session,
+        importTorchSeconds=round(t_torch_imported - t_module_start, 3),
+        importTorchvisionSeconds=round(t_torchvision_imported - t_torch_imported, 3),
+        importOnnxruntimeSeconds=round(t_onnxruntime_imported - t_torchvision_imported, 3),
+        importRestSeconds=round(t_import_done - t_onnxruntime_imported, 3),
+        moduleImportTotalSeconds=round(t_import_done - t_module_start, 3),
+        sessionLoadSeconds=round(t_session_ready - t_import_done, 3),
+        moduleTotalSeconds=round(t_session_ready - t_module_start, 3),
+    )
+
+
+def _preprocess(img):
     """image_processing_backends.py의 get_resize_output_image_size +
     TorchvisionBackend.resize/center_crop/rescale_and_normalize를
     그대로 재현(§14(a) 코드 대조 결과)."""
+    torch = _state["torch"]
+    tvF = _state["tvF"]
+    np = _state["np"]
+
     if img.mode != "RGB":
         img = img.convert("RGB")
     arr = np.asarray(img)
@@ -115,18 +161,6 @@ def _preprocess(img: Image.Image) -> np.ndarray:
     return pixel.unsqueeze(0).numpy().astype(np.float32)
 
 
-# 바디 없는 요청(순수 콜드스타트 핑)용 — 1x1 JPEG(배경 제거 스파이크와 동일).
-_TINY_JPEG = bytes.fromhex(
-    "ffd8ffe000104a46494600010100000100010000ffdb004300030202020202"
-    "03020202030303030406040404040408060605070908080807080808090a0c"
-    "0a0a0b0a08080c100c0a0c0e0d0e0f0f0f090b1119110f180f0f0e00ffc9000"
-    "b0800010001010011ffcc00060010100000ffda0008010100003f00d2cff03"
-    "fffd9"
-)
-
-_ADMIN_SA = "firebase-adminsdk-fbsvc@ai-fashion-assistant-personal.iam.gserviceaccount.com"
-
-
 @https_fn.on_request(
     region="asia-northeast3",
     memory=options.MemoryOption.GB_1,
@@ -141,22 +175,22 @@ def embedding_coldstart_spike(req: https_fn.Request) -> https_fn.Response:
 
     import io
 
-    img = Image.open(io.BytesIO(image_bytes))
+    img = _state["Image"].open(io.BytesIO(image_bytes))
     t_preprocess_start = time.perf_counter()
     pixel_values = _preprocess(img)
     t_preprocess_done = time.perf_counter()
 
-    out = _session.run(None, {"pixel_values": pixel_values})[0]
+    out = _state["session"].run(None, {"pixel_values": pixel_values})[0]
     t_inference_done = time.perf_counter()
 
     body = {
-        "importTorchSeconds": round(_t_torch_imported - _t_module_start, 3),
-        "importTorchvisionSeconds": round(_t_torchvision_imported - _t_torch_imported, 3),
-        "importOnnxruntimeSeconds": round(_t_onnxruntime_imported - _t_torchvision_imported, 3),
-        "importRestSeconds": round(_t_import_done - _t_onnxruntime_imported, 3),
-        "moduleImportTotalSeconds": round(_t_import_done - _t_module_start, 3),
-        "sessionLoadSeconds": round(_t_session_ready - _t_import_done, 3),
-        "moduleTotalSeconds": round(_t_session_ready - _t_module_start, 3),
+        "importTorchSeconds": _state["importTorchSeconds"],
+        "importTorchvisionSeconds": _state["importTorchvisionSeconds"],
+        "importOnnxruntimeSeconds": _state["importOnnxruntimeSeconds"],
+        "importRestSeconds": _state["importRestSeconds"],
+        "moduleImportTotalSeconds": _state["moduleImportTotalSeconds"],
+        "sessionLoadSeconds": _state["sessionLoadSeconds"],
+        "moduleTotalSeconds": _state["moduleTotalSeconds"],
         "preprocessSeconds": round(t_preprocess_done - t_preprocess_start, 3),
         "inferenceSeconds": round(t_inference_done - t_preprocess_done, 3),
         "requestHandlingSeconds": round(t_inference_done - t_request_start, 3),
