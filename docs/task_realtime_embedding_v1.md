@@ -990,3 +990,119 @@ BICUBIC, antialias=True)`로, 크롭 좌표 계산을 `int()` 절삭으로,
 의존성 패키지 행을 `onnxruntime`+`torch`+`torchvision`+`numpy`+
 `pillow`로 갱신한다(`transformers` 제외 — §13 작성 시점엔 아직
 검증된 경로만 알려져 있었다).
+
+## 15. 배포 전 비용 확인 (2026-08-13, 배포 전 — 추정으로 채우지 않는다)
+
+### (a) 선례 청구서 확인 — 미확인, 콘솔 접근 필요
+
+**배포 기간을 문서에서 특정했다**: `docs/handoff_2026-08-04.md:1224`
+— `bg_removal_coldstart_spike` 정리가 **"완료(2026-08-07)"**로
+기록돼 있고, 정확한 명령까지 남아 있다:
+`firebase functions:delete bg_removal_coldstart_spike --region
+asia-northeast3`(같은 날 `firebase.json`의 `bgremovalspike`
+코드베이스 항목도 제거). `task_background_removal_v1.md`의 관련
+측정(§2-3~§2-6)은 **2026-08-06~2026-08-07** 사이에 걸쳐 있다 —
+스파이크 함수 자체는 이 이틀 안에서 배포되고 정리됐다.
+
+**실제 청구액은 확인하지 못했다.** 이 세션의 도구로는 GCP
+Billing 콘솔에 접근할 수 없다(`gcloud` CLI 미설치, 브라우저
+접근 없음, 서비스 계정 키는 Firestore/Storage 권한만 있고 결제
+조회 권한은 별도다). **추정으로 채우지 않는다 — "미확인"으로
+남긴다.**
+
+**사용자에게 요청할 항목**:
+1. GCP 콘솔 → 결제(Billing) → 프로젝트 `ai-fashion-assistant-personal`
+   선택 → 리포트(Reports) → **2026-08-06~2026-08-08** 기간으로
+   좁혀 Cloud Run/Cloud Functions 관련 항목(SKU: "Cloud Run" 또는
+   "Cloud Functions", vCPU-초·메모리GiB-초·요청 수) 실제 발생액 확인.
+2. 같은 화면에서 **무료 등급(항상 무료) 초과분이 있었는지**도
+   함께 확인 — 배경 제거 트랙 §2-4가 "무료 등급의 0.19%" 라고
+   적은 것이 실측인지 추정인지는 그 트랙 문서 자체에도 재현 코드가
+   없어(§2 원칙 12번 위반 가능성 — 이번엔 그 문서를 고치지 않고
+   여기 관측만 등록한다) 이번 기회에 같이 확인하면 좋다.
+
+### (b) 이미지 크기 추정 — 로컬 site-packages 실측(근사치)
+
+**의존성을 실제로 로컬에 설치한 뒤 디렉터리 크기를 쟀다**(이번
+1단계에서 이미 설치·검증에 쓴 것과 같은 패키지):
+
+| 패키지 | 크기(site-packages, Windows CPU 빌드) |
+|---|---|
+| `torch` | 515.9 MB |
+| `torchvision` | 14.5 MB |
+| `onnxruntime` | 44.6 MB |
+| `numpy` | 32.1 MB |
+| `Pillow` | 16.0 MB |
+| **패키지 합계** | **623.1 MB** |
+| ONNX 모델(그래프+외부가중치, §10(a)) | 352.8 MB |
+| **패키지+모델 합계** | **≈ 976 MB** |
+
+**이건 컨테이너 이미지 전체 크기가 아니라 그 안에 들어갈 파이썬
+패키지+모델 파일의 합계다** — Cloud Functions/Run의 Python
+베이스 이미지(OS 레이어, 파이썬 런타임 자체, 빌드팩 오버헤드)가
+따로 더해진다. 그 베이스 크기는 이번에 재지 않았다(등록만) —
+실제 빌드된 이미지 크기는 배포 후 Artifact Registry에서 직접
+확인해야 정확하다. **또한 이 측정은 Windows CPU 빌드다** — Cloud
+Functions는 Linux 컨테이너이므로 `pip install`이 받는 실제 wheel이
+다를 수 있다(보통 비슷한 자릿수이나 동일하다고 가정하지 않는다).
+
+**빌드 노트로 등록**: `requirements.txt`에 CPU 전용 `torch` 인덱스
+(`--index-url https://download.pytorch.org/whl/cpu` 또는 동등한
+방법)를 명시해야 한다 — 기본 PyPI 인덱스의 `torch`는 CUDA 빌드를
+같이 끌고 와 이보다 훨씬 커질 수 있다(이번 로컬 환경은 이미
+`torch 2.12.1+cpu`라 이 문제를 우연히 피했다 — 스파이크
+`requirements.txt`에서는 명시적으로 강제해야 한다).
+
+### (c) 롤백 절차 보강 — Artifact Registry 이미지 정리 단계 추가
+
+**현재 §13(e) 롤백 절차의 빈틈**: "함수 삭제"만 있고 컨테이너
+이미지 정리가 없다. Cloud Functions v2/Cloud Run은 배포마다
+컨테이너 이미지를 **Artifact Registry**(또는 구 Container
+Registry)에 쌓는다 — 함수를 지워도 그 이미지들은 별도로 지우지
+않으면 남아 저장 비용을 계속 낸다.
+
+**`bgremovalspike` 정리 때 이미지까지 지웠는지 확인했다 — 지우지
+않은 것으로 보인다.** `handoff_2026-08-04.md:1224`의 정리 기록
+(위 (a) 인용)에는 `firebase functions:delete`와 `firebase.json`
+코드베이스 항목 제거만 있고, Artifact Registry 이미지 삭제 명령이나
+확인 절차가 없다. `task_background_removal_v1.md`에서도 Artifact
+Registry 관련 언급을 찾지 못했다(위에서 확인). **즉 `bg_removal_
+coldstart_spike`가 만든 컨테이너 이미지가 지금도 Artifact Registry에
+남아 있을 가능성이 있다** — 이번엔 확인도 삭제도 하지 않는다
+(콘솔 접근 필요 + 금지 사항: 기존 이미지 삭제 금지). **이 자체를
+결함으로 등록한다**: 이 저장소의 스파이크 정리 절차가 지금까지
+컨테이너 이미지 계층을 빠뜨려 왔다.
+
+**보강된 롤백 절차(§13(e) 원문 유지, 여기 덧붙임)**:
+1~4번은 §13(e) 그대로.
+5. **(신규) Artifact Registry에서 이 스파이크가 만든 이미지를
+   확인하고 지운다.** 리전 `asia-northeast3`, 저장소 이름은 보통
+   `gcf-artifacts`(Cloud Functions v2 기본) — `gcloud artifacts
+   docker images list` 또는 콘솔 → Artifact Registry에서
+   `embeddingspike`/`bg_removal_coldstart_spike` 등 함수명이 포함된
+   리포지토리를 찾아 확인한다.
+6. **(신규) 정리 후 실제로 지워졌는지 확인하는 법**: 같은 조회
+   명령을 다시 실행해 목록에서 사라졌는지 확인하거나, Storage
+   사용량(콘솔 → Artifact Registry → 저장소별 크기)이 줄었는지
+   확인한다.
+
+**`bg_removal_coldstart_spike`의 남은 이미지 자체는 지금 지우지
+않는다** — 이번 트랙 범위 밖이고, 지시 사항(기존 이미지 삭제
+금지)이기도 하다. 등록만 하고 다음에(배경 제거 트랙을 다시 다룰
+때) 처리한다.
+
+### (d) 요약과 배포 승인 요청
+
+**한 줄 요약**: 스파이크 자체(콜드 3회+웜 3회, `max_instances=1`,
+`min_instances=0`)는 배경 제거 선례(무료 등급 내로 추정되나 실측
+청구액은 미확인)와 같은 자릿수일 가능성이 높지만 **확정 근거는
+없다** — 실제 청구액은 GCP 콘솔에서 사용자가 직접 확인해야
+한다(위 (a) 요청 항목). 컨테이너 이미지는 패키지+모델만
+~976MB(베이스 이미지 별도, 근사치)로 배경 제거보다 훨씬 크고,
+**롤백 절차에 Artifact Registry 이미지 정리가 빠져 있었다는 것
+자체가 이번에 새로 드러난 결함**이다 — 이번 스파이크의 롤백에는
+그 단계를 포함한다.
+
+이대로 배포를 진행해도 될지 확인해 달라 — (a)의 청구 내역은
+사용자가 별도로 콘솔에서 확인해 주셔야 한다(이 세션 도구로는
+못 본다).
