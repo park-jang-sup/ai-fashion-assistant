@@ -2027,3 +2027,99 @@ Android JNI 크래시 때문, `task_background_removal_v1.md`에 이미
 넘긴다"고 한 것 자체는 그 시점 사전 등록 규칙을 정확히 따른
 것으로 절차상 틀리지 않았다 — 다만 그 사전 등록된 규칙(문턱)
 자체의 전제가 이 기능에는 안 맞았다는 것을 지금 확인했다.
+
+## 22. [1단계] 정리 — 스파이크 롤백 실행 (2026-08-13)
+
+**승인 근거(사용자에게 제시한 한 줄)**: §21이 "지연이 사용자에게
+안 보이므로 min_instances=0으로 확정"을 결론지었고, 남은 웜 이상은
+비용 축으로만 열려 있는데 그건 본 구현 착수 직전에 재배포 없는
+저비용 진단(§20 "더 싼 진단 후보")으로 언제든 확인 가능하다 —
+**지금 스파이크를 켜 둔 채로 유지해야 할 이유가 없다.** 사용자
+승인(2026-08-13)을 받아 진행한다.
+
+### (a) 함수 삭제 — 실행 및 확인
+
+`firebase functions:delete embedding_coldstart_spike --region
+asia-northeast3 --force` 실행, **CLI 성공 메시지를 그대로 믿지
+않고 삭제 전/후 `firebase functions:list`를 각각 실행해 대조했다**
+(배포 시 감사 로그를 못 본 전례 때문에 CLI 자체 보고만으로는
+불충분하다고 판단):
+
+- **삭제 전**: 11개 함수(`beginFittingAttempt`,
+  `bg_removal_on_upload`, `callGeminiText`,
+  **`embedding_coldstart_spike`**, `generateFittingImage`,
+  `getSignedImageUrls`, `revokeTokenOnUpload`,
+  `scheduledProactiveCheck`, `sendTestPush`,
+  `sweepStorageTokens`, `triggerScheduledCheckTest`).
+- **삭제 후**: 10개 함수, **`embedding_coldstart_spike`만 목록에서
+  사라졌고 나머지 10개는 이름·트리거·메모리·런타임 전부 동일하게
+  남아 있음을 직접 대조로 확인**(`default`/`bgremoval` 코드베이스
+  함수는 안 건드려짐).
+
+**확인 방법: `firebase functions:list` 재조회 결과 목록에 부재.
+결과: 삭제 확정.**
+
+### (b) Artifact Registry 이미지 삭제 — 시도, 접근 불가로 미확인
+
+Artifact Registry REST API
+(`artifactregistry.googleapis.com/v1/.../repositories`)를 §19가
+쓴 것과 같은 서비스 계정 자격으로 조회 시도 — **403
+`PERMISSION_DENIED`**(`artifactregistry.repositories.list` 권한
+없음, Cloud Run Admin API·Cloud Functions v2 API와 같은 종류의
+제한). 이 환경에는 `gcloud` CLI도 없다(재확인, 이전 세션 기록과
+일치). **삭제는커녕 목록 조회 자체가 이 세션의 도구로는 안 된다.**
+
+**추정으로 채우지 않는다 — "미확인"으로 남긴다.** 이미지 경로·
+크기는 확인 못 했다. 사용자가 콘솔에서 직접 확인·삭제해야 한다:
+
+- **경로**: GCP 콘솔 → Artifact Registry → 리전 필터
+  `asia-northeast3` → `gcf-artifacts` 리포지터리(Cloud Functions
+  v2 기본 저장소명) → 이미지 목록에서 `embedding-coldstart-spike`
+  또는 `embeddingspike`가 포함된 이미지를 찾아 삭제.
+- **참고**: §19가 GCP 지표로 확인한 리비전명이
+  `embedding-coldstart-spike-00001-nac`/`-00002-ner`/`-00003-kov`
+  세 개였다 — 마커 재배포 3회에 대응하는 이미지가 최대 3개
+  존재할 수 있다(Cloud Functions v2는 보통 최신 리비전 이미지만
+  남기고 이전 것은 자동 정리할 수도 있으나, 이 동작 자체를
+  확인한 적은 없다).
+
+### (c) `firebase.json` 원복 — 실행 및 확인
+
+`embeddingspike` 코드베이스 항목(`source:
+tools/embedding_spike/cloud_run_spike`, `codebase: embeddingspike`)을
+제거했다. **`git diff firebase.json`으로 직접 대조**: 제거된
+4줄(`embeddingspike` 블록 전체)만 diff에 나타나고,
+`default`/`bgremoval` 블록·`emulators`·`flutter` 설정 등 나머지는
+전부 그대로임을 확인했다.
+
+### 기록
+
+- **삭제 대상**: Cloud Function `embedding_coldstart_spike`
+  (asia-northeast3, Python 3.12, 리비전
+  `-00001-nac`/`-00002-ner`/`-00003-kov`, 1024Mi).
+- **삭제 시각**: 2026-08-13T12:34Z 무렵(함수 삭제 실행, 이 절
+  작성 직전).
+- **확인 방법**: (a) 함수 — 삭제 전/후 `firebase functions:list`
+  대조, 부재 확인(확정). (b) 이미지 — Artifact Registry API 403,
+  `gcloud` 없음, **확인 불가 → 미확인으로 사용자에게 넘김**.
+  (c) `firebase.json` — `git diff`로 의도한 4줄만 변경됐음을 확인.
+- **다른 코드베이스 영향**: 없음 — `default`(10개 중 9개 Node
+  함수) · `bgremoval`(`bg_removal_on_upload`) 전부 삭제 전후 동일.
+- **이 절차 자체가 처음 실행**: §15(c)가 등록한 "Artifact
+  Registry 이미지 정리가 롤백 절차에 빠져 있었다"는 결함을 이번에
+  처음으로 절차에 포함시켜 실행해 봤다 — **결과는 절반만
+  작동했다**: 함수 삭제는 CLI+재조회로 확실히 검증됐지만,
+  이미지 삭제는 이 세션이 가진 권한·도구로는 **실행도 확인도
+  못 했다**. 다음에 같은 절차를 쓸 때는 (이번 세션과 같은
+  서비스 계정 키로는 Artifact Registry에 접근 불가하다는 것을
+  전제로) 처음부터 사용자의 콘솔 접근이나 별도 권한이 필요하다는
+  것을 이번 실행이 확인해 줬다.
+- **다음 달 초 청구 확인(후속 항목, 등록만)**: §16이 정정한 대로
+  8/7 정리 후 곡선이 안 내려온 것은 누적 그래프 오독이었고
+  일별 순비용은 8/11 이후 사실상 0이었다 — 그렇더라도 **이번
+  삭제(embedding 스파이크 함수+설정)의 효과가 실제 청구에
+  반영됐는지는 다음 달 초(2026년 9월) GCP 결제 콘솔에서 별도로
+  확인한다.** 확인할 것: (i) 8월 하순 이후 순비용이 이번 정리
+  이전 수준으로 유지·감소하는지, (ii) Artifact Registry 이미지가
+  남아 있다면(위 (b) 미확인) 그로 인한 저장 비용이 눈에 띄는
+  수준인지.
