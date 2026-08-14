@@ -25,6 +25,11 @@ class SelfEvalOutcome {
   // 진단-수리 루프가 실제로 한 번이라도 교체를 시도했는지, 무엇을 바꿨는지.
   final bool repairAttempted;
   final String? repairNote;
+  // bestMatch가 신뢰 후보(judgeCandidate 기준) 없이, 판정 유보된 후보 중
+  // 최댓값을 임시로 채택한 것인지(docs/task_selfeval_bestmatch_v1.md §0
+  // 승인된 설계 — "할인이 아니라 제외", 신뢰 후보가 하나도 없을 때만 예외).
+  // true면 호출부가 활동 로그·화면에 이 사실을 남길 수 있어야 한다.
+  final bool bestMatchUntrusted;
 
   const SelfEvalOutcome({
     required this.bestMatch,
@@ -39,6 +44,7 @@ class SelfEvalOutcome {
     this.candidateModels = const [],
     this.repairAttempted = false,
     this.repairNote,
+    this.bestMatchUntrusted = false,
   });
 }
 
@@ -140,6 +146,25 @@ class OutfitSelfEvaluator {
     return (passed: score != null && score >= threshold, verdictWithheld: false);
   }
 
+  // bestMatch 갱신 판정 — "할인이 아니라 제외"(docs/task_selfeval_bestmatch_v1.md
+  // §0, 사용자 승인 설계). 신뢰 후보(judgeCandidate 기준)가 있으면 신뢰
+  // 후보끼리만 최댓값을 겨루고, 신뢰 후보가 하나도 없을 때만(현재 최선도
+  // 미신뢰) 판정 불가 후보 중 최댓값을 임시로 채택한다. judgeCandidate와
+  // 같은 이유로 순수 함수로 뽑는다 — 이 저장소는 위젯·통합 테스트가 0이라
+  // run() 자체(Gemini 호출)는 직접 단위 테스트할 수 없다.
+  static bool shouldReplaceBest({
+    required bool hasCurrentBest,
+    required bool currentBestTrusted,
+    required int currentBestScore,
+    required bool candidateTrusted,
+    required int candidateScore,
+  }) {
+    if (!hasCurrentBest) return true;
+    if (candidateTrusted && !currentBestTrusted) return true;
+    if (candidateTrusted != currentBestTrusted) return false;
+    return candidateScore > currentBestScore;
+  }
+
   static Future<SelfEvalOutcome?> run(
     List<OutfitMatch> candidates, {
     SelfEvalStep? onStep,
@@ -160,6 +185,9 @@ class OutfitSelfEvaluator {
     OutfitMatch? bestMatch;
     String? bestText;
     int? bestScore;
+    // bestMatch가 신뢰 후보(judgeCandidate 기준)로 채워졌는지 —
+    // shouldReplaceBest가 이 값으로 "신뢰 후보 우선" 규칙을 적용한다.
+    var bestIsTrusted = false;
     var evaluated = 0;
     final candidateScores = <int>[];
     // docs/task_selfeval_validity_v1.md §4 작업1 — candidateScores와 항상
@@ -239,16 +267,28 @@ class OutfitSelfEvaluator {
       candidateStyleScores.add(axes?.style ?? 0);
       candidateModels.add(evalResult.model ?? 'unknown');
 
-      if (bestMatch == null || (score ?? 0) > (bestScore ?? 0)) {
+      // judgeCandidate를 bestMatch 갱신보다 먼저 계산해 재사용한다 — 이
+      // 시점에 이미 score·evalResult.model이 확정돼 있어(순수 함수라)
+      // 호출 시점을 옮겨도 아래 passed/verdictWithheld 쓰임에는 영향이
+      // 없다(docs/task_selfeval_bestmatch_v1.md 1단계(a)(b)).
+      final judgment = judgeCandidate(score: score, respondingModel: evalResult.model);
+      final candidateTrusted = !judgment.verdictWithheld;
+      if (shouldReplaceBest(
+        hasCurrentBest: bestMatch != null,
+        currentBestTrusted: bestIsTrusted,
+        currentBestScore: bestScore ?? 0,
+        candidateTrusted: candidateTrusted,
+        candidateScore: score ?? 0,
+      )) {
         bestMatch = candidate;
         bestText = analysisText;
         bestScore = score;
+        bestIsTrusted = candidateTrusted;
       }
       // 홈 카드 fallbackNote·colorScore 등 사용자에게 보이는 숫자는 위
       // bestScore 그대로 흘려보낸다(승인된 (i)안 — 점수는 감추지 않는다).
       // 여기서 갈리는 것은 "이 숫자를 자기 수리 발동·활동 로그 판정 라벨에
       // 쓸지"뿐이다.
-      final judgment = judgeCandidate(score: score, respondingModel: evalResult.model);
       final passed = judgment.passed;
       onStep?.call(
           index: i,
@@ -330,6 +370,7 @@ class OutfitSelfEvaluator {
               final repairedJudgment =
                   judgeCandidate(score: repairedScore, respondingModel: repairResult.model);
               final repairedPassed = repairedJudgment.passed;
+              final repairedTrusted = !repairedJudgment.verdictWithheld;
 
               if (repairedJudgment.verdictWithheld) {
                 onNarrative?.call(
@@ -344,13 +385,25 @@ class OutfitSelfEvaluator {
                     '${repairedScore ?? '(파싱 실패)'} (${repairedPassed ? '기준 통과' : '기준 미달'})');
               }
 
+              // [주의, docs/task_selfeval_bestmatch_v1.md 2단계(d)] repairNote는
+              // 신뢰 여부와 무관하게 여기서 그대로 설정된다 — 판정 유보된
+              // 수리 결과에도 확정적 문구가 붙는 문제는 별도 결함으로
+              // 등록만 하고 이번엔 손대지 않는다(사용자 지시, 범위 밖).
               repairNote = '${blamed.category} 교체(${_axisLabel(weakAxis)} 개선)';
               // 이 시점엔 bestMatch가 이미 원본 후보 평가에서 채워져 있다
-              // (위에서 무조건 한 번 대입됨).
-              if ((repairedScore ?? 0) > (bestScore ?? 0)) {
+              // (위에서 무조건 한 번 대입됨) — bestIsTrusted도 그때 함께
+              // 갱신됐으므로 여기서도 같은 shouldReplaceBest 규칙을 적용한다.
+              if (shouldReplaceBest(
+                hasCurrentBest: bestMatch != null,
+                currentBestTrusted: bestIsTrusted,
+                currentBestScore: bestScore ?? 0,
+                candidateTrusted: repairedTrusted,
+                candidateScore: repairedScore ?? 0,
+              )) {
                 bestMatch = repairedCombo;
                 bestText = repairedText;
                 bestScore = repairedScore;
+                bestIsTrusted = repairedTrusted;
               }
               if (repairedPassed) break;
             }
@@ -375,6 +428,7 @@ class OutfitSelfEvaluator {
       candidateModels: candidateModels,
       repairAttempted: repairAttempted,
       repairNote: repairNote,
+      bestMatchUntrusted: !bestIsTrusted,
     );
   }
 

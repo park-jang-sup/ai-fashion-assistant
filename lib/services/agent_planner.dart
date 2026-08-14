@@ -527,6 +527,7 @@ class AgentPlanner {
       targetTpoTag: plan.tpoTag,
       reflectedFeedback: history.tagMatchCount > 0,
       isFallback: isFallback,
+      bestMatchUntrusted: outcome.bestMatchUntrusted,
       fallbackNote: fallbackNote,
       optionalNote: optionalNote,
       forecastPrecipProbability: dayWeather?.precipitationProbability,
@@ -544,9 +545,10 @@ class AgentPlanner {
       AgentLogEntry(
         id: '',
         eventType: AgentLogEntry.typeRecommendationRegistered,
-        message: isFallback
-            ? '[${plan.tpoTag}] 조건에 맞는 조합이 부족합니다 — 차선책 $scorePhrase 제안합니다'
-            : '${_relativeLabel(plan.date)} [${plan.tpoTag}] 일정을 위해 $scorePhrase 준비했습니다',
+        message: (isFallback
+                ? '[${plan.tpoTag}] 조건에 맞는 조합이 부족합니다 — 차선책 $scorePhrase 제안합니다'
+                : '${_relativeLabel(plan.date)} [${plan.tpoTag}] 일정을 위해 $scorePhrase 준비했습니다') +
+            (outcome.bestMatchUntrusted ? ' (신뢰 후보 없음 — 판정 보류된 조합을 임시로 등록)' : ''),
         relatedDocId: plan.id,
       ),
     ));
@@ -959,6 +961,7 @@ class AgentPlanner {
         candidateModels: outcome.candidateModels,
         repairAttempted: outcome.repairAttempted,
         repairNote: outcome.repairNote,
+        bestMatchUntrusted: outcome.bestMatchUntrusted,
         isFallback: isFallback,
         fallbackNote: fallbackNote,
         // 일정 기반 선제 추천이 아니라도 등록일 기준 targetDate를 채워
@@ -977,9 +980,10 @@ class AgentPlanner {
         AgentLogEntry(
           id: '',
           eventType: AgentLogEntry.typeRecommendationRegistered,
-          message: outcome.evaluatedCount > 1
-              ? '${outcome.evaluatedCount}개 조합을 비교 평가해 $scorePhrase 추천으로 등록했습니다'
-              : '옷장 분석으로 $scorePhrase 추천으로 등록했습니다',
+          message: (outcome.evaluatedCount > 1
+                  ? '${outcome.evaluatedCount}개 조합을 비교 평가해 $scorePhrase 추천으로 등록했습니다'
+                  : '옷장 분석으로 $scorePhrase 추천으로 등록했습니다') +
+              (outcome.bestMatchUntrusted ? ' (신뢰 후보 없음 — 판정 보류된 조합을 임시로 등록)' : ''),
           relatedDocId: newItem.id,
         ),
       ));

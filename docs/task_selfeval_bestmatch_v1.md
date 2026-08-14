@@ -164,4 +164,118 @@ respondingModel})`(133-141행)는 이미 원본 후보(251행)와 수리
 측정 장치(§1(a) 지점 열거) 확보, 재사용 대상(§1(b)) 확인, 기존
 데이터 조회(§1(c), 표본 부족으로 빈도는 미확정이나 구조적 결함은
 코드 확인으로 이미 확정) 완료, 판정 기준(§1(d)) 사전 등록 완료.
-2단계(수정) 착수 전 사용자 보고 대기.
+
+**[정정 등록, 2026-08-14]** (G)를 (F)보다 먼저 고른 근거("이미
+배포돼 매 추천에 영향 중")를 정정한다. §1(c) 실측대로 최근 3주
+(154건)간 자기평가 경로에서 폴백 발현은 0건이다 — "매 추천에
+영향"이 아니라 "폴백이 걸릴 때만 영향이고, 이 기간엔 안 걸렸다"가
+정확하다. **그럼에도 진행하는 근거**: `task_selfeval_validity_v1.md`
+§6-가가 2026-08-12에 별도 측정 하네스 실행 중 5분 3초 구간에서
+폴백률이 60%(20건 중 12건)까지 튄 사례를 실측해 뒀다(그 앞뒤
+8/1~8/11 구간은 0~4.9%로 일관되게 낮았다 — 상승은 이 짧은 창에만
+몰려 있었다, 원인 미확정: 외부 수요 급증 vs 하네스의 연속 호출
+유발 효과). 이 관측 자체는 자기평가 경로가 아니라 같은 프록시
+(`callGeminiText`)를 쓰는 별도 하네스의 호출이었다는 점을 밝히고
+인용한다 — 그대로 같다고 단정하지 않는다. 다만 **평시 0, 업스트림이
+아플 때 몰아서 튀는 패턴**이라는 점에서, 이 결함이 실제로 작동하는
+조건(폴백 발생)과 실패가 몰리는 조건이 겹친다 — 무작위 희소가
+아니라 "아플 때 함께 아픈" 구조라 희소성만으로 후순위로 미루지
+않는다. `handoff_2026-08-07.md` §6(G)에도 같은 정정을 등록했다
+(원문은 보존, 정정 블록만 추가).
+
+## 2단계 — 수정 (2026-08-14)
+
+### (a)(c) 설계 구현 — 순서 재배치, 최소 변경으로 진행
+
+§1(b)가 이미 확인한 대로, `judgeCandidate`가 필요로 하는 입력
+(`score`, `evalResult.model`)은 원본 후보의 bestMatch 갱신 지점
+(구 242행)보다 **먼저** 확정돼 있었다 — `judgeCandidate`는 순수
+함수라 호출 시점을 옮겨도 이후 읽는 지점(`passed`/`verdictWithheld`
+쓰임, §1(a) 열거 5곳) 값은 전혀 바뀌지 않는다. 수리 재평가 경로는
+`repairedJudgment`가 애초에 bestMatch 덮어쓰기 지점보다 먼저
+계산돼 있어 재배치가 필요 없었다(조건 추가만). **파급이 사실상
+0으로 확인돼(§1(b) 예상대로), "순서를 그대로 두고 필요한 정보만
+따로 읽는" 대안과 비교해 제시할 실익이 없다고 판단해 곧바로
+재배치로 진행했다**(지시 "파급이 작으면 순서 재배치로 그대로
+진행하라"에 따름).
+
+`bestMatch`/`bestScore`/`bestText`와 함께 `bestIsTrusted`(현재
+최선이 신뢰 후보로 채워졌는지)를 추적하고, 순수 함수
+`OutfitSelfEvaluator.shouldReplaceBest`로 갱신 판정을 뽑았다
+(`judgeCandidate`와 같은 이유 — `run()`은 Gemini를 호출해 직접
+단위 테스트할 수 없다):
+
+```dart
+static bool shouldReplaceBest({
+  required bool hasCurrentBest,
+  required bool currentBestTrusted,
+  required int currentBestScore,
+  required bool candidateTrusted,
+  required int candidateScore,
+}) {
+  if (!hasCurrentBest) return true;
+  if (candidateTrusted && !currentBestTrusted) return true;
+  if (candidateTrusted != currentBestTrusted) return false;
+  return candidateScore > currentBestScore;
+}
+```
+
+신뢰 후보는 항상 미신뢰 후보를 이기고(점수 무관), 같은 신뢰
+등급끼리는 기존과 동일하게 원점수 최댓값으로 비교한다 — 점수에
+상수를 더하거나 빼는 보정은 쓰지 않는다(금지 사항 준수). 원본
+후보(구 242-246행)와 수리 재평가(구 350-354행) 두 지점 모두 이
+함수로 판정한다 — 앞선 트랙(`task_selfeval_followup_v1`)이 수리
+재평가 자리를 빠뜨려 반쪽이 됐던 전례를 반복하지 않는다.
+
+`bestMatch == null` 반환 조건(모든 호출이 에러로 실패한 경우)은
+손대지 않았다 — `shouldReplaceBest`는 `hasCurrentBest`가 false일 때
+무조건 true를 반환하므로, 응답이 하나라도 있으면(신뢰 여부 무관)
+여전히 non-null을 반환한다.
+
+### (b) 임시 채택 기록
+
+`SelfEvalOutcome.bestMatchUntrusted`(bool, 신뢰 후보 없이 임시
+채택됐으면 true)를 추가했다. `RecommendationEntry.bestMatchUntrusted`
+로 Firestore까지 전파해(sparse write, `isFallback`/`repairAttempted`와
+같은 관례 — true일 때만 씀) 나중에 스크립트로 셀 수 있게 했다.
+`agent_planner.dart`의 `recommendation_registered` 로그 메시지 두
+곳(선제 추천, 새 옷 등록) 모두에 `bestMatchUntrusted`일 때만
+" (신뢰 후보 없음 — 판정 보류된 조합을 임시로 등록)"을 덧붙였다 —
+판정 경로가 "판정 불가(대체 모델 응답)"를 로그에 남기는 것과 같은
+원칙.
+
+### (c) 수리 재평가 경로 — 함께 적용
+
+`repairedTrusted`를 계산해 원본과 동일하게 `shouldReplaceBest`로
+판정한다(§ (a) 코드에 포함). `task_selfeval_followup_v1.md` §7(a)가
+지목한 "수리 재평가는 bestScore 원점수만으로 덮어쓴다" 결함이 이
+지점에서 함께 닫혔다.
+
+### (d) repairNote — 별도 결함으로 등록만, 손대지 않음
+
+`repairNote`(수리 시도 시 "OO 교체(축 개선)" 문구)는 신뢰 여부와
+무관하게 수리 재평가 응답이 오면 무조건 설정되는 별도 지점이다 —
+이번 수정이 자연히 닫히는 지점이 아니다(bestMatch 갱신과는 독립된
+코드 경로). 사용자 지시대로 손대지 않고 코드 주석과 이 문서에만
+등록한다. 남은 결함: 판정 유보된 수리 결과에도 "다듬었다"는
+확정적 문구가 붙을 수 있다(`task_selfeval_followup_v1.md` §7(a)
+말미가 이미 등록해 둔 내용과 동일).
+
+### (e) 단위 테스트
+
+`test/outfit_self_evaluator_verdict_test.dart`에 `shouldReplaceBest`
+그룹 6건 추가(기존 `judgeCandidate` 8건은 그대로 유지) — 핵심
+케이스: 폴백이 최고점이어도 신뢰 후보가 있으면 안 밀림(이번 수정의
+핵심, 구 로직은 반대로 동작했다), 신뢰 후보가 나중에 나오면 점수
+무관 즉시 교체, 같은 신뢰 등급끼리는 기존과 동일한 원점수 비교
+(회귀 없음), 신뢰 후보가 0개면 그때만 폴백 최댓값 임시 채택.
+
+### (f) 검증
+
+`flutter analyze` — 이슈 0건. `flutter test` — 전량(179개) 통과,
+회귀 없음.
+
+## 2단계 결론
+
+수정 완료, 커밋 대기. 3단계(실기기 정상 경로 회귀 확인)는 빌드·
+설치 전 사용자 확인 후 진행.

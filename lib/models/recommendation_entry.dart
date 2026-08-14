@@ -62,6 +62,10 @@ class RecommendationEntry {
   // 다듬었다"는 문구를 보여준다.
   final bool repairAttempted;
   final String? repairNote; // 예: "아우터 교체(격식 개선)"
+  // 신뢰 후보(주 모델 응답)가 하나도 없어 판정 유보된 후보 중 최댓값을
+  // 임시로 채택했는지(docs/task_selfeval_bestmatch_v1.md §0). false가
+  // 정상이며, isFallback(격식 부적합)과는 별개 축이다.
+  final bool bestMatchUntrusted;
   // isFallback=true일 때 그 원인(카테고리 부족 vs 궁합 점수 낮음)을 설명하는
   // 문구. null이면 배지를 표시하지 않는다(AgentPlanner.buildFallbackNote 참고).
   final String? fallbackNote;
@@ -110,6 +114,7 @@ class RecommendationEntry {
     this.isFallback = false,
     this.repairAttempted = false,
     this.repairNote,
+    this.bestMatchUntrusted = false,
     this.fallbackNote,
     this.optionalNote,
     this.forecastPrecipProbability,
@@ -159,6 +164,7 @@ class RecommendationEntry {
       isFallback: data['isFallback'] as bool? ?? false,
       repairAttempted: data['repairAttempted'] as bool? ?? false,
       repairNote: data['repairNote'] as String?,
+      bestMatchUntrusted: data['bestMatchUntrusted'] as bool? ?? false,
       fallbackNote: data['fallbackNote'] as String?,
       optionalNote: data['optionalNote'] as String?,
       forecastPrecipProbability: data['forecastPrecipProbability'] as int?,
@@ -196,6 +202,7 @@ class RecommendationEntry {
         if (isFallback) 'isFallback': isFallback,
         if (repairAttempted) 'repairAttempted': repairAttempted,
         if (repairNote != null) 'repairNote': repairNote,
+        if (bestMatchUntrusted) 'bestMatchUntrusted': bestMatchUntrusted,
         if (fallbackNote != null) 'fallbackNote': fallbackNote,
         if (optionalNote != null) 'optionalNote': optionalNote,
         if (forecastPrecipProbability != null)

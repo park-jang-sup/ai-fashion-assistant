@@ -95,4 +95,95 @@ void main() {
       // 조정한 새 값"을 만들어 낼 자리가 없음을 보여준다.
     });
   });
+
+  // docs/task_selfeval_bestmatch_v1.md — bestMatch(최종 추천) 갱신 판정.
+  // "할인이 아니라 제외": 신뢰 후보가 있으면 신뢰 후보끼리만 최댓값을
+  // 겨루고, 신뢰 후보가 하나도 없을 때만 판정 불가 후보 중 최댓값을
+  // 임시로 채택한다. run()은 Gemini를 호출해 직접 단위 테스트할 수
+  // 없으므로, 이 비교 로직만 뽑은 shouldReplaceBest로 강제 재현해
+  // 검증한다(자연 발생 폴백은 희소함이 1단계 실측으로 확인됨 — n=154,
+  // 관측 0건).
+  group('shouldReplaceBest', () {
+    test('현재 최선이 없으면(첫 후보) 무조건 채택', () {
+      final r = OutfitSelfEvaluator.shouldReplaceBest(
+        hasCurrentBest: false,
+        currentBestTrusted: false,
+        currentBestScore: 0,
+        candidateTrusted: false,
+        candidateScore: 10,
+      );
+      expect(r, isTrue);
+    });
+
+    test('폴백(미신뢰) 후보가 최고점이어도, 신뢰 후보가 이미 있으면 밀어내지 못한다 — '
+        '이번 수정의 핵심(구 로직은 여기서 반대로 동작했다)', () {
+      final r = OutfitSelfEvaluator.shouldReplaceBest(
+        hasCurrentBest: true,
+        currentBestTrusted: true,
+        currentBestScore: 60, // 신뢰 후보지만 점수는 낮음
+        candidateTrusted: false,
+        candidateScore: 95, // 폴백 후보, 원점수는 훨씬 높음
+      );
+      expect(r, isFalse);
+    });
+
+    test('신뢰 후보가 나중에 나오면, 현재 최선이 더 높은 점수의 폴백이어도 '
+        '즉시 교체된다(신뢰 우선이 점수보다 앞선다)', () {
+      final r = OutfitSelfEvaluator.shouldReplaceBest(
+        hasCurrentBest: true,
+        currentBestTrusted: false,
+        currentBestScore: 95, // 폴백 후보, 원점수 높음
+        candidateTrusted: true,
+        candidateScore: 60, // 신뢰 후보지만 점수는 낮음
+      );
+      expect(r, isTrue);
+    });
+
+    test('신뢰 후보끼리는 기존과 동일하게 원점수 최댓값으로 비교한다(회귀 없음)', () {
+      expect(
+        OutfitSelfEvaluator.shouldReplaceBest(
+          hasCurrentBest: true,
+          currentBestTrusted: true,
+          currentBestScore: 70,
+          candidateTrusted: true,
+          candidateScore: 75,
+        ),
+        isTrue,
+      );
+      expect(
+        OutfitSelfEvaluator.shouldReplaceBest(
+          hasCurrentBest: true,
+          currentBestTrusted: true,
+          currentBestScore: 80,
+          candidateTrusted: true,
+          candidateScore: 75,
+        ),
+        isFalse,
+      );
+    });
+
+    test('신뢰 후보가 하나도 없으면(전부 폴백) 그때만 폴백 후보 중 최댓값을 '
+        '임시로 채택한다', () {
+      expect(
+        OutfitSelfEvaluator.shouldReplaceBest(
+          hasCurrentBest: true,
+          currentBestTrusted: false,
+          currentBestScore: 60,
+          candidateTrusted: false,
+          candidateScore: 65,
+        ),
+        isTrue,
+      );
+      expect(
+        OutfitSelfEvaluator.shouldReplaceBest(
+          hasCurrentBest: true,
+          currentBestTrusted: false,
+          currentBestScore: 65,
+          candidateTrusted: false,
+          candidateScore: 60,
+        ),
+        isFalse,
+      );
+    });
+  });
 }
