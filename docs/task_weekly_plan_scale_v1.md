@@ -308,6 +308,160 @@ Firestore 읽기로 범위를 한정했고, Gemini API 실호출(무료이지만
 
 ---
 
+---
+
+## 4단계 — (F) 트랙 2세션: 에러 문구 수정 설계 + 접근 계측 (2026-08-14 이어서)
+
+**사용자 결정(우선순위 재배치)**: F-2(에러 문구)가 F-1(상한 조정)보다
+먼저다 — 범용 catch는 상한과 무관하게 **모든 주간 플랜 실패**에
+이미 걸리고 있어 지금 당장 영향 중이다. F-1(상한 조정)은 **하지
+않는다** — 303벌 도달까지 현재의 2.16배, 도달 시점 신뢰구간이
+50~137일로 사실상 없고(§2(c)), 무엇보다 "코드 최댓값" 개념이
+옷장 규모엔 성립하지 않는다는 §3(a)의 긴장 때문에 상한을 조정해도
+또 다른 추정을 "고쳤다"고 기록하는 꼴이 된다. 대신 접근을
+계측한다(§5).
+
+### 4-1단계(a) 범용 catch가 버리는 것 — 지점 단위 열거
+
+`agent_planner.dart:751-754`:
+
+```dart
+} catch (e) {
+  debugPrint('[PLAN] 주간 플랜 Gemini 실패: $e');
+  throw StateError('플랜 생성에 실패했어요. 잠시 후 다시 시도해주세요.');
+}
+```
+
+이 `catch (e)`(타입 미지정 — Dart에서 어떤 throw도 다 잡음)에
+실제로 도달할 수 있는 타입과, 각 타입이 들고 있었는데 버려지는
+정보:
+
+1. **`FirebaseFunctionsException`**(`code=='unauthenticated'`이거나,
+   `_mapProxyException`이 매핑하지 못한 나머지 — `invalid-argument`
+   가 여기 포함된다, 아래 참고). 버려지는 것: `.code`(예:
+   `invalid-argument`/`unauthenticated`), `.message`(서버 원문,
+   예: "허용되지 않은 요청 형식입니다."), `.details`(Map — 우리
+   `request_shape.ts` 위반이면 `{violations: [...]}`,
+   `payload_limit.ts` 위반이면 `{requestBytes, limitBytes, kind}`
+   — **스키마가 서로 다르다**, index.ts:362/392/726/743).
+2. **`GeminiApiException`**(`_mapProxyException`이 `upstreamStatus`
+   있는 경우 재구성, 또는 직접 호출 경로의 원본) — 이미 한 번
+   `withTextModelFallback`이 재시도 가능(503/429)이면 폴백까지
+   써본 뒤에도 실패한 경우만 여기 도달한다(즉 **두 모델 다
+   실패한 경우**). 버려지는 것: `.statusCode`, `.isRetryable`
+   (이미 계산돼 있는 값인데 다시 버려짐), `.message`.
+3. **`RateLimitExceededException`**(서버 프록시 호출량 상한,
+   `resource-exhausted`) — 이 타입은 **이미 자기 자신이 사용자
+   적합 문구를 들고 있다**(`toString()`이 곧 안내문이라는 게
+   클래스 자체의 설계 의도, `gemini_api_exception.dart:26-28`
+   주석). 버려지는 것: 이미 완성된 좋은 문구 그 자체.
+4. **`TimeoutException`**(주 모델·폴백 모델 둘 다 타임아웃) —
+   버려지는 것: `.message`뿐(원래 정보가 적음).
+5. **`FormatException`**(주 모델·폴백 모델 둘 다 JSON 파싱 실패) —
+   버려지는 것: `.message`.
+6. **그 외 무엇이든**(네트워크 예외 등, 분류 안 된 나머지).
+
+공통: `debugPrint`는 릴리스 빌드에서 콘솔이 안 붙어 있으면
+사실상 안 남는다 — 확인해 보니 **이 실패 경로는 Firestore
+`agent_logs`에도 전혀 기록되지 않는다**(다른 배경 파이프라인과
+달리 이 함수는 실패 시 Firestore를 쓰지 않는다, 코드 전수 확인).
+즉 지금은 사용자도 개발자도 릴리스에서 원인을 사후에 알 방법이
+없다.
+
+**기존 선례 확인**: 이 저장소에 이미 "구조적 실패는 재시도하지
+않는다"는 판단이 두 곳에 있다 — `fitting_job_controller.dart:229-235`
+(`_withRetry`)와 `gemini_service.dart:492-498`
+(`extractSizeFromChart` 재시도 경로) 둘 다 `FirebaseFunctionsException`
+의 `code=='invalid-argument'`를 `rethrow`하고 주석에 "결정론적
+실패 - 재시도 안 함"이라고 명시해 뒀다. 이번 설계는 이 선례와
+같은 판단(재시도 안 함)에, "그럼 사용자에게 뭐라고 보여줄지"를
+더하는 것이다.
+
+### 4-1단계(b) 분류 설계 — 최소 3단계, 근거와 함께
+
+| 분류 | 해당 타입/조건 | 재시도 유효? | 사용자 문구 |
+|---|---|---|---|
+| **일시적** | `TimeoutException`, `GeminiApiException`(`isRetryable`=503/429), `FormatException`, 미분류 나머지 | 예 | 기존 그대로: "플랜 생성에 실패했어요. 잠시 후 다시 시도해주세요." |
+| **구조적 — 옷장 규모** | `FirebaseFunctionsException`이고 `details.violations`에 `text_too_long` 포함 | **아니오** | "지금 등록된 옷이 많아 이번 주 플랜을 만들지 못했어요. 잠시 후 다시 시도해도 같은 결과가 나올 수 있어요." |
+| **구조적 — 기타** | `GeminiApiException`(`isRetryable`=false, 예: 400/403), `FirebaseFunctionsException`(그 외 — `unauthenticated`, `violations`에 `text_too_long` 없음, `payload_limit` 위반 등) | **아니오** | "요청 형식 문제로 플랜을 만들지 못했어요. 잠시 후에도 같은 문제가 반복될 수 있어요." |
+| **호출량 상한** | `RateLimitExceededException` | 아니오(당장은) | `e.message` 그대로(이미 적합한 기존 문구, 관례 재사용) |
+
+**판단 근거**:
+- "구조적 — 옷장 규모"만 원인을 구체적으로 밝힌다 — 서버가 실제로
+  그 원인을 특정할 수 있는 신호(`violations` 배열의 `text_too_long`)
+  를 이미 보내고 있는 **유일한** 경우이기 때문이다(아래 (c)).
+  다른 구조적 실패(예: `unauthenticated`, 미지의 `invalid-argument`)
+  는 원인을 사용자에게 안전하게 특정해 줄 근거가 없어 뭉뚱그린다
+  — 틀린 원인을 확정적으로 말하는 것이 원인을 안 말하는 것보다
+  나쁘다(이번 트랙이 고치려는 문제의 반복이 되지 않게).
+- "일시적" 버킷에 **미분류 나머지**(`catch`의 진짜 catch-all)를
+  넣는 것은 회귀 방지를 위한 보수적 선택이다 — 모르는 실패를
+  "구조적"으로 잘못 분류해 재시도를 막느니, 기존처럼 재시도를
+  권하는 쪽이 안전하다(무해한 방향의 오분류).
+- **`unauthenticated`를 "구조적 — 기타"에 뭉뚱그리는 것은 의도적
+  타협이다** — 정확히는 "재로그인이 필요하다"는 세 번째 성격이지만,
+  이번 세션 범위(최소 갈림 = 재시도 유효/무효)를 넘는 전용 UX까지는
+  설계하지 않는다. 등록만 하고 넘어간다 — 다음에 이 경로가 실제로
+  관측되면 재검토.
+
+### 4-1단계(c) 서버가 이미 보내는 정보로 충분한가 — 확인함
+
+**"옷장 규모" 분류에는 충분하다.** `request_shape.ts`의
+`text_too_long` 위반이 곧 `HttpsError`의 `details.violations`
+배열에 그대로 실린다(index.ts:361-364) — 서버 변경 없이
+클라이언트에서 바로 읽을 수 있다.
+
+**부족한 지점(등록만, 서버 미수정)**:
+- `payload_limit.ts` 위반은 `details` 스키마가 다르다
+  (`requestBytes`/`limitBytes`/`kind`, `violations` 없음) — 주간
+  플랜은 텍스트만 보내 이 상한(4MB)에 사실상 안 걸리므로(§2(a)
+  실측 14,328자 ≈ 14KB) 지금은 실질적 공백이 아니다. 다만 두
+  검증기가 서로 다른 실패 스키마를 쓴다는 사실 자체는 다음에
+  통합 계측을 만들 때 참고할 사항으로 등록한다.
+- `GeminiApiException`(비재시도, 예: 400)의 원인은 서버 쪽에
+  `upstreamMessage`가 실려 있지만(`_mapProxyException:264`),
+  이건 Gemini가 보낸 원문이라 사용자에게 그대로 노출하기엔
+  적절하지 않을 수 있다(내부 구현 세부가 섞일 위험) — 이번엔
+  "구조적 — 기타"로 뭉뚱그리는 것으로 충분하다고 판단, 서버·
+  클라이언트 둘 다 안 고친다.
+
+### 구현 스케치 — 승인 후 작업(아직 미구현)
+
+새 파일 없이 `agent_planner.dart`에 순수 함수 하나만 추가한다
+(`FirebaseFunctionsException`은 생성자가 `@protected`라 테스트에서
+직접 만들 수 없다 — `judgeCandidate`와 같은 이유로 원시 값
+(`List<String>?`)만 받는 함수로 분리한다):
+
+```dart
+// violations 목록만으로 구조적 실패 문구를 고른다(Firebase 타입 자체를
+// 받지 않는다 - 테스트가 직접 List<String>?만 넘겨 검증할 수 있게).
+static String weeklyPlanStructuralFailureMessage(List<String>? violations) {
+  if (violations != null && violations.contains('text_too_long')) {
+    return '지금 등록된 옷이 많아 이번 주 플랜을 만들지 못했어요. '
+        '잠시 후 다시 시도해도 같은 결과가 나올 수 있어요.';
+  }
+  return '요청 형식 문제로 플랜을 만들지 못했어요. '
+      '잠시 후에도 같은 문제가 반복될 수 있어요.';
+}
+```
+
+호출부(`generateWeeklyPlan`)의 `try/catch`를 타입별로 분기(기존
+저장소 관례, `fitting_job_controller.dart`와 같은 패턴):
+`RateLimitExceededException`(자기 메시지 그대로) →
+`GeminiApiException`(`isRetryable`이면 기존 문구, 아니면 "구조적
+— 기타") → `FirebaseFunctionsException`(`details.violations`를
+뽑아 위 함수 호출) → `TimeoutException`/`FormatException`(기존
+문구) → 나머지(기존 문구, 안전한 기본값).
+
+**승인 대기 — 위 표·문구·구현 스케치가 이대로 괜찮은지 확인 후
+구현한다.**
+
+---
+
+## 5단계 — 상한 접근 계측 (설계만, 승인 후 구현·상한 값 미변경)
+
+*(구현은 4단계 승인·완료 후 이어서 진행 — 여기서는 방향만 등록)*
+
 ## 미확인으로 남긴 것
 
 - 카탈로그 크기가 Gemini 응답 품질(형식 오류율, 배분 적절성)에
