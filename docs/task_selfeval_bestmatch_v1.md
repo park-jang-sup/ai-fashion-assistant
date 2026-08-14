@@ -277,5 +277,96 @@ static bool shouldReplaceBest({
 
 ## 2단계 결론
 
-수정 완료, 커밋 대기. 3단계(실기기 정상 경로 회귀 확인)는 빌드·
-설치 전 사용자 확인 후 진행.
+수정 완료, 커밋(`ea99d1f`) 완료.
+
+## 3단계 — 실기기 정상 경로 회귀 확인 (2026-08-14, 사용자 승인 후)
+
+**전제**: 이번 변경은 폴백이 없으면 아무것도 바꾸지 않는 설계다 —
+정상 경로의 기대 결과는 "예전과 완전히 동일". 확인 목적은 "새
+동작이 잘 도는가"가 아니라 "아무것도 안 달라졌는가"다.
+
+### (a)(b) 빌드·설치·대조
+
+`flutter build apk --debug` 완료(Gradle 약 40초) → `adb -s
+R3CW10DF8CW install -r` 성공. `dumpsys package
+com.fashionai.ai_fashion_assistant`:
+`lastUpdateTime=2026-08-14 12:07:16`(기기 로컬, KST). 대상 커밋
+`ea99d1f`의 커밋 시각 `2026-08-14T11:56:53+09:00`. 설치 시각이
+커밋보다 약 10분 23초 뒤 — 커밋 → 빌드(약 40초) → 설치 소요와
+정합적이다. **대조 통과.**
+
+### 트리거 경위 — 정확한 조작 경위 불확실, 결과는 Firestore 실측으로 확인
+
+옷장 화면에서 "+"(신규 등록) 버튼을 한 번 탭한 직후, 이 기기로
+실제 전화(무관한 통화)가 걸려와 화면을 덮었다 — 통화 종료 후
+확인해 보니 사진 선택·등록 확인 등 후속 탭을 추가로 하지 않았음에도
+새 옷 등록이 이미 완료돼 있었다(옷장 141벌, 신규 항목 "화이트
+상의" 2026.08.14). **탭 이후 등록 완료까지의 정확한 사용자 조작
+경위는 확인하지 못했다** — 통화 인터럽트와 시점이 겹쳐 중간
+과정을 직접 보지 못했다(§2 원칙 13, 안 한 것을 했다고 쓰지 않는다
+— 그래서 이 문단을 남긴다). 다만 결과 자체는 **인위로 조작하지
+않은 Firestore 실측**으로 확인된다: `new_item_detected`
+(12:09:35 KST) → `candidates_generated` → `candidate_evaluated`
+→ `recommendation_registered`(12:09:44 KST)까지 정상 파이프라인이
+자연히 완주했고, 이는 이번 검증이 필요로 한 표준 트리거(새 옷
+등록)와 정확히 같은 결과다 — 인위로 폴백·실패를 유발하지 않았다는
+금지 사항과 배치되지 않는다.
+
+### (c) 홈 화면 추천 정상 생성 — 통과
+
+새로 등록된 흰 상의("I own my youth")를 반영한 새 코디 카드가
+홈 화면 "오늘의 추천 코디"에 표시됨을 스크린샷으로 확인.
+
+### (d) agent_logs 문구 대조 — 기존 형식과 완전히 동일, 통과
+
+Firestore Admin SDK로 직접 조회(읽기 전용):
+
+```
+{"eventType":"new_item_detected","message":"새 옷(화이트 상의) 등록을 감지했습니다"}
+{"eventType":"candidates_generated","message":"옷장 140벌과 대조해 후보 3개 조합을 생성했습니다"}
+{"eventType":"candidate_evaluated","message":"후보 1 평가 중..."}
+{"eventType":"candidate_evaluated","message":"후보 1 평가: 75점 — 기준(70점) 통과, 채택"}
+{"eventType":"recommendation_registered","message":"옷장 분석으로 75점 조합을 추천으로 등록했습니다"}
+```
+
+`task_selfeval_followup_v1.md` §8(c)이 이전 검증(대상 커밋
+`db75aa0`)에서 확인한 것과 **글자 하나 다르지 않다** — "후보 1
+평가: 75점 — 기준(70점) 통과, 채택", "옷장 분석으로 75점 조합을
+추천으로 등록했습니다" 형식 동일. `(신뢰 후보 없음 — 판정 보류된
+조합을 임시로 등록)` 접미사도 붙지 않았다 — `bestMatchUntrusted`가
+false이므로 붙지 않는 게 설계대로다(아래 (e)).
+
+### (e) `bestMatchUntrusted` — false 경로 확인, true 경로는 미검증(설계대로)
+
+새 recommendations 문서(`oFuNAW3kuMKaaeEj7p6M`)를 직접 조회:
+`candidateModels=['gemini-3.5-flash']`(주 모델), `candidateScores=[75]`,
+`evaluatedCount=1`. **`bestMatchUntrusted` 필드 자체가 문서에
+없다(`None`)** — `RecommendationEntry.toFirestore()`의 sparse-write
+설계(`if (bestMatchUntrusted) ...`, `isFallback`/`repairAttempted`와
+같은 관례) 그대로다. 필드 부재는 `fromFirestore`가 `false`로
+복원하므로, **이 문서 기준으로는 "false로 정확히 기록된 것"과
+동일하게 동작함을 실측으로 확인했다.** 다만 이번에도 폴백이 안
+걸려 `bestMatchUntrusted=true`가 실제로 필드로 **나타나는** 경로는
+관찰하지 못했다 — **미검증으로 남긴다**(인위 유발 금지).
+
+### (f) `verdictWithheld` — false로 정확히 해석됨, 이전과 동일 패턴
+
+`candidate_evaluated` 이벤트에 `verdictWithheld` 필드가 없다
+(`None`) → 기존 설계(참일 때만 씀) 그대로, `false`로 복원된다.
+`task_selfeval_followup_v1.md` §8(d)가 확인한 것과 같은 패턴 —
+회귀 없음.
+
+### (g) 자기 수리 — 자연히 안 나옴, 미검증
+
+후보 1이 첫 시도에서 바로 통과(75점 ≥ 70점)해 나머지 후보도
+진단-수리 루프도 돌지 않았다(`evaluatedCount=1`,
+`repairAttempted` 필드 없음). 이전 검증들과 같은 패턴 — 억지로
+미달을 만들지 않았으므로 **미검증으로 남긴다.**
+
+### 3단계 결론
+
+**정상 경로 회귀 없음 — (c)(d)(f) 통과, (e)는 false 경로만 확인
+(true 경로 미검증), (g) 미검증(자연 미발생).** 신뢰 판정 게이팅
+자체(폴백이 실제로 걸렸을 때의 동작)는 여전히 미검증 상태로
+남아 있다 — 3주 154건 관측 0건인 현상이라 인위로 만들지 않았다
+(사용자 지시).
