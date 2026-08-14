@@ -903,6 +903,10 @@ class AgentPlanner {
         id: '',
         eventType: AgentLogEntry.typeWeeklyPlanned,
         message: '주간 플랜을 수립했습니다 — ${result.length}일 일정에 대해 중복 없이 조합을 배분했습니다',
+        // [docs/task_weekly_plan_scale_v1.md 0단계] 실패했을 때만 기록하면
+        // "터지기 전에 안다"는 계측 목적이 성립하지 않는다 — 성공 경로에도
+        // 같은 필드로 남겨 47.8% → ... 추세를 실패 전에 관측할 수 있게 한다.
+        weeklyPlanCatalogChars: catalog.length,
       ),
     ));
     return result;
