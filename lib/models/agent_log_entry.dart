@@ -18,6 +18,7 @@ class AgentLogEntry {
   static const typeWeeklyPlanned = 'weekly_planned'; // 주간 코디 플랜 수립
   static const typeTaskRecovered = 'task_recovered'; // 실패했던 작업을 재발견/재개/보류(상태 지속성)
   static const typeWeatherChecked = 'weather_checked'; // 날씨를 관찰 도구로 확인(주간 플랜/선제 추천)
+  static const typeWeeklyPlanFailed = 'weekly_plan_failed'; // 주간 플랜 생성 실패(docs/task_weekly_plan_scale_v1.md 4단계)
 
   final String id;
   final DateTime? createdAt; // 읽을 때만 채워짐(쓸 때는 서버 타임스탬프 사용)
@@ -35,6 +36,15 @@ class AgentLogEntry {
   // 쓴다 — message 문자열 매칭에 의존하지 않는다. 다른 이벤트 타입에는
   // 의미가 없어 항상 false.
   final bool verdictWithheld;
+  // typeWeeklyPlanFailed 전용 계측 필드(docs/task_weekly_plan_scale_v1.md
+  // 4단계) — 어떤 실패가 얼마나 자주 나는지 릴리스에서도 남게 한다.
+  // 사용자 식별 정보·옷장 내용(아이템 id/속성)은 담지 않는다 — 옷장의
+  // 크기(문자 수)만 담는다.
+  final String? weeklyPlanFailureReason; // WeeklyPlanFailureReason.name
+  final String? weeklyPlanExceptionType; // 원 예외의 런타임 타입(디버깅용)
+  final List<String>? weeklyPlanViolations; // request_shape.ts의 violations
+  final int? weeklyPlanStatusCode; // GeminiApiException.statusCode
+  final int? weeklyPlanCatalogChars; // 옷장 카탈로그 문자수(상한 접근 계측과 공유)
 
   const AgentLogEntry({
     required this.id,
@@ -43,6 +53,11 @@ class AgentLogEntry {
     required this.message,
     this.relatedDocId,
     this.verdictWithheld = false,
+    this.weeklyPlanFailureReason,
+    this.weeklyPlanExceptionType,
+    this.weeklyPlanViolations,
+    this.weeklyPlanStatusCode,
+    this.weeklyPlanCatalogChars,
   });
 
   factory AgentLogEntry.fromFirestore(DocumentSnapshot doc) {
@@ -54,6 +69,12 @@ class AgentLogEntry {
       message: data['message'] as String? ?? '',
       relatedDocId: data['relatedDocId'] as String?,
       verdictWithheld: data['verdictWithheld'] as bool? ?? false,
+      weeklyPlanFailureReason: data['weeklyPlanFailureReason'] as String?,
+      weeklyPlanExceptionType: data['weeklyPlanExceptionType'] as String?,
+      weeklyPlanViolations:
+          (data['weeklyPlanViolations'] as List?)?.map((e) => e.toString()).toList(),
+      weeklyPlanStatusCode: data['weeklyPlanStatusCode'] as int?,
+      weeklyPlanCatalogChars: data['weeklyPlanCatalogChars'] as int?,
     );
   }
 
@@ -63,6 +84,11 @@ class AgentLogEntry {
         'message': message,
         if (relatedDocId != null) 'relatedDocId': relatedDocId,
         if (verdictWithheld) 'verdictWithheld': verdictWithheld,
+        if (weeklyPlanFailureReason != null) 'weeklyPlanFailureReason': weeklyPlanFailureReason,
+        if (weeklyPlanExceptionType != null) 'weeklyPlanExceptionType': weeklyPlanExceptionType,
+        if (weeklyPlanViolations != null) 'weeklyPlanViolations': weeklyPlanViolations,
+        if (weeklyPlanStatusCode != null) 'weeklyPlanStatusCode': weeklyPlanStatusCode,
+        if (weeklyPlanCatalogChars != null) 'weeklyPlanCatalogChars': weeklyPlanCatalogChars,
         'createdAt': FieldValue.serverTimestamp(),
       };
 }

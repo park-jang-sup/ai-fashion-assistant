@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import '../constants/tpo_tags.dart';
 import '../models/agent_log_entry.dart';
@@ -10,10 +11,17 @@ import '../models/wardrobe_item.dart';
 import 'agent_activity.dart';
 import 'agent_stats.dart';
 import 'firestore_service.dart';
+import 'gemini_api_exception.dart';
 import 'gemini_service.dart';
 import 'outfit_matcher.dart';
 import 'outfit_self_evaluator.dart';
 import 'weather_service.dart';
+
+// 주간 플랜 실패 분류(docs/task_weekly_plan_scale_v1.md 4단계) — 재시도가
+// 의미 있는지, 원인을 사용자에게 얼마나 구체적으로 밝힐 수 있는지를 함께
+// 정한다. rateLimited는 이미 자체 안내 문구(RateLimitExceededException.message)
+// 가 있어 문구 생성에는 안 쓰이지만, 계측 목적으로 같은 열거형에 둔다.
+enum WeeklyPlanFailureReason { transient, wardrobeTooLarge, structuralOther, rateLimited }
 
 // 주간 플랜 한 날의 결과 — Gemini가 배정한 조합을 UI 카드로 보여주기 위한 것.
 // Firestore에 바로 저장하지 않고, 사용자가 "이 코디로 확정"을 누른 날만 저장된다.
@@ -654,6 +662,56 @@ class AgentPlanner {
     }
   }
 
+  // 이미 타입별로 뽑아낸 원시값만 받는 순수 함수(judgeCandidate와 같은
+  // 이유 — FirebaseFunctionsException 생성자가 @protected라 테스트에서
+  // 그 타입 자체를 만들 수 없다). 호출부(각 on절)가 이 값들을 채워 넘긴다.
+  // unauthenticated는 재로그인하면 풀리는 실패라 "구조적"이 아니라
+  // "일시적"에 둔다 — 전용 재로그인 UX는 범위 밖(등록만,
+  // docs/task_weekly_plan_scale_v1.md 4단계 2단계).
+  static WeeklyPlanFailureReason classifyWeeklyPlanFailure({
+    bool isRateLimited = false,
+    bool? isGeminiRetryable,
+    String? functionsErrorCode,
+    List<String>? violations,
+  }) {
+    if (isRateLimited) return WeeklyPlanFailureReason.rateLimited;
+    if (isGeminiRetryable != null) {
+      return isGeminiRetryable
+          ? WeeklyPlanFailureReason.transient
+          : WeeklyPlanFailureReason.structuralOther;
+    }
+    if (functionsErrorCode != null) {
+      if (functionsErrorCode == 'unauthenticated') {
+        return WeeklyPlanFailureReason.transient;
+      }
+      if (violations != null && violations.contains('text_too_long')) {
+        return WeeklyPlanFailureReason.wardrobeTooLarge;
+      }
+      return WeeklyPlanFailureReason.structuralOther;
+    }
+    return WeeklyPlanFailureReason.transient;
+  }
+
+  // 분류 → 사용자 문구. 분류(동작을 바꿈)와 문구(바뀌어도 동작 불변)를
+  // 분리한다 — 계측이 분류 결과를 그대로 쓰므로 재구현을 피해야 한다.
+  // rateLimited는 이 함수를 거치지 않고 호출부가 RateLimitExceededException
+  // 자신의 message를 그대로 쓴다(이미 적합한 기존 문구, 기존 관례
+  // 재사용) — 다만 이 switch가 그 값도 다루게 해 열거형을 남김없이
+  // 처리한다(안전한 기본값).
+  static String weeklyPlanFailureMessage(WeeklyPlanFailureReason reason) {
+    switch (reason) {
+      case WeeklyPlanFailureReason.wardrobeTooLarge:
+        return '지금 등록된 옷이 많아 이번 주 플랜을 만들지 못했어요. '
+            '잠시 후 다시 시도해도 같은 결과가 나올 수 있어요.';
+      case WeeklyPlanFailureReason.structuralOther:
+        return '요청 형식 문제로 플랜을 만들지 못했어요. '
+            '잠시 후에도 같은 문제가 반복될 수 있어요.';
+      case WeeklyPlanFailureReason.transient:
+      case WeeklyPlanFailureReason.rateLimited:
+        return '플랜 생성에 실패했어요. 잠시 후 다시 시도해주세요.';
+    }
+  }
+
   // ── 레벨 2: 주간 코디 플랜 (버튼 트리거) ──────────────────
   // 오늘부터 7일의 일정(예정 태그 없으면 '일상')과 옷장 전체를 Gemini에 단
   // 1회 호출해 제약(중복 회피·격식 배분)을 고려한 날짜별 조합을 받는다.
@@ -738,6 +796,34 @@ class AgentPlanner {
 
     debugPrint('[PLAN] 주간 플랜 요청: ${days.length}일, 옷장 ${usable.length}벌'
         '${feedbackText != null ? ' (이력 ${history.lines.length}건 반영)' : ''}');
+
+    // 실패 시 릴리스에서도 남는 곳(agent_logs)에 분류·원인·옷장 카탈로그
+    // 문자수를 기록한다 — 이전엔 debugPrint(릴리스에서 사실상 소실)만
+    // 남고 Firestore 어디에도 안 남았다(docs/task_weekly_plan_scale_v1.md
+    // 4단계 1단계). 사용자 식별 정보·옷장 내용(아이템 id/속성)은 담지
+    // 않는다 — 문자수(catalog.length)만 담아 "상한 접근 계측"과 필드를
+    // 공유한다.
+    void logWeeklyPlanFailure(
+      WeeklyPlanFailureReason reason, {
+      required String exceptionType,
+      List<String>? violations,
+      int? statusCode,
+    }) {
+      unawaited(FirestoreService.addAgentLogSilently(
+        uid,
+        AgentLogEntry(
+          id: '',
+          eventType: AgentLogEntry.typeWeeklyPlanFailed,
+          message: weeklyPlanFailureMessage(reason),
+          weeklyPlanFailureReason: reason.name,
+          weeklyPlanExceptionType: exceptionType,
+          weeklyPlanViolations: violations,
+          weeklyPlanStatusCode: statusCode,
+          weeklyPlanCatalogChars: catalog.length,
+        ),
+      ));
+    }
+
     String raw;
     try {
       raw = await GeminiService.withTextModelFallback(
@@ -748,9 +834,45 @@ class AgentPlanner {
           model: model,
         ),
       );
+    } on RateLimitExceededException catch (e) {
+      // 이미 자체 안내 문구가 있다(RateLimitExceededException.message,
+      // gemini_api_exception.dart:26-28 관례) — 문구는 그대로 쓰고
+      // 계측만 남긴다.
+      const reason = WeeklyPlanFailureReason.rateLimited;
+      logWeeklyPlanFailure(reason, exceptionType: 'RateLimitExceededException');
+      throw StateError(e.message);
+    } on GeminiApiException catch (e) {
+      final reason = classifyWeeklyPlanFailure(isGeminiRetryable: e.isRetryable);
+      logWeeklyPlanFailure(reason,
+          exceptionType: 'GeminiApiException', statusCode: e.statusCode);
+      throw StateError(weeklyPlanFailureMessage(reason));
+    } on FirebaseFunctionsException catch (e) {
+      final details = e.details;
+      final violations = details is Map
+          ? (details['violations'] as List?)?.map((v) => v.toString()).toList()
+          : null;
+      final reason = classifyWeeklyPlanFailure(
+        functionsErrorCode: e.code,
+        violations: violations,
+      );
+      logWeeklyPlanFailure(reason,
+          exceptionType: 'FirebaseFunctionsException(${e.code})', violations: violations);
+      throw StateError(weeklyPlanFailureMessage(reason));
+    } on TimeoutException {
+      final reason = classifyWeeklyPlanFailure();
+      logWeeklyPlanFailure(reason, exceptionType: 'TimeoutException');
+      throw StateError(weeklyPlanFailureMessage(reason));
+    } on FormatException {
+      final reason = classifyWeeklyPlanFailure();
+      logWeeklyPlanFailure(reason, exceptionType: 'FormatException');
+      throw StateError(weeklyPlanFailureMessage(reason));
     } catch (e) {
-      debugPrint('[PLAN] 주간 플랜 Gemini 실패: $e');
-      throw StateError('플랜 생성에 실패했어요. 잠시 후 다시 시도해주세요.');
+      // 안전한 기본값 — 모르는 실패를 "구조적"으로 잘못 분류해 재시도를
+      // 막느니, 기존처럼 재시도를 권하는 쪽이 무해한 방향의 오분류다.
+      debugPrint('[PLAN] 주간 플랜 Gemini 실패(미분류): $e');
+      final reason = classifyWeeklyPlanFailure();
+      logWeeklyPlanFailure(reason, exceptionType: e.runtimeType.toString());
+      throw StateError(weeklyPlanFailureMessage(reason));
     }
 
     final parsed = _parsePlanArray(raw);

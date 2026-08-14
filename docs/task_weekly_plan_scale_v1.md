@@ -453,14 +453,75 @@ static String weeklyPlanStructuralFailureMessage(List<String>? violations) {
 뽑아 위 함수 호출) → `TimeoutException`/`FormatException`(기존
 문구) → 나머지(기존 문구, 안전한 기본값).
 
-**승인 대기 — 위 표·문구·구현 스케치가 이대로 괜찮은지 확인 후
-구현한다.**
+**승인됨 — 아래 세 가지를 반영해 구현했다(2026-08-14 이어서).**
+
+### 승인 시 반영된 수정 3건
+
+1. **실패 기록을 문구 수정과 함께 넣었다.** 문구만 고치면 "어떤
+   실패가 얼마나 자주 나는지"는 여전히 모른다는 지적을 받아들여,
+   `AgentLogEntry`에 `typeWeeklyPlanFailed` 이벤트와 계측 전용
+   필드 5개(`weeklyPlanFailureReason`/`weeklyPlanExceptionType`/
+   `weeklyPlanViolations`/`weeklyPlanStatusCode`/
+   `weeklyPlanCatalogChars`)를 추가했다 — 새 컬렉션을 만들지
+   않고 기존 `agent_logs`를 재사용(§2 원칙: 기존 데이터/경로
+   먼저). 사용자 식별 정보·옷장 내용(아이템 id·속성)은 담지
+   않는다 — `weeklyPlanCatalogChars`는 옷장 카탈로그의 **문자
+   수**만 담아, 5단계(상한 접근 계측)와 겹치는 지점을 필드
+   하나로 합쳤다(전체 병합은 아니다 — 성공 시 계측은 여전히
+   5단계 몫으로 남겨둠, 아래 참고).
+2. **`unauthenticated`를 "구조적—기타"에서 빼 "일시적"으로
+   옮겼다.** 재로그인하면 풀리는 실패에 "재시도해도 소용없다"는
+   문구를 붙이면 이번에 고치려는 문제(틀린 방향 안내)를 그대로
+   반복하는 셈이라는 지적을 반영 — `classifyWeeklyPlanFailure`가
+   `functionsErrorCode == 'unauthenticated'`를 별도로 먼저
+   검사해 `transient`로 분류한다. 전용 재로그인 UX는 여전히
+   범위 밖(등록만) — 별도 항목으로 아래 "미확인으로 남긴 것"에
+   추가.
+3. **분류와 문구를 분리했다.** `weeklyPlanStructuralFailureMessage`
+   (분류+문구 결합) 대신 `classifyWeeklyPlanFailure`(순수, 원시값
+   → `WeeklyPlanFailureReason` 열거형)와 `weeklyPlanFailureMessage`
+   (열거형 → 문자열) 둘로 나눴다 — 계측이 분류 결과(열거형)를
+   그대로 쓰므로 문구 함수를 다시 호출/재구현할 필요가 없다.
+   `@protected` 생성자 문제로 원시값만 받는 설계는 그대로 유지.
+
+### 구현 위치
+
+- `lib/models/agent_log_entry.dart`: `typeWeeklyPlanFailed` +
+  계측 필드 5개(생성자·`fromFirestore`·`toFirestore` sparse write).
+- `lib/services/agent_planner.dart`: 최상위 `enum WeeklyPlanFailureReason
+  { transient, wardrobeTooLarge, structuralOther, rateLimited }`,
+  `AgentPlanner.classifyWeeklyPlanFailure`(순수)·
+  `AgentPlanner.weeklyPlanFailureMessage`(순수), `generateWeeklyPlan`의
+  `try/catch`를 `RateLimitExceededException`→`GeminiApiException`→
+  `FirebaseFunctionsException`→`TimeoutException`→`FormatException`→
+  나머지 순으로 타입별 분기(기존 저장소 관례,
+  `fitting_job_controller.dart`의 invalid-argument rethrow 패턴과
+  같은 판단 — 재구현하지 않음). 각 분기가 로컬 클로저
+  `logWeeklyPlanFailure`로 `agent_logs`에 기록한 뒤
+  `weeklyPlanFailureMessage(reason)`로 `StateError`를 던진다
+  (`RateLimitExceededException`만 예외 — 자기 자신의 `.message`를
+  그대로 씀, 기존 관례 유지).
+- `test/agent_planner_weekly_plan_failure_test.dart`(신규):
+  `classifyWeeklyPlanFailure` 9케이스(호출량 상한, 재시도 가능/
+  불가 Gemini 오류, unauthenticated, text_too_long 단독/혼재,
+  violations 없음, violations 자체 없음, 완전 미분류) +
+  `weeklyPlanFailureMessage` 3케이스.
+
+### 검증
+
+`flutter analyze` 0건. `flutter test` 191개 전량 통과(기존 179개
++ 신규 12개, 회귀 없음). **실기기 검증은 이번엔 안 함 — 다음 승인
+후.** 서버(`request_shape.ts`)·`maxTotalTextChars` 값 모두
+미변경.
 
 ---
 
 ## 5단계 — 상한 접근 계측 (설계만, 승인 후 구현·상한 값 미변경)
 
-*(구현은 4단계 승인·완료 후 이어서 진행 — 여기서는 방향만 등록)*
+*(구현은 4단계 완료 후 이어서 진행 — 여기서는 방향만 등록.
+4단계에서 실패 시 `weeklyPlanCatalogChars`를 이미 기록하기
+시작했으므로, 성공 시 계측을 추가할 때 같은 필드명을 재사용해야
+"같은 실패에 두 곳이 쓰이는" 일이 없다.)*
 
 ## 미확인으로 남긴 것
 
