@@ -504,6 +504,72 @@ message: "발화 간격을 3시간에서 6시간으로 조정합니다"
 갈리는 위험, §4-2가 지적한 것과 같은 종류의 위험을 새로 만들지
 않기 위함).
 
+### 8-1. [갱신 2026-08-15] 착수 전 확인 — 서버 게이트 없이 성립하는가, 그리고 구현
+
+**질문**: 클라이언트만 조정값을 읽는 지금 상태에서, 실제로 관측
+가능한 알림 빈도가 줄어드는가?
+
+**코드로 확인한 결과 — 성립하지 않는다.**
+
+1. **`shouldRunNow`의 `minInterval`은 `adjustedIntervalHours`를
+   읽는다** — 1단계(b) 3/5(`a0fd97a`)에서 이미 배선함. 확인.
+2. **서버 발화(FCM)와 클라이언트 자체 발화(WorkManager)는 서로
+   다른 게이트를 지난다:**
+   - 클라이언트 주기 실행(`BackgroundAgent.run`, WorkManager가
+     3시간마다 틱) — `shouldRunNow(minInterval: adjustedIntervalHours)`를
+     지난다. 스킵되면 `AgentPlanner.runProactiveCheck`도, 로컬 알림
+     (`NotificationService.showRecommendationReady`)도 안 뜬다 —
+     **이 경로는 조정이 실제로 막는다.**
+   - 서버 발화(`scheduledProactiveCheck` → `runScheduledCheckCore`) —
+     **변경 전에는 `adjustedIntervalHours`를 전혀 참조하지 않았다.**
+     `findNextUntriggeredDate`(대상 날짜에 추천이 이미 있는지)로만
+     발화 여부를 정하고, 있으면 매 3시간 틱마다 계속 FCM을 보낸다.
+   - FCM 탭 처리(`fcm_service.dart`의 `_handleMessageTap`)도
+     `AgentPlanner.runProactiveCheck`를 직접 부를 뿐 `shouldRunNow`를
+     거치지 않는다 — 애초에 이 경로는 "주기적 확인"이 아니라 "탭에
+     대한 즉시 반응"이라 간격 개념 자체가 적용 대상이 아니다(별도
+     쟁점 아님, 명시만 해 둔다).
+3. **서버가 3시간마다 보내는 알림은 클라이언트 게이트와 완전히
+   무관하게 도착한다(변경 전 기준).** §9-3의 실기기 검증에서 실제로
+   관측한 알림(`"코디 추천 — 다가오는 일정에 맞는 코디를 준비했어요"`,
+   `channel=agent_recommendation`)이 바로 이 서버 발화 경로다 —
+   즉 **시연에서 실제로 보이는 알림이 조정과 무관한 경로였다.**
+
+**판단 — 사용자가 예고한 "후자"였다, 서버 게이트를 이번에 함께
+구현한다.** 로그에는 "6시간으로 조정합니다"가 뜨는데 실제 알림은
+그대로 3시간마다 온다면, 이번 트랙의 목적("판단이 관찰 가능한 형태로
+드러나게 한다")과 정면으로 어긋나는 상태로 배포하는 것이다. 구현
+범위가 크지 않고(§8이 이미 설계해 둔 지점에 조건 하나를 추가하는
+정도) 클라이언트 판정 로직을 서버에 복제하지 않아도 되므로(§8
+"판정은 클라이언트에서만" 원칙 유지), 이번에 함께 구현한다.
+
+**구현 — §8 원 설계에서 한 가지 정정.** 원 설계는 "기존
+`serverLastRunAt`을 재사용"이라고 적었으나, 실제로 그 필드는
+`recordServerInvocation`이 **매 호출마다(발화 여부와 무관하게)**
+갱신하는 "마지막 체크인 시각"이었다 — 이걸 그대로 쓰면 3시간마다
+갱신되는 값과 3시간 간격을 비교하는 셈이라 게이트가 사실상
+항상 무력화된다. 대신 **새 필드 `serverLastSentAt`**(실제 발송을
+시도했을 때만, 즉 `sendResult`가 있을 때만 기록)을 추가했다 —
+`functions/src/index.ts`의 `recordServerInvocation` 안, 기존
+`serverInvocationLog`·`serverLastRunAt` 쓰기와 같은 트랜잭션에
+얹었다(새 쓰기 왕복 없음).
+
+판정 자체는 `functions/src/cadence_gate.ts`에 순수 함수
+`evaluateCadenceGate`로 분리했다(rate_limit.ts의 `evaluateRateLimit`과
+같은 결 — Firestore/시각 의존 없이 단위 테스트). `index.ts`의
+`isCadenceGateBlocking`은 Firestore 읽기만 하는 얇은 래퍼다.
+`adjustedIntervalHours`/`serverLastSentAt` 중 하나라도 없으면(아직
+한 번도 조정 안 됨, 또는 한 번도 발송 안 함) 항상 통과시킨다 —
+이 기능 도입 이전과 diff 0. 단위 테스트 6건(경계값 포함) 통과,
+`tsc --noEmit`·`npm test` 전체 통과.
+
+**등록만 하는 한계 — onCall 응답만으로는 사유가 안 갈린다.**
+`triggerScheduledCheckTest`의 `{"triggered":false}}` 응답은 "대상
+날짜 없음"과 "간격 게이트로 보류"를 구분하지 않는다(§9-3의 최초
+발화 실패 조사에서 이미 겪은 것과 같은 한계). 구분하려면 Cloud
+Functions 로그의 `cadenceGate로 보류` 줄을 봐야 한다 — 이 줄을
+새로 추가했다.
+
 ## 9. 검증 설계
 
 ### 9-0. 배포 전 확인 — 구버전 클라이언트 호환성 (2026-08-15, 코드 확인만)

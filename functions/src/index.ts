@@ -8,6 +8,7 @@ import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
 import {getMessaging, SendResponse} from "firebase-admin/messaging";
 import {getStorage} from "firebase-admin/storage";
 import {evaluateRateLimit, RateLimitConfig, RateLimitKind, RateLimitState} from "./rate_limit";
+import {evaluateCadenceGate} from "./cadence_gate";
 import {evaluatePayloadLimit, kindForModel, PAYLOAD_LIMIT_CONFIG} from "./payload_limit";
 import {planTokenCleanup, TokenSendResult} from "./fcm_token_cleanup";
 import {
@@ -1263,6 +1264,15 @@ async function recordServerInvocation(
         serverInvokeCount: FieldValue.increment(1),
         serverInvocationLog: nextLog,
         serverLastRunAt: now,
+        // serverLastRunAt과 다르다 - 그건 "이 함수가 이 uid를 확인한
+        // 시각"(매 3시간 크론마다 항상 갱신)이고, 이건 "실제로 발송을
+        // 시도한 시각"(sendResult가 있을 때만, 즉 대상 날짜가 있고
+        // 토큰도 있었을 때만)이다. 발화 정책 자기 조정 게이트
+        // (docs/task_agent_cadence_v1.md §8, cadenceGateElapsedMs 위
+        // 사용부)가 "마지막 발송 이후 조정된 간격이 지났는가"를 판정할
+        // 때 이 필드를 쓴다 - serverLastRunAt을 썼다면 3시간 체크인
+        // 자체를 발송으로 착각해 간격이 전혀 늘어나지 않는다.
+        ...(sendResult ? {serverLastSentAt: now} : {}),
       }, {merge: true});
     });
   } catch (err) {
@@ -1284,12 +1294,42 @@ async function recordServerInvocation(
 // 표본의 해석이 바뀐다(함정 8의 연장선) - 실측으로 관측된 적 없는 문제를
 // 막으려다 확실한 계측을 훼손하는 셈이라 지금은 손대지 않는다. 같은 날짜에
 // 추천이 둘 생기는 게 실제로 관측되면 그때 다시 판단한다.
+// 발화 정책 자기 조정 게이트(docs/task_agent_cadence_v1.md §8) - 크론
+// 자체(3시간)는 안 바꾸고, 그 안에서 "조정된 간격이 지났는가"만 판정한다.
+// 판정 자체(evaluateCadenceGate)는 cadence_gate.ts에 순수 함수로 분리돼
+// 있다 - 여기는 Firestore 읽기만 맡는 얇은 래퍼다(rate_limit.ts의
+// evaluateRateLimit·index.ts checkAndRecordRateLimit과 같은 분업).
+async function isCadenceGateBlocking(uid: string, now: Date): Promise<boolean> {
+  const meta = await getFirestore()
+    .collection("users").doc(uid).collection("agent_meta").doc("background").get();
+  const data = meta.data();
+  return evaluateCadenceGate({
+    nowMs: now.getTime(),
+    adjustedIntervalHours: data?.adjustedIntervalHours as number | undefined,
+    serverLastSentAtMs: (data?.serverLastSentAt as FirebaseFirestore.Timestamp | undefined)
+      ?.toMillis(),
+  });
+}
+
 async function runScheduledCheckCore(
   uid: string
 ): Promise<{triggered: boolean; targetDate?: string}> {
   const targetDate = await findNextUntriggeredDate(uid);
 
   if (!targetDate) {
+    await recordServerInvocation(uid, false);
+    return {triggered: false};
+  }
+
+  // [주의] 아래 recordServerInvocation(uid, false) 호출은 target이 없을
+  // 때(위)와 같은 {triggered:false} 응답을 낸다 - onCall 응답만으로는
+  // "일정 없음"과 "간격 미달로 보류"가 구분되지 않는다. 구분이 필요하면
+  // console.log 줄(바로 아래)이 유일한 단서다 - Cloud Functions 로그를
+  // 봐야 한다(docs/task_agent_cadence_v1.md §9-3 최초 발화 실패 조사와
+  // 같은 한계).
+  if (await isCadenceGateBlocking(uid, new Date())) {
+    console.log(`[C단계] uid=${uid} targetDate=${toKstDateString(targetDate)} ` +
+      "cadenceGate로 보류(조정된 간격 미달)");
     await recordServerInvocation(uid, false);
     return {triggered: false};
   }
