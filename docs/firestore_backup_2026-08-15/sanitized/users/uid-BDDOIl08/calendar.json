@@ -1,0 +1,147 @@
+[
+  {
+    "_id": "GbDmtOx3WLc41LufFtu5",
+    "tpoTag": "일상",
+    "createdAt": "2026-08-10T16:52:09.994000+00:00",
+    "source": "agent",
+    "date": "2026-08-10T15:00:00+00:00",
+    "itemSummaries": [
+      "상의: 카키",
+      "하의: 블랙",
+      "신발: 블랙",
+      "액세서리: 블랙"
+    ],
+    "itemIds": [
+      "QJ1NeMGYxR3580vZad8p",
+      "Q2TqinzkRVKNgDoQE5dp",
+      "kC0gwb3bHizwF5TPp2Th",
+      "8nLIRINDrNZCjxnsIGGW"
+    ],
+    "status": "recorded"
+  },
+  {
+    "_id": "GeRgKpRfn20ZcPVHJL6i",
+    "tpoTag": "일상",
+    "createdAt": "2026-08-15T04:28:49.803000+00:00",
+    "source": "manual",
+    "date": "2026-08-15T15:00:00+00:00",
+    "itemSummaries": [],
+    "itemIds": [],
+    "status": "planned"
+  },
+  {
+    "_id": "VTQcbgj7sq846BLmsZPl",
+    "tpoTag": "일상",
+    "createdAt": "2026-08-14T04:14:32.852000+00:00",
+    "source": "agent",
+    "date": "2026-08-13T15:00:00+00:00",
+    "itemSummaries": [
+      "상의: 화이트",
+      "하의: 차콜",
+      "신발: 블랙"
+    ],
+    "itemIds": [
+      "UKvHI9gmwg4809IhzNJH",
+      "UAssyHECUNPQqv3psL6Q",
+      "kC0gwb3bHizwF5TPp2Th"
+    ],
+    "status": "recorded"
+  },
+  {
+    "_id": "WO96HYvl4hVsE4Tr6DFl",
+    "tpoTag": "일상",
+    "createdAt": "2026-08-06T06:27:10.178000+00:00",
+    "source": "agent",
+    "date": "2026-08-05T15:00:00+00:00",
+    "itemSummaries": [
+      "상의: 차콜",
+      "하의: 블랙",
+      "신발: 블랙"
+    ],
+    "itemIds": [
+      "ToS9n74SDle28ziL7ggB",
+      "Q2TqinzkRVKNgDoQE5dp",
+      "t16mhpuSrkQq4KvRxiqx"
+    ],
+    "status": "recorded"
+  },
+  {
+    "_id": "YAbW06i9Nmyy5FSngSEH",
+    "tpoTag": "출근",
+    "createdAt": "2026-07-29T04:49:34.800000+00:00",
+    "source": "manual",
+    "date": "2026-07-30T15:00:00+00:00",
+    "itemSummaries": [],
+    "itemIds": [],
+    "status": "planned"
+  },
+  {
+    "_id": "cC1DjXezXAMYGGBGjeWQ",
+    "tpoTag": "결혼식",
+    "createdAt": "2026-07-29T04:46:52.644000+00:00",
+    "source": "manual",
+    "date": "2026-07-29T15:00:00+00:00",
+    "itemSummaries": [],
+    "itemIds": [],
+    "status": "planned"
+  },
+  {
+    "_id": "cXB1jHgqjQmTiYNKxZCo",
+    "tpoTag": "결혼식",
+    "createdAt": "2026-08-05T13:52:42.869000+00:00",
+    "source": "manual",
+    "date": "2026-08-06T15:00:00+00:00",
+    "itemSummaries": [],
+    "itemIds": [],
+    "status": "planned"
+  },
+  {
+    "_id": "g5nQhH1uZOhMAl54NGos",
+    "status": "recorded",
+    "source": "agent",
+    "tpoTag": "출근",
+    "itemSummaries": [
+      "상의: 색상 화이트, 스타일 캐주얼, 패턴 무지, 격식 세미포멀, 핏 오버사이즈, 태그: 반팔셔츠, 여름, 포켓, 코튼",
+      "하의: 색상 차콜, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 레귤러, 태그: 슬랙스, 와이드팬츠, 핀턱, 사계절",
+      "아우터: 색상 블랙, 스타일 미니멀, 패턴 무지, 격식 세미포멀, 핏 오버사이즈, 태그: 블레이저, 봄가을, 아우터, 데일리룩",
+      "신발: 색상 블랙, 스타일 스포티, 패턴 무지, 격식 캐주얼, 핏 레귤러, 태그: 스니커즈, 스웨이드, 핑크배색, 사계절"
+    ],
+    "date": "2026-08-05T15:00:00+00:00",
+    "recommendationId": "31dFZeqAXLyIhqM6mBqT",
+    "itemIds": [
+      "GdEAbAzK3G8u01DkS9a9",
+      "MA8a45cerrH3VdLKXB64",
+      "vRnIn4pj9Nn1CBsxyrYA",
+      "FMi4qRsCjiVLHtO6mUdF"
+    ],
+    "createdAt": "2026-08-05T13:48:42.827000+00:00"
+  },
+  {
+    "_id": "jjLMCgfe06qKQwi69CHz",
+    "tpoTag": "모임",
+    "createdAt": "2026-08-15T04:41:05.854000+00:00",
+    "source": "manual",
+    "date": "2026-08-17T15:00:00+00:00",
+    "itemSummaries": [],
+    "itemIds": [],
+    "status": "planned"
+  },
+  {
+    "_id": "uGDwnCUCNuUJWdQQ2Avd",
+    "createdAt": "2026-08-06T06:25:00.280000+00:00",
+    "source": "manual",
+    "date": "2026-08-05T15:00:00+00:00",
+    "itemSummaries": [
+      "상의: 네이비",
+      "하의: 블랙"
+    ],
+    "fittingImageUrl": "[REDACTED-URL]",
+    "tpoTag": "일상",
+    "fittingCacheKey": "68ceaf8107522193750b391b7fc0d64f496761bfce047c98879161ccde24e261",
+    "itemIds": [
+      "sAdMyTMxYREXOPxdHByT",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "status": "recorded"
+  }
+]

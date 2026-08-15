@@ -1,0 +1,33 @@
+{
+  "dumpedAt": "2026-08-15T12:29:12.989751+00:00",
+  "project": "ai-fashion-assistant-personal",
+  "topLevelCounts": {
+    "wardrobe": 254,
+    "demo_wardrobe": 113,
+    "fitting_cache": 51,
+    "rate_limits": 7
+  },
+  "userCount": 3,
+  "subCollectionCounts": {
+    "BDDOIl08/agent_logs": 355,
+    "BDDOIl08/agent_meta": 1,
+    "BDDOIl08/calendar": 10,
+    "BDDOIl08/fcm_tokens": 1,
+    "BDDOIl08/history": 127,
+    "BDDOIl08/recommendations": 37,
+    "BDDOIl08/scraps": 1,
+    "JmllppO9/agent_logs": 182,
+    "JmllppO9/agent_meta": 1,
+    "JmllppO9/agent_tasks": 1,
+    "JmllppO9/calendar": 14,
+    "JmllppO9/history": 16,
+    "JmllppO9/recommendations": 23,
+    "JmllppO9/scraps": 1,
+    "yPyw4DC2/agent_logs": 190,
+    "yPyw4DC2/agent_meta": 1,
+    "yPyw4DC2/calendar": 16,
+    "yPyw4DC2/fcm_tokens": 1,
+    "yPyw4DC2/history": 55,
+    "yPyw4DC2/recommendations": 18
+  }
+}

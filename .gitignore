@@ -51,6 +51,11 @@ tools/export_for_kaggle/wardrobe_export.zip
 # 데이터라 git 히스토리에 넣지 않는다.
 tools/export_for_kaggle/embeddings.json
 
+# Firestore 전체 백업(Blaze 해제 전) 중 raw본 — 실 Storage URL(다운로드 토큰 포함),
+# 체형 프로필, 512차원 임베딩 벡터, 전체 uid/FCM 토큰 등 원본 개인정보를 그대로
+# 담고 있어 공개 저장소에 커밋하지 않는다. sanitized/ 본만 커밋 대상.
+docs/firestore_backup_2026-08-15/raw/
+
 # 실시간 임베딩 스파이크(task_realtime_embedding_v1) — FashionCLIP
 # 이미지 인코더를 ONNX로 변환한 산출물(352.8MB, 그래프+외부 가중치).
 # patrickjohncyh/fashion-clip에서 재생성 가능한 빌드 산출물이라 git

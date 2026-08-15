@@ -1,0 +1,7796 @@
+[
+  {
+    "_id": "08IS2RoIPQgmoEsxbSeP",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "볼캡",
+        "야구모자",
+        "스트릿웨어",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1783913521844.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783913524835.png",
+    "subCategory": "모자",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:21.617042+00:00"
+    },
+    "createdAt": "2026-07-13T03:32:08.274000+00:00"
+  },
+  {
+    "_id": "09v2UrBJX8GmeqMs5IBz",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "화이트",
+      "fit": "오버사이즈",
+      "tags": [
+        "반팔",
+        "여름",
+        "스트릿웨어",
+        "블록코어"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783849110832.jpg",
+    "cutoutPath": "wardrobe_cutouts/09v2UrBJX8GmeqMs5IBz_norm_1783858768407.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:21.707801+00:00"
+    },
+    "createdAt": "2026-07-12T09:38:34.842000+00:00"
+  },
+  {
+    "_id": "0PGRnY39FstR95fRVNTZ",
+    "size": {
+      "hipWidth": 60.0,
+      "pantsLength": 107.0,
+      "thighWidth": 37.0,
+      "waistWidth": 44.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "와이드팬츠",
+        "슬랙스",
+        "봄가을",
+        "벨티드"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851977503.jpg",
+    "extractionAttemptedAt": "2026-07-12T12:25:01.970000+00:00",
+    "cutoutPath": "wardrobe_cutouts/0PGRnY39FstR95fRVNTZ_norm_1783858769978.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:21.775980+00:00"
+    },
+    "createdAt": "2026-07-12T10:26:24.635000+00:00"
+  },
+  {
+    "_id": "0Yo3dn1nNHgB5NkdBWjU",
+    "size": {
+      "hipWidth": 50.0,
+      "pantsLength": 103.0,
+      "thighWidth": 32.0,
+      "waistWidth": 34.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "차콜",
+      "fit": "레귤러",
+      "tags": [
+        "슬랙스",
+        "가을",
+        "겨울",
+        "울혼방"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851632924.jpg",
+    "cutoutPath": "wardrobe_cutouts/0Yo3dn1nNHgB5NkdBWjU_norm_1783858771497.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:21.857553+00:00"
+    },
+    "createdAt": "2026-07-12T10:20:41.915000+00:00"
+  },
+  {
+    "_id": "12vo33HQCZJnmqnHqc13",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "브라운",
+      "fit": "레ギュラー",
+      "tags": [
+        "볼캡",
+        "워싱",
+        "코튼",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1783913569527.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783913572571.png",
+    "subCategory": "모자",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.006625+00:00"
+    },
+    "createdAt": "2026-07-13T03:32:56.836000+00:00"
+  },
+  {
+    "_id": "1FMrPWZrnYdebaLUfaRs",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블루",
+      "tags": [
+        "볼캡",
+        "야구모자",
+        "코튼",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "액세서리",
+    "subCategory": "모자",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.263008+00:00"
+    },
+    "createdAt": "2026-07-13T03:35:59.412000+00:00"
+  },
+  {
+    "_id": "1gMD0zNcsOu6Pj3YP1vB",
+    "size": {
+      "sleeveLength": 78.0,
+      "chestWidth": 63.0,
+      "totalLength": 68.0,
+      "shoulderWidth": 50.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블루",
+      "fit": "레귤러",
+      "tags": [
+        "셔츠",
+        "반팔",
+        "옥스포드",
+        "여름"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783849005382.jpg",
+    "cutoutPath": "wardrobe_cutouts/1gMD0zNcsOu6Pj3YP1vB_norm_1783858775788.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.126215+00:00"
+    },
+    "createdAt": "2026-07-12T09:36:52.526000+00:00"
+  },
+  {
+    "_id": "26iH08sOVsjE3hFsX6dD",
+    "size": {
+      "hipWidth": 52.5,
+      "pantsLength": 104.0,
+      "thighWidth": 33.2,
+      "waistWidth": 36.5
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "스카이블루",
+      "fit": "와이드핏",
+      "tags": [
+        "랩스타일",
+        "레이어드",
+        "리본스트랩",
+        "린넨혼방"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "유니크"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/musinsa_07_1783846649599.png",
+    "cutoutPath": "wardrobe_cutouts/26iH08sOVsjE3hFsX6dD_norm_1783858776760.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.183703+00:00"
+    },
+    "createdAt": "2026-07-12T08:57:39.038000+00:00"
+  },
+  {
+    "_id": "2Cd2VfBSQXBMWXzruaMp",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 60.0,
+      "waistWidth": 44.0,
+      "pantsLength": 107.0,
+      "thighWidth": 37.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "나일론",
+        "트랙팬츠",
+        "스포티",
+        "밴딩팬츠"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.977831+00:00"
+    },
+    "createdAt": "2026-07-12T10:18:58.313000+00:00"
+  },
+  {
+    "_id": "2OY6wRo8TWCepBuxRCil",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 55.0,
+      "waistWidth": 39.0,
+      "pantsLength": 105.0,
+      "thighWidth": 34.5
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "그레이",
+      "tags": [
+        "스웨트팬츠",
+        "반바지",
+        "밴딩",
+        "캐릭터"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.577106+00:00"
+    },
+    "createdAt": "2026-07-05T02:57:08.149000+00:00"
+  },
+  {
+    "_id": "2TmKxtTTBdUr90idS7gf",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "가죽",
+        "토트백",
+        "데일리",
+        "사계절"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/7aa271c7b43fe28091ec12fcc4675947.jpg",
+    "cutoutPath": "wardrobe_cutouts/7aa271c7b43fe28091ec12fcc4675947.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:44:34.626000+00:00"
+  },
+  {
+    "_id": "2efbE3mfLC08D3OlEQDK",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "클래식"
+      ],
+      "formality": "캐주얼",
+      "pattern": "스트라이프",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.515177+00:00"
+    },
+    "createdAt": "2026-07-12T10:55:13+00:00"
+  },
+  {
+    "_id": "30KjagITwHpse3gduN55",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 23.0,
+      "chestWidth": 57.5,
+      "totalLength": 63.0,
+      "shoulderWidth": 49.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "레트로"
+      ],
+      "color": "옐로우",
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1785130157615.jpg",
+    "cutoutPath": "wardrobe_cutouts/1785130159269.png",
+    "createdAt": "2026-07-27T05:29:21.278000+00:00"
+  },
+  {
+    "_id": "3DmmJ0cRV9iyZMGThQrR",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 22.0,
+      "chestWidth": 62.5,
+      "totalLength": 73.0,
+      "shoulderWidth": 60.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "스카이블루",
+      "tags": [
+        "축구유니폼",
+        "반팔",
+        "기능성",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.206707+00:00"
+    },
+    "createdAt": "2026-07-05T03:01:41.310000+00:00"
+  },
+  {
+    "_id": "3rMPFsT0sbB3pWOrmbPm",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블루",
+      "fit": "레귤러",
+      "tags": [
+        "볼캡",
+        "야구모자",
+        "코튼",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1783913752389.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783913756149.png",
+    "subCategory": "모자",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.263008+00:00"
+    },
+    "createdAt": "2026-07-13T03:35:59.412000+00:00"
+  },
+  {
+    "_id": "4XG383BihoYFEr2ujgRv",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 23.0,
+      "chestWidth": 66.0,
+      "totalLength": 73.0,
+      "shoulderWidth": 61.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "반팔티셔츠",
+        "그래피티",
+        "여름",
+        "코튼"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.791856+00:00"
+    },
+    "createdAt": "2026-07-04T12:23:44.313000+00:00"
+  },
+  {
+    "_id": "4a6uzil1g4kh2Vmclj0f",
+    "size": {
+      "hipWidth": 55.0,
+      "pantsLength": 105.0,
+      "thighWidth": 34.5,
+      "waistWidth": 39.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블루",
+      "fit": "와이드",
+      "tags": [
+        "트레이닝팬츠",
+        "사이드라인",
+        "밴딩팬츠",
+        "글로시"
+      ],
+      "formality": "캐주얼",
+      "pattern": "도트",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/musinsa_105_1783846659151.png",
+    "cutoutPath": "wardrobe_cutouts/4a6uzil1g4kh2Vmclj0f_norm_1783858777995.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.316240+00:00"
+    },
+    "createdAt": "2026-07-12T08:57:53.335000+00:00"
+  },
+  {
+    "_id": "4rhF31yhukHgKpiAwiGL",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "가죽",
+        "여름",
+        "플랫폼",
+        "샌들"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.319543+00:00"
+    },
+    "createdAt": "2026-07-06T04:03:50.184000+00:00"
+  },
+  {
+    "_id": "50eSWq2UXL2J7ffd4OMH",
+    "imagePath": "wardrobe_images/d5502471670554f105fa928e8d082891.jpg",
+    "createdAt": "2026-08-06T04:51:46.843000+00:00",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "올블랙",
+        "슬랙스",
+        "터틀넥",
+        "가을/겨울"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "전신"
+  },
+  {
+    "_id": "5E51JHawDgnNbLlLVszr",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "실버",
+      "tags": [
+        "체인",
+        "팔찌",
+        "금속",
+        "심플"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/e39d3be2af5f1ce3258201d8fb0b91ef.jpg",
+    "cutoutPath": "wardrobe_cutouts/e39d3be2af5f1ce3258201d8fb0b91ef.png",
+    "subCategory": "팔찌",
+    "createdAt": "2026-08-09T04:47:10.276000+00:00"
+  },
+  {
+    "_id": "5HCEKvoeDnq1NwNraT4M",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "캔버스",
+        "스트릿",
+        "데일리"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783854232331.jpg",
+    "cutoutPath": "wardrobe_cutouts/5HCEKvoeDnq1NwNraT4M_norm_1783858779472.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.384515+00:00"
+    },
+    "createdAt": "2026-07-12T11:03:57.056000+00:00"
+  },
+  {
+    "_id": "5iTNF0tDQtqLURJfzC77",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "화이트",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "클래식"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783220862469.jpg",
+    "cutoutPath": "wardrobe_cutouts/5iTNF0tDQtqLURJfzC77_norm_1783858781117.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.439189+00:00"
+    },
+    "createdAt": "2026-07-05T03:07:50.423000+00:00"
+  },
+  {
+    "_id": "665OXTTw9jJB8uCxWfPf",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "카키",
+      "tags": [
+        "항공점퍼",
+        "봄가을",
+        "나일론",
+        "밀리터리"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.884161+00:00"
+    },
+    "createdAt": "2026-07-02T01:08:08.481000+00:00"
+  },
+  {
+    "_id": "6CVPMcrOKtaBwW7xN0e5",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "러닝화",
+        "메쉬",
+        "쿠셔닝",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783854138289.jpg",
+    "cutoutPath": "wardrobe_cutouts/6CVPMcrOKtaBwW7xN0e5_norm_1783858782804.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.501624+00:00"
+    },
+    "createdAt": "2026-07-12T11:02:22.516000+00:00"
+  },
+  {
+    "_id": "6JekUaiIcZCd8CDdfV07",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "아이보리",
+      "tags": [
+        "어글리슈즈",
+        "스니커즈",
+        "로고",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.154694+00:00"
+    },
+    "createdAt": "2026-07-12T11:01:32.650000+00:00"
+  },
+  {
+    "_id": "6Ss5zpWsuXQgDet3Fnce",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "밀리터리",
+        "봄가을"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.160325+00:00"
+    },
+    "createdAt": "2026-07-12T10:42:40.649000+00:00"
+  },
+  {
+    "_id": "6hwQHmlDTijya04ECcAa",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "스니커즈",
+        "캔버스",
+        "스트릿",
+        "데일리"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.384515+00:00"
+    },
+    "createdAt": "2026-07-12T11:03:57.056000+00:00"
+  },
+  {
+    "_id": "6vVNoavk5DLduhTNKu0d",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "카라티",
+        "니트",
+        "반팔",
+        "여름"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783848846395.jpg",
+    "cutoutPath": "wardrobe_cutouts/6vVNoavk5DLduhTNKu0d_norm_1783858783828.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.555904+00:00"
+    },
+    "createdAt": "2026-07-12T09:34:13.827000+00:00"
+  },
+  {
+    "_id": "7dVhP4li6WwE0ziIaBFG",
+    "size": {
+      "hipWidth": 50.0,
+      "pantsLength": 103.0,
+      "thighWidth": 32.0,
+      "waistWidth": 34.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "데님",
+        "와이드팬츠",
+        "턱팬츠",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851187343.jpg",
+    "cutoutPath": "wardrobe_cutouts/7dVhP4li6WwE0ziIaBFG_norm_1783858786036.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.678711+00:00"
+    },
+    "createdAt": "2026-07-12T10:13:15.101000+00:00"
+  },
+  {
+    "_id": "82BZRE5YoeqldoO37LZR",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "화이트",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "로고"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.675797+00:00"
+    },
+    "createdAt": "2026-07-12T11:01:09.500000+00:00"
+  },
+  {
+    "_id": "87LFBHnyvr8ehv2ZzJeB",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "베이지",
+      "tags": [
+        "스니커즈",
+        "메쉬",
+        "아웃도어",
+        "키높이"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.245391+00:00"
+    },
+    "createdAt": "2026-07-12T00:36:17.198000+00:00"
+  },
+  {
+    "_id": "8L9WdwcZHgw1sH13kAKk",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "데님",
+        "반팔셔츠",
+        "스티치",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783849226048.jpg",
+    "cutoutPath": "wardrobe_cutouts/8L9WdwcZHgw1sH13kAKk_norm_1783858787518.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.725735+00:00"
+    },
+    "createdAt": "2026-07-12T09:40:34.792000+00:00"
+  },
+  {
+    "_id": "8Mc1tepGPjv9eaV4XMoE",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 60.0,
+      "waistWidth": 44.0,
+      "pantsLength": 107.0,
+      "thighWidth": 37.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블루",
+      "tags": [
+        "데님",
+        "반바지",
+        "여름",
+        "워싱"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.609020+00:00"
+    },
+    "createdAt": "2026-07-12T11:07:41.318000+00:00"
+  },
+  {
+    "_id": "8nLIRINDrNZCjxnsIGGW",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "메신저백",
+        "나일론",
+        "데일리백",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/088f84e2628aa8f2f6d1134fe5d9b2e5.jpg",
+    "cutoutPath": "wardrobe_cutouts/088f84e2628aa8f2f6d1134fe5d9b2e5.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:46:32.419000+00:00"
+  },
+  {
+    "_id": "8yOCc7T2YBACZsk4k0Dk",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "화이트",
+      "fit": "오버사이즈",
+      "tags": [
+        "반팔",
+        "그래피티",
+        "면",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783849139672.jpg",
+    "cutoutPath": "wardrobe_cutouts/8yOCc7T2YBACZsk4k0Dk_norm_1783858788439.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.790734+00:00"
+    },
+    "createdAt": "2026-07-12T09:39:03.054000+00:00"
+  },
+  {
+    "_id": "9Ko5qfUHsWYrVv2hDeNv",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "에코백",
+        "캔버스",
+        "레터링",
+        "데일리"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/f35958dc63fc40cccc4e6911d5151203.jpg",
+    "cutoutPath": "wardrobe_cutouts/f35958dc63fc40cccc4e6911d5151203.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:45:36.305000+00:00"
+  },
+  {
+    "_id": "9S4GHdIFLNTTGCbTdPzM",
+    "size": {
+      "hipWidth": 60.0,
+      "pantsLength": 107.0,
+      "thighWidth": 37.0,
+      "waistWidth": 44.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "와이드",
+      "tags": [
+        "데님쇼츠",
+        "버뮤다팬츠",
+        "흑청",
+        "하프팬츠"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트리트"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/musinsa_112_1783846683661.png",
+    "cutoutPath": "wardrobe_cutouts/9S4GHdIFLNTTGCbTdPzM_norm_1783858789893.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.836785+00:00"
+    },
+    "createdAt": "2026-07-12T08:58:16.360000+00:00"
+  },
+  {
+    "_id": "9pOjMfKB2q40pZIeIGox",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 23.0,
+      "chestWidth": 57.5,
+      "totalLength": 63.0,
+      "shoulderWidth": 49.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "네이비",
+      "tags": [
+        "반팔",
+        "골지",
+        "아디다스",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "스트라이프",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.749522+00:00"
+    },
+    "createdAt": "2026-07-12T00:33:54.671000+00:00"
+  },
+  {
+    "_id": "A15dNhHbsojstllYYE5m",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "브라운",
+      "tags": [
+        "볼캡",
+        "야구모자",
+        "코튼",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "액세서리",
+    "subCategory": "모자",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.558102+00:00"
+    },
+    "createdAt": "2026-07-13T03:33:31.525000+00:00"
+  },
+  {
+    "_id": "A5m5JnnGoLIw0z6jkbDt",
+    "size": {
+      "hipWidth": 55.0,
+      "pantsLength": 105.0,
+      "thighWidth": 34.5,
+      "waistWidth": 39.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "차콜",
+      "fit": "레귤러",
+      "tags": [
+        "데님",
+        "워싱",
+        "사계절",
+        "와이드"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851459913.jpg",
+    "cutoutPath": "wardrobe_cutouts/A5m5JnnGoLIw0z6jkbDt_norm_1783858790828.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.906014+00:00"
+    },
+    "createdAt": "2026-07-12T10:17:46.361000+00:00"
+  },
+  {
+    "_id": "Ak8ljaEQIoUQg1ls8aO4",
+    "size": {
+      "hipWidth": 60.0,
+      "pantsLength": 107.0,
+      "thighWidth": 37.0,
+      "waistWidth": 44.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "나일론",
+        "트랙팬츠",
+        "스포티",
+        "밴딩팬츠"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851534853.jpg",
+    "cutoutPath": "wardrobe_cutouts/Ak8ljaEQIoUQg1ls8aO4_norm_1783858791909.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:22.977831+00:00"
+    },
+    "createdAt": "2026-07-12T10:18:58.313000+00:00"
+  },
+  {
+    "_id": "AryvXpSdffR7LmZ1OFs8",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 56.0,
+      "chestWidth": 66.0,
+      "totalLength": 67.5,
+      "shoulderWidth": 60.5
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "아이보리",
+      "tags": [
+        "블루종",
+        "가을",
+        "스웨이드",
+        "집업"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "createdAt": "2026-07-25T11:18:00.898000+00:00"
+  },
+  {
+    "_id": "B8rSmCxdPIYaGKxidDMO",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 19.0,
+      "chestWidth": 63.0,
+      "totalLength": 69.0,
+      "shoulderWidth": 59.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "차콜",
+      "tags": [
+        "피그먼트",
+        "하프티셔츠",
+        "빈티지",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.374993+00:00"
+    },
+    "createdAt": "2026-07-02T09:50:37.756000+00:00"
+  },
+  {
+    "_id": "Bc1FSm4ZwnRzNFEGTXjj",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "프린팅"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.895980+00:00"
+    },
+    "createdAt": "2026-07-02T01:34:07.767000+00:00"
+  },
+  {
+    "_id": "BpXytV9fxG9syPk0DvD4",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "카키",
+      "tags": [
+        "볼캡",
+        "자수",
+        "밀리터리",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "카모플라쥬",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1783913791066.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783913794159.png",
+    "subCategory": "모자",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.026669+00:00"
+    },
+    "createdAt": "2026-07-13T03:36:37.462000+00:00"
+  },
+  {
+    "_id": "BssIsH5iYmvvcOVk36Oq",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "네이비",
+      "fit": "레ギュラー",
+      "tags": [
+        "볼캡",
+        "스냅백",
+        "야구모자",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1783913645608.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783913648672.png",
+    "subCategory": "모자",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.075021+00:00"
+    },
+    "createdAt": "2026-07-13T03:34:12.355000+00:00"
+  },
+  {
+    "_id": "CB1S8r0QKJlHxltR4cSg",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 56.0,
+      "chestWidth": 66.0,
+      "totalLength": 67.5,
+      "shoulderWidth": 60.5
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "카키",
+      "tags": [
+        "블루종",
+        "봄가을",
+        "나일론",
+        "집업"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "createdAt": "2026-07-25T11:23:04.450000+00:00"
+  },
+  {
+    "_id": "CWZMvXZpxi5ZF1dERbwM",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 52.5,
+      "waistWidth": 36.5,
+      "pantsLength": 104.0,
+      "thighWidth": 33.2
+    },
+    "attributes": {
+      "fit": "와이드핏",
+      "color": "스카이블루",
+      "tags": [
+        "랩스타일",
+        "레이어드",
+        "리본스트랩",
+        "린넨혼방"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "유니크"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.183703+00:00"
+    },
+    "createdAt": "2026-07-12T08:57:39.038000+00:00"
+  },
+  {
+    "_id": "CdccgEqRqYOdYWhn8XHR",
+    "size": {
+      "sleeveLength": 78.0,
+      "chestWidth": 63.0,
+      "totalLength": 68.0,
+      "shoulderWidth": 50.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "자켓",
+        "버클디테일",
+        "봄가을",
+        "유니크"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783852731863.jpg",
+    "cutoutPath": "wardrobe_cutouts/CdccgEqRqYOdYWhn8XHR_norm_1783858793343.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.128379+00:00"
+    },
+    "createdAt": "2026-07-12T10:38:59.221000+00:00"
+  },
+  {
+    "_id": "CrhPlpx4vcq4B399l6ZY",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "실버",
+      "tags": [
+        "체인",
+        "메탈",
+        "팔찌",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/bd25a237c36b7be101cd423e5c20ce21.jpg",
+    "cutoutPath": "wardrobe_cutouts/bd25a237c36b7be101cd423e5c20ce21.png",
+    "subCategory": "팔찌",
+    "createdAt": "2026-08-09T04:50:45.529000+00:00"
+  },
+  {
+    "_id": "D5IMH8YJszqEfz5ZUzWf",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "차콜",
+      "tags": [
+        "숄더백",
+        "캔버스",
+        "데일리백",
+        "내추럴"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/2f2f1ed986e89380498762501e20c6ab.jpg",
+    "cutoutPath": "wardrobe_cutouts/2f2f1ed986e89380498762501e20c6ab.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:43:13.023000+00:00"
+  },
+  {
+    "_id": "DBfBbYVik8rkfWd41ifk",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "브라운",
+      "tags": [
+        "원석",
+        "팔찌",
+        "레이어드",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/d42a3f4c75db5f5f0c3574dbfe01d37c.jpg",
+    "cutoutPath": "wardrobe_cutouts/d42a3f4c75db5f5f0c3574dbfe01d37c.png",
+    "subCategory": "팔찌",
+    "createdAt": "2026-08-09T04:47:20.325000+00:00"
+  },
+  {
+    "_id": "DGHLnIrh4Z1vYUFa0nYv",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "attributes": {
+      "fit": "레ギュラー",
+      "color": "블랙",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "간절기",
+        "로고"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.595309+00:00"
+    },
+    "createdAt": "2026-07-12T10:45:00.505000+00:00"
+  },
+  {
+    "_id": "DQ5HzRLViMtzQ0JEFals",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 56.0,
+      "chestWidth": 66.0,
+      "totalLength": 67.5,
+      "shoulderWidth": 60.5
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "tags": [
+        "블루종",
+        "가을",
+        "스웨이드",
+        "집업"
+      ],
+      "color": "아이보리",
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1784978277982.jpg",
+    "cutoutPath": "wardrobe_cutouts/1784978279106.png",
+    "createdAt": "2026-07-25T11:18:00.898000+00:00"
+  },
+  {
+    "_id": "DSPAFX5uv6Jp70l6vjyg",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "waistWidth": 38.5,
+      "pantsLength": 47.0,
+      "thighWidth": 36.5
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "카키",
+      "tags": [
+        "카고팬츠",
+        "반바지",
+        "면",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "createdAt": "2026-07-25T11:17:13.129000+00:00"
+  },
+  {
+    "_id": "DULIjSIlow0wOYHt42DN",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "화이트",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "클래식"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.896251+00:00"
+    },
+    "createdAt": "2026-07-12T11:01:58.781000+00:00"
+  },
+  {
+    "_id": "DZDAo5EEliDnN9ItjKno",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 23.0,
+      "chestWidth": 57.5,
+      "totalLength": 66.0,
+      "shoulderWidth": 49.5
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "반팔",
+        "링거티",
+        "코튼",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.036689+00:00"
+    },
+    "createdAt": "2026-07-04T11:54:30.026000+00:00"
+  },
+  {
+    "_id": "DnnaswQIu0qob72fC1L3",
+    "size": {
+      "sleeveLength": 19.0,
+      "chestWidth": 63.0,
+      "totalLength": 69.0,
+      "shoulderWidth": 59.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "화이트",
+      "fit": "레귤러",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "아웃도어"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783908054909.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783908058643.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.181407+00:00"
+    },
+    "createdAt": "2026-07-13T02:01:01.704000+00:00"
+  },
+  {
+    "_id": "EMu3yunBbs1d58qO75rB",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 78.0,
+      "chestWidth": 63.0,
+      "totalLength": 68.0,
+      "shoulderWidth": 50.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블루",
+      "tags": [
+        "반팔가디건",
+        "니트",
+        "여름아우터",
+        "라운드넥"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.770128+00:00"
+    },
+    "createdAt": "2026-07-12T10:43:35.009000+00:00"
+  },
+  {
+    "_id": "EQEZ6OoVhi9ixuE1f1Mb",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레ギュラー",
+      "color": "브라운",
+      "tags": [
+        "볼캡",
+        "워싱",
+        "코튼",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "액세서리",
+    "subCategory": "모자",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.006625+00:00"
+    },
+    "createdAt": "2026-07-13T03:32:56.836000+00:00"
+  },
+  {
+    "_id": "EQTMeQpKgqTmP32KDZ1L",
+    "category": "하의",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "isDemo": true,
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "차콜",
+      "tags": [
+        "카고",
+        "반바지",
+        "코튼",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "createdAt": "2026-07-27T15:07:42.343000+00:00"
+  },
+  {
+    "_id": "EsozBgRv7rFXtvwphZRo",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 19.0,
+      "chestWidth": 63.0,
+      "totalLength": 69.0,
+      "shoulderWidth": 59.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "화이트",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "아웃도어"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.181407+00:00"
+    },
+    "createdAt": "2026-07-13T02:01:01.704000+00:00"
+  },
+  {
+    "_id": "EtN8uOX8vwA2D1drEHDb",
+    "size": {
+      "hipWidth": 50.0,
+      "pantsLength": 103.0,
+      "thighWidth": 32.0,
+      "waistWidth": 34.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "브라운",
+      "fit": "와이드",
+      "tags": [
+        "밴딩팬츠",
+        "숏팬츠",
+        "피그먼트",
+        "스트링"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "아메카지"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/musinsa_05_1783846631958.png",
+    "cutoutPath": "wardrobe_cutouts/EtN8uOX8vwA2D1drEHDb_norm_1783858794235.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.232910+00:00"
+    },
+    "createdAt": "2026-07-12T08:57:29.443000+00:00"
+  },
+  {
+    "_id": "FMi4qRsCjiVLHtO6mUdF",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "스웨이드",
+        "핑크배색",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783854254129.jpg",
+    "cutoutPath": "wardrobe_cutouts/FMi4qRsCjiVLHtO6mUdF_norm_1783858795370.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.305962+00:00"
+    },
+    "createdAt": "2026-07-12T11:04:18.621000+00:00"
+  },
+  {
+    "_id": "FNW3EFd4SygMPBAymM1T",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레ギュラー",
+      "color": "실버",
+      "tags": [
+        "메탈",
+        "팔찌",
+        "레이어드",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/08618386743a6aa4f067770fce9c299d.jpg",
+    "cutoutPath": "wardrobe_cutouts/08618386743a6aa4f067770fce9c299d.png",
+    "subCategory": "팔찌",
+    "createdAt": "2026-08-09T04:50:06.118000+00:00"
+  },
+  {
+    "_id": "FmKODVXOvEy8u0o5hZGS",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "차콜",
+      "tags": [
+        "스웨이드",
+        "스니커즈",
+        "사계절",
+        "데일리"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.863748+00:00"
+    },
+    "createdAt": "2026-07-12T11:03:29.001000+00:00"
+  },
+  {
+    "_id": "Fwye077U6vV3j2GVhq6X",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 56.0,
+      "chestWidth": 66.0,
+      "totalLength": 67.5,
+      "shoulderWidth": 60.5
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "카키",
+      "tags": [
+        "코듀로이",
+        "퀼팅안감",
+        "워크자켓",
+        "가을/겨울"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1784978354513.jpg",
+    "cutoutPath": "wardrobe_cutouts/1784978355715.png",
+    "createdAt": "2026-07-25T11:19:17.297000+00:00"
+  },
+  {
+    "_id": "G34cyvB2kF6JweMIs9P6",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 20.0,
+      "chestWidth": 57.0,
+      "totalLength": 63.0,
+      "shoulderWidth": 52.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "화이트",
+      "tags": [
+        "반팔",
+        "코튼",
+        "여름",
+        "스트릿웨어"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "createdAt": "2026-08-08T04:46:20.276000+00:00"
+  },
+  {
+    "_id": "GdEAbAzK3G8u01DkS9a9",
+    "size": {
+      "sleeveLength": 78.0,
+      "chestWidth": 63.0,
+      "totalLength": 68.0,
+      "shoulderWidth": 50.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "화이트",
+      "fit": "오버사이즈",
+      "tags": [
+        "반팔셔츠",
+        "여름",
+        "포켓",
+        "코튼"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783848940671.jpg",
+    "cutoutPath": "wardrobe_cutouts/GdEAbAzK3G8u01DkS9a9_norm_1783858796793.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.352484+00:00"
+    },
+    "createdAt": "2026-07-12T09:35:48.530000+00:00"
+  },
+  {
+    "_id": "GgStKLXwP7phzKpMZ5sy",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 19.0,
+      "chestWidth": 55.0,
+      "totalLength": 61.0,
+      "shoulderWidth": 50.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "아이보리",
+      "tags": [
+        "링거티",
+        "반팔",
+        "여름",
+        "코튼"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "createdAt": "2026-08-07T07:22:26.369000+00:00"
+  },
+  {
+    "_id": "GphxKI6KHEAVWXDhM8aJ",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 78.0,
+      "chestWidth": 63.0,
+      "totalLength": 68.0,
+      "shoulderWidth": 50.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블루",
+      "tags": [
+        "셔츠",
+        "반팔",
+        "옥스포드",
+        "여름"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.126215+00:00"
+    },
+    "createdAt": "2026-07-12T09:36:52.526000+00:00"
+  },
+  {
+    "_id": "HRlfyfDxDiLQxZbzuif6",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 50.0,
+      "waistWidth": 34.0,
+      "pantsLength": 103.0,
+      "thighWidth": 32.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "벌룬팬츠",
+        "밴딩",
+        "나일론",
+        "봄가을"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.669297+00:00"
+    },
+    "createdAt": "2026-07-12T10:16:52.401000+00:00"
+  },
+  {
+    "_id": "HqbQ2bgfoOkUFcD5yHUe",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 52.5,
+      "waistWidth": 36.5,
+      "pantsLength": 104.0,
+      "thighWidth": 33.2
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "데님",
+        "워싱",
+        "와이드핏",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.463967+00:00"
+    },
+    "createdAt": "2026-07-12T10:17:17.952000+00:00"
+  },
+  {
+    "_id": "HtJz6zwje96XuoP709Ra",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "봄가을",
+        "집업"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.437150+00:00"
+    },
+    "createdAt": "2026-07-12T10:43:07.830000+00:00"
+  },
+  {
+    "_id": "I5UvWsKT9hz5YqIMn65E",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "러닝화",
+        "메쉬",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783853844310.jpg",
+    "cutoutPath": "wardrobe_cutouts/I5UvWsKT9hz5YqIMn65E_norm_1783858798538.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.405272+00:00"
+    },
+    "createdAt": "2026-07-12T10:57:34.321000+00:00"
+  },
+  {
+    "_id": "IFOyCjtKQzhxeVzNntKW",
+    "size": {
+      "sleeveLength": 20.0,
+      "chestWidth": 57.0,
+      "totalLength": 63.0,
+      "shoulderWidth": 52.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "화이트",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "레터링"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/6b78137cb899112c507e93e5eb2a8520.jpg",
+    "cutoutPath": "wardrobe_cutouts/6b78137cb899112c507e93e5eb2a8520.png",
+    "createdAt": "2026-08-14T03:09:32.774000+00:00"
+  },
+  {
+    "_id": "IfD5d3BN6AMyrbQ6HKOe",
+    "size": {
+      "hipWidth": 52.5,
+      "pantsLength": 104.0,
+      "thighWidth": 33.2,
+      "waistWidth": 36.5
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "데님",
+        "워싱",
+        "와이드핏",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851431853.jpg",
+    "cutoutPath": "wardrobe_cutouts/IfD5d3BN6AMyrbQ6HKOe_norm_1783858799711.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.463967+00:00"
+    },
+    "createdAt": "2026-07-12T10:17:17.952000+00:00"
+  },
+  {
+    "_id": "InhFLCWQZnP0zUDZjGEc",
+    "size": {
+      "sleeveLength": 20.0,
+      "chestWidth": 57.0,
+      "totalLength": 63.0,
+      "shoulderWidth": 52.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "화이트",
+      "tags": [
+        "반팔",
+        "코튼",
+        "여름",
+        "스트릿웨어"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/3311c6069c0f98b8090b9af52df2aac3.jpg",
+    "cutoutPath": "wardrobe_cutouts/3311c6069c0f98b8090b9af52df2aac3.png",
+    "createdAt": "2026-08-08T04:46:20.276000+00:00"
+  },
+  {
+    "_id": "Jjjyojfr6IkUKVjxd7D5",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "베이지",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "스웨이드",
+        "데일리"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783853626098.jpg",
+    "cutoutPath": "wardrobe_cutouts/Jjjyojfr6IkUKVjxd7D5_norm_1783858801046.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.520133+00:00"
+    },
+    "createdAt": "2026-07-12T10:53:56.370000+00:00"
+  },
+  {
+    "_id": "JusPfNDKcB6hXZ2cAQw6",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 57.5,
+      "waistWidth": 41.5,
+      "pantsLength": 106.0,
+      "thighWidth": 35.7
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "차콜",
+      "tags": [
+        "와이드팬츠",
+        "핀턱",
+        "슬랙스",
+        "가을/겨울"
+      ],
+      "formality": "세미포멀",
+      "pattern": "스트라이프",
+      "style": "포멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.925027+00:00"
+    },
+    "createdAt": "2026-07-12T10:23:10.848000+00:00"
+  },
+  {
+    "_id": "M2XXIaabdMmAKvRW7uMP",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "차콜",
+      "tags": [
+        "반팔티",
+        "빈티지",
+        "링거티",
+        "워싱"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.273170+00:00"
+    },
+    "createdAt": "2026-07-02T01:25:38.585000+00:00"
+  },
+  {
+    "_id": "M6UTIR77etq1TBFBBXK7",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "카키",
+      "fit": "레귤러",
+      "tags": [
+        "볼캡",
+        "카모플라쥬",
+        "밀리터리",
+        "코튼"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1783913486072.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783913489631.png",
+    "subCategory": "모자",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.568359+00:00"
+    },
+    "createdAt": "2026-07-13T03:31:33.794000+00:00"
+  },
+  {
+    "_id": "MA8a45cerrH3VdLKXB64",
+    "size": {
+      "hipWidth": 57.5,
+      "pantsLength": 106.0,
+      "thighWidth": 35.7,
+      "waistWidth": 41.5
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "차콜",
+      "fit": "레귤러",
+      "tags": [
+        "슬랙스",
+        "와이드팬츠",
+        "핀턱",
+        "사계절"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851299273.jpg",
+    "cutoutPath": "wardrobe_cutouts/MA8a45cerrH3VdLKXB64_norm_1783858802387.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.625738+00:00"
+    },
+    "createdAt": "2026-07-12T10:15:06.818000+00:00"
+  },
+  {
+    "_id": "MBbsBNRhzLgGQBnGPIYm",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "화이트",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "로고"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783854061428.jpg",
+    "cutoutPath": "wardrobe_cutouts/MBbsBNRhzLgGQBnGPIYm_norm_1783858803277.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.675797+00:00"
+    },
+    "createdAt": "2026-07-12T11:01:09.500000+00:00"
+  },
+  {
+    "_id": "MD8sSJTh0HDicEDeuSaF",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "화이트",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "클래식"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.439189+00:00"
+    },
+    "createdAt": "2026-07-05T03:07:50.423000+00:00"
+  },
+  {
+    "_id": "MQpDDi9gZRRu0JXCb3VC",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "화이트",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "플랫폼",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.928794+00:00"
+    },
+    "createdAt": "2026-07-12T11:00:26.189000+00:00"
+  },
+  {
+    "_id": "MRf9XlaBYy1tsn8TPe0f",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "콜라보레이션"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783853875618.jpg",
+    "cutoutPath": "wardrobe_cutouts/MRf9XlaBYy1tsn8TPe0f_norm_1783858804387.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.735569+00:00"
+    },
+    "createdAt": "2026-07-12T10:58:04.869000+00:00"
+  },
+  {
+    "_id": "MUjMQy0Pn6yQ24NIlghq",
+    "size": {
+      "sleeveLength": 23.0,
+      "chestWidth": 66.0,
+      "totalLength": 73.0,
+      "shoulderWidth": 61.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "반팔티셔츠",
+        "그래피티",
+        "여름",
+        "코튼"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783167820804.jpg",
+    "cutoutPath": "wardrobe_cutouts/MUjMQy0Pn6yQ24NIlghq_norm_1783858805213.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.791856+00:00"
+    },
+    "createdAt": "2026-07-04T12:23:44.313000+00:00"
+  },
+  {
+    "_id": "MuznwcrvHtSeOcqm4uDJ",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 52.5,
+      "waistWidth": 36.5,
+      "pantsLength": 104.0,
+      "thighWidth": 33.2
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "아이보리",
+      "tags": [
+        "밴딩팬츠",
+        "와이드핏",
+        "봄가을",
+        "편안함"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.485719+00:00"
+    },
+    "createdAt": "2026-07-12T10:13:46.886000+00:00"
+  },
+  {
+    "_id": "N3VECNLQ2LqrATA3nWG5",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "캐릭터"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1782956471753.jpg",
+    "cutoutPath": "wardrobe_cutouts/N3VECNLQ2LqrATA3nWG5_norm_1783858806146.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.848458+00:00"
+    },
+    "createdAt": "2026-07-02T01:41:15.694000+00:00"
+  },
+  {
+    "_id": "N4gcRBPdNJAdQPOW9RmM",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "차콜",
+      "tags": [
+        "반팔",
+        "레터링",
+        "코튼",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.293293+00:00"
+    },
+    "createdAt": "2026-07-12T09:40:02.386000+00:00"
+  },
+  {
+    "_id": "NBUt3TYHSzz2oIv9hxzL",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "화이트",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "클래식"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783854110224.jpg",
+    "cutoutPath": "wardrobe_cutouts/NBUt3TYHSzz2oIv9hxzL_norm_1783858807074.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.896251+00:00"
+    },
+    "createdAt": "2026-07-12T11:01:58.781000+00:00"
+  },
+  {
+    "_id": "NPh8wN6k4fK1ResqX65B",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "간절기",
+        "집업"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783852902158.jpg",
+    "cutoutPath": "wardrobe_cutouts/NPh8wN6k4fK1ResqX65B_norm_1783858807882.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.946911+00:00"
+    },
+    "createdAt": "2026-07-12T10:41:49.545000+00:00"
+  },
+  {
+    "_id": "NsTCRBsI1a5ioDG7qL9D",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "스니커즈",
+        "스웨이드",
+        "사계절",
+        "클래식"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.724856+00:00"
+    },
+    "createdAt": "2026-07-12T11:05:55.613000+00:00"
+  },
+  {
+    "_id": "O1aTkkdUXDEcAvL2vZus",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 57.0,
+      "chestWidth": 68.0,
+      "totalLength": 69.0,
+      "shoulderWidth": 62.5
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "브라운",
+      "tags": [
+        "스웨이드",
+        "가을",
+        "겨울",
+        "블루종"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "createdAt": "2026-07-25T11:15:58.152000+00:00"
+  },
+  {
+    "_id": "O4qG86tGixYjq0DPGe13",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "네이비",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "스웨이드",
+        "클래식",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "스트라이프",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783853769140.jpg",
+    "cutoutPath": "wardrobe_cutouts/O4qG86tGixYjq0DPGe13_norm_1783858809215.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:23.995550+00:00"
+    },
+    "createdAt": "2026-07-12T10:56:18.310000+00:00"
+  },
+  {
+    "_id": "O8fh90dk0yTYpGycvAsb",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "윈드브레이커",
+        "나일론",
+        "봄가을",
+        "후드"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783852684376.jpg",
+    "cutoutPath": "wardrobe_cutouts/O8fh90dk0yTYpGycvAsb_norm_1783858810444.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.048218+00:00"
+    },
+    "createdAt": "2026-07-12T10:38:12.145000+00:00"
+  },
+  {
+    "_id": "O9NpKdFkPaZOkEycaDP9",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "간절기",
+        "집업"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.946911+00:00"
+    },
+    "createdAt": "2026-07-12T10:41:49.545000+00:00"
+  },
+  {
+    "_id": "OFzxx9QacAKn5iQRgFFM",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "차콜",
+      "tags": [
+        "피그먼트",
+        "레이어드",
+        "반소매",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.198903+00:00"
+    },
+    "createdAt": "2026-07-01T13:47:53.088000+00:00"
+  },
+  {
+    "_id": "OJRMRg43ugBqqmDvTfFr",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "와펜",
+        "레이싱",
+        "간절기",
+        "지퍼"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783853040573.jpg",
+    "cutoutPath": "wardrobe_cutouts/OJRMRg43ugBqqmDvTfFr_norm_1783858812050.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.108760+00:00"
+    },
+    "createdAt": "2026-07-12T10:44:07.339000+00:00"
+  },
+  {
+    "_id": "OcTZ4keKA2WeNN2ZtH8r",
+    "size": {
+      "sleeveLength": 19.0,
+      "chestWidth": 55.0,
+      "totalLength": 61.0,
+      "shoulderWidth": 50.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "아이보리",
+      "tags": [
+        "링거티",
+        "반팔",
+        "여름",
+        "코튼"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/992abf5a0d925957196575df2d9ff3a9.jpg",
+    "cutoutPath": "wardrobe_cutouts/992abf5a0d925957196575df2d9ff3a9.png",
+    "createdAt": "2026-08-07T07:22:26.369000+00:00"
+  },
+  {
+    "_id": "Or4yhkeWiBU0H1FmBic0",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "카키",
+      "tags": [
+        "볼캡",
+        "자수",
+        "밀리터리",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "카모플라쥬",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "액세서리",
+    "subCategory": "모자",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.026669+00:00"
+    },
+    "createdAt": "2026-07-13T03:36:37.462000+00:00"
+  },
+  {
+    "_id": "P2RertYkRoPj92iJTNtG",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "와펜",
+        "레이싱",
+        "간절기",
+        "지퍼"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.108760+00:00"
+    },
+    "createdAt": "2026-07-12T10:44:07.339000+00:00"
+  },
+  {
+    "_id": "PEpjRqr6bWngzlRf1IdK",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 22.0,
+      "chestWidth": 55.0,
+      "totalLength": 64.0,
+      "shoulderWidth": 48.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "옐로우",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "로고"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.988772+00:00"
+    },
+    "createdAt": "2026-07-13T02:15:47.180000+00:00"
+  },
+  {
+    "_id": "PrXMKQwnp2cXKZBwBmkH",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "팔찌",
+        "비즈",
+        "데이지",
+        "레이어드"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/88e5a982a3ff99e10d123acfd4c241bc.jpg",
+    "cutoutPath": "wardrobe_cutouts/88e5a982a3ff99e10d123acfd4c241bc.png",
+    "subCategory": "팔찌",
+    "createdAt": "2026-08-09T04:47:41.832000+00:00"
+  },
+  {
+    "_id": "PuLN0ElnedS2zQ1ADaKH",
+    "category": "아우터",
+    "size": {
+      "sleeveLength": 56.0,
+      "chestWidth": 66.0,
+      "totalLength": 67.5,
+      "shoulderWidth": 60.5
+    },
+    "isDemo": true,
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "베이지",
+      "tags": [
+        "스웨이드",
+        "봄",
+        "가을",
+        "블루종"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "createdAt": "2026-07-29T13:51:31.179000+00:00"
+  },
+  {
+    "_id": "Q2TqinzkRVKNgDoQE5dp",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "waistWidth": 38.5,
+      "pantsLength": 47.0,
+      "thighWidth": 36.5
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "나일론",
+        "여름",
+        "숏팬츠",
+        "밴딩"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1785210653212.jpg",
+    "cutoutPath": "wardrobe_cutouts/1785210654780.png",
+    "createdAt": "2026-07-28T03:50:56.348000+00:00"
+  },
+  {
+    "_id": "QTK2nFfYXDywwKRfUzlQ",
+    "size": {
+      "sleeveLength": 22.0,
+      "chestWidth": 62.5,
+      "totalLength": 73.0,
+      "shoulderWidth": 60.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "스카이블루",
+      "fit": "레귤러",
+      "tags": [
+        "축구유니폼",
+        "반팔",
+        "기능성",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783220493782.jpg",
+    "cutoutPath": "wardrobe_cutouts/QTK2nFfYXDywwKRfUzlQ_norm_1783858814483.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.206707+00:00"
+    },
+    "createdAt": "2026-07-05T03:01:41.310000+00:00"
+  },
+  {
+    "_id": "QoZfNdKA4HsThkZDsYAk",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "브라운",
+      "tags": [
+        "나일론",
+        "토트백",
+        "데일리백",
+        "아웃도어"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/af71aa6d0a79e256e8a5356f5ecb3f88.jpg",
+    "cutoutPath": "wardrobe_cutouts/af71aa6d0a79e256e8a5356f5ecb3f88.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:45:18.761000+00:00"
+  },
+  {
+    "_id": "R3rU3drPF6CedFSSssTv",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레ギュラー",
+      "color": "블랙",
+      "tags": [
+        "팔찌",
+        "가죽",
+        "실버",
+        "레이어드"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/d862d1272c15291ea9d17d0f79d65473.jpg",
+    "cutoutPath": "wardrobe_cutouts/d862d1272c15291ea9d17d0f79d65473.png",
+    "subCategory": "팔찌",
+    "createdAt": "2026-08-09T04:47:55.363000+00:00"
+  },
+  {
+    "_id": "RDqVxIkpujjpLZ3GEUgj",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "차콜",
+      "fit": "오버사이즈",
+      "tags": [
+        "반팔티",
+        "빈티지",
+        "링거티",
+        "워싱"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1782955535090.jpg",
+    "cutoutPath": "wardrobe_cutouts/RDqVxIkpujjpLZ3GEUgj_norm_1783858815313.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.273170+00:00"
+    },
+    "createdAt": "2026-07-02T01:25:38.585000+00:00"
+  },
+  {
+    "_id": "ROIMhutWsJi7CuFAkheC",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "나일론",
+        "숄더백",
+        "크로스백",
+        "아디다스"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1783236002213.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783236005758.png",
+    "subCategory": "가방",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.338153+00:00"
+    },
+    "createdAt": "2026-07-05T07:20:09.095000+00:00"
+  },
+  {
+    "_id": "RxlcBaWN0f0wKxvspYXX",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "thighWidth": 36.5,
+      "waistWidth": 38.5,
+      "pantsLength": 47.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "tags": [
+        "카고팬츠",
+        "반바지",
+        "면",
+        "여름"
+      ],
+      "color": "카키",
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1784978230466.jpg",
+    "cutoutPath": "wardrobe_cutouts/1784978231792.png",
+    "createdAt": "2026-07-25T11:17:13.129000+00:00"
+  },
+  {
+    "_id": "SJlfVghpwYyizwH6bnPw",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "볼캡",
+        "야구모자",
+        "스트릿웨어",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "액세서리",
+    "subCategory": "모자",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:21.617042+00:00"
+    },
+    "createdAt": "2026-07-13T03:32:08.274000+00:00"
+  },
+  {
+    "_id": "Sa3gW8YIUanXqukIWIyw",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "카키",
+      "tags": [
+        "캔버스",
+        "토트백",
+        "데일리백",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/06d718c327d7e535877eafc3f4bad5f5.jpg",
+    "cutoutPath": "wardrobe_cutouts/06d718c327d7e535877eafc3f4bad5f5.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:44:20.726000+00:00"
+  },
+  {
+    "_id": "ScX4R6bFZKLk0XmJ2CKc",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 56.0,
+      "chestWidth": 66.0,
+      "totalLength": 67.5,
+      "shoulderWidth": 60.5
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "카키",
+      "tags": [
+        "코듀로이",
+        "퀼팅안감",
+        "워크자켓",
+        "가을/겨울"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "createdAt": "2026-07-25T11:19:17.297000+00:00"
+  },
+  {
+    "_id": "SeyvkhJf4LRforTVdkRK",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783853139276.jpg",
+    "cutoutPath": "wardrobe_cutouts/SeyvkhJf4LRforTVdkRK_norm_1783858816540.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.390090+00:00"
+    },
+    "createdAt": "2026-07-12T10:45:45.393000+00:00"
+  },
+  {
+    "_id": "SouzJc3fA2iLPqVdaSWh",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "봄가을",
+        "집업"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783852980832.jpg",
+    "cutoutPath": "wardrobe_cutouts/SouzJc3fA2iLPqVdaSWh_norm_1783858818037.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.437150+00:00"
+    },
+    "createdAt": "2026-07-12T10:43:07.830000+00:00"
+  },
+  {
+    "_id": "SvKnuOTEraTRChoWhP9j",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레ギュラー",
+      "color": "네이비",
+      "tags": [
+        "볼캡",
+        "스냅백",
+        "야구모자",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "액세서리",
+    "subCategory": "모자",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.075021+00:00"
+    },
+    "createdAt": "2026-07-13T03:34:12.355000+00:00"
+  },
+  {
+    "_id": "T45UJyZvN9KC4p3AiPV0",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레ギュラー",
+      "color": "블랙",
+      "tags": [
+        "볼캡",
+        "야구모자",
+        "사계절",
+        "코튼"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "액세서리",
+    "subCategory": "모자",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.345410+00:00"
+    },
+    "createdAt": "2026-07-13T03:34:58.193000+00:00"
+  },
+  {
+    "_id": "TE6PZUJhQ3brl1VvoMB5",
+    "size": {
+      "sleeveLength": 78.0,
+      "chestWidth": 63.0,
+      "totalLength": 68.0,
+      "shoulderWidth": 50.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "스포티",
+        "간절기"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783853390468.jpg",
+    "cutoutPath": "wardrobe_cutouts/TE6PZUJhQ3brl1VvoMB5_norm_1783858819177.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.490177+00:00"
+    },
+    "createdAt": "2026-07-12T10:49:58.645000+00:00"
+  },
+  {
+    "_id": "THVFO7w7wh3RLPzpqgoy",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 52.5,
+      "waistWidth": 36.5,
+      "pantsLength": 104.0,
+      "thighWidth": 33.2
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "와이드팬츠",
+        "밴딩",
+        "봄가을",
+        "편안한"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.680188+00:00"
+    },
+    "createdAt": "2026-07-12T10:21:12.733000+00:00"
+  },
+  {
+    "_id": "TNK1GWLV2jjr2K0uDuex",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 78.0,
+      "chestWidth": 63.0,
+      "totalLength": 68.0,
+      "shoulderWidth": 50.0
+    },
+    "attributes": {
+      "fit": "레ギュラー",
+      "color": "네이비",
+      "tags": [
+        "데님",
+        "청자켓",
+        "봄가을",
+        "아우터"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.102428+00:00"
+    },
+    "createdAt": "2026-07-12T10:46:59.180000+00:00"
+  },
+  {
+    "_id": "TPv2o8UoJyNSLs68bfqU",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "가죽스트랩",
+        "사각프레임",
+        "클래식",
+        "로마숫자"
+      ],
+      "formality": "포멀",
+      "pattern": "무지",
+      "style": "포멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "액세서리",
+    "subCategory": "시계",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.700804+00:00"
+    },
+    "createdAt": "2026-07-05T07:21:24.012000+00:00"
+  },
+  {
+    "_id": "TjmIRQYvzWSJ9BgiZWQ4",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레ギュラー",
+      "color": "블랙",
+      "tags": [
+        "비즈",
+        "팔찌",
+        "레이어드",
+        "원석"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/ba3923ec7b80369e7cd10962f3f9e136.jpg",
+    "cutoutPath": "wardrobe_cutouts/ba3923ec7b80369e7cd10962f3f9e136.png",
+    "subCategory": "팔찌",
+    "createdAt": "2026-08-09T04:51:07.972000+00:00"
+  },
+  {
+    "_id": "ToS9n74SDle28ziL7ggB",
+    "size": {
+      "sleeveLength": 23.0,
+      "chestWidth": 57.5,
+      "totalLength": 63.0,
+      "shoulderWidth": 49.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "차콜",
+      "fit": "레귤러",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "로고"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783909570987.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783909574243.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.546724+00:00"
+    },
+    "createdAt": "2026-07-13T02:26:17.642000+00:00"
+  },
+  {
+    "_id": "Tzo0b7FwnzJ7bN7725Rr",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "스니커즈",
+        "스웨이드",
+        "핑크배색",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.305962+00:00"
+    },
+    "createdAt": "2026-07-12T11:04:18.621000+00:00"
+  },
+  {
+    "_id": "U0tVjNvhMskxDAguRS9i",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레ギュラー",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "간절기",
+        "로고"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783853093534.jpg",
+    "cutoutPath": "wardrobe_cutouts/U0tVjNvhMskxDAguRS9i_norm_1783858820287.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.595309+00:00"
+    },
+    "createdAt": "2026-07-12T10:45:00.505000+00:00"
+  },
+  {
+    "_id": "UAssyHECUNPQqv3psL6Q",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "차콜",
+      "tags": [
+        "카고",
+        "반바지",
+        "코튼",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1785164859672.jpg",
+    "cutoutPath": "wardrobe_cutouts/1785164861053.png",
+    "createdAt": "2026-07-27T15:07:42.343000+00:00"
+  },
+  {
+    "_id": "UKvHI9gmwg4809IhzNJH",
+    "size": {
+      "sleeveLength": 21.0,
+      "chestWidth": 59.0,
+      "totalLength": 65.0,
+      "shoulderWidth": 54.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "화이트",
+      "tags": [
+        "반팔",
+        "코튼",
+        "여름",
+        "레트로"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/ee5917fb5b04f0fe165e2b1a6387fbf7.jpg",
+    "cutoutPath": "wardrobe_cutouts/ee5917fb5b04f0fe165e2b1a6387fbf7.png",
+    "createdAt": "2026-08-11T07:09:35.718000+00:00"
+  },
+  {
+    "_id": "UNMxdYYkKRRXEawcwGyT",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 24.0,
+      "chestWidth": 59.5,
+      "totalLength": 64.5,
+      "shoulderWidth": 50.5
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "네이비",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "레터링"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "createdAt": "2026-07-27T05:06:40.159000+00:00"
+  },
+  {
+    "_id": "UUa14r8Tr2FKCOSnIsO7",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "윈드브레이커",
+        "나일론",
+        "봄가을",
+        "후드"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.048218+00:00"
+    },
+    "createdAt": "2026-07-12T10:38:12.145000+00:00"
+  },
+  {
+    "_id": "UiSbDTWFquY3o2DBm68z",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 23.0,
+      "chestWidth": 57.5,
+      "totalLength": 63.0,
+      "shoulderWidth": 49.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "차콜",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "로고"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.546724+00:00"
+    },
+    "createdAt": "2026-07-13T02:26:17.642000+00:00"
+  },
+  {
+    "_id": "UxczgChJUiwSZj70sI8i",
+    "category": "전신",
+    "isDemo": true,
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "레드",
+      "tags": [
+        "트레이닝팬츠",
+        "반팔티",
+        "스트릿웨어",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "createdAt": "2026-08-07T09:41:34.859000+00:00"
+  },
+  {
+    "_id": "VFzepaOB7z6XGm6ESUy8",
+    "category": "전신",
+    "isDemo": true,
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "화이트",
+      "tags": [
+        "데님",
+        "반팔셔츠",
+        "카고팬츠",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "createdAt": "2026-08-07T07:11:07.728000+00:00"
+  },
+  {
+    "_id": "VUbejTMUhsOzKM1AQxT8",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 78.0,
+      "chestWidth": 63.0,
+      "totalLength": 68.0,
+      "shoulderWidth": 50.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "자켓",
+        "버클디테일",
+        "봄가을",
+        "유니크"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.128379+00:00"
+    },
+    "createdAt": "2026-07-12T10:38:59.221000+00:00"
+  },
+  {
+    "_id": "ViSNCLJUd8ZbTgUq3oHu",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "볼캡",
+        "데미지",
+        "자수",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1783913442263.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783913446458.png",
+    "subCategory": "모자",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.644201+00:00"
+    },
+    "createdAt": "2026-07-13T03:30:49.661000+00:00"
+  },
+  {
+    "_id": "VxUaNvKWJcbYCLhHfCsq",
+    "size": {
+      "sleeveLength": 21.0,
+      "chestWidth": 59.0,
+      "totalLength": 65.0,
+      "shoulderWidth": 54.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "면",
+        "여름",
+        "반팔",
+        "링거티"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/b311f6faa2373e6f9750f7cdb226470d.jpg",
+    "cutoutPath": "wardrobe_cutouts/b311f6faa2373e6f9750f7cdb226470d.png",
+    "createdAt": "2026-08-11T07:09:09.540000+00:00"
+  },
+  {
+    "_id": "WiyzsFM2QqSCYa3d8Uzp",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "가죽스트랩",
+        "사각프레임",
+        "클래식",
+        "로마숫자"
+      ],
+      "formality": "포멀",
+      "pattern": "무지",
+      "style": "포멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1783236077875.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783236081213.png",
+    "subCategory": "시계",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.700804+00:00"
+    },
+    "createdAt": "2026-07-05T07:21:24.012000+00:00"
+  },
+  {
+    "_id": "Wl4yLQdQMRmLtvtAYSvp",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "네이비",
+      "tags": [
+        "스니커즈",
+        "스웨이드",
+        "클래식",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "스트라이프",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.995550+00:00"
+    },
+    "createdAt": "2026-07-12T10:56:18.310000+00:00"
+  },
+  {
+    "_id": "WqKPmddqhSVNAZORQl6B",
+    "size": {
+      "sleeveLength": 23.0,
+      "chestWidth": 57.5,
+      "totalLength": 63.0,
+      "shoulderWidth": 49.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "네이비",
+      "fit": "레귤러",
+      "tags": [
+        "반팔",
+        "골지",
+        "아디다스",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "스트라이프",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783816427911.jpg",
+    "cutoutPath": "wardrobe_cutouts/WqKPmddqhSVNAZORQl6B_norm_1783858821209.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.749522+00:00"
+    },
+    "createdAt": "2026-07-12T00:33:54.671000+00:00"
+  },
+  {
+    "_id": "XJm6j5M3WUmOuwHldjPH",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "카키",
+      "tags": [
+        "캔버스",
+        "토트백",
+        "데일리",
+        "수납"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/cbcbaad4ba2cc5ec1f186b0aa8eac58f.jpg",
+    "cutoutPath": "wardrobe_cutouts/cbcbaad4ba2cc5ec1f186b0aa8eac58f.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:43:44.079000+00:00"
+  },
+  {
+    "_id": "XuKEpE6KnBRy3nqyh7Dm",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "네이비",
+      "fit": "레ギュラー",
+      "tags": [
+        "데님",
+        "트러커",
+        "봄가을",
+        "아우터"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783853443608.jpg",
+    "cutoutPath": "wardrobe_cutouts/XuKEpE6KnBRy3nqyh7Dm_norm_1783858822328.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.800102+00:00"
+    },
+    "createdAt": "2026-07-12T10:50:52.040000+00:00"
+  },
+  {
+    "_id": "Y1b218Xpq6cSnyRdTJU2",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "나일론",
+        "스웨이드",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783854281136.jpg",
+    "cutoutPath": "wardrobe_cutouts/Y1b218Xpq6cSnyRdTJU2_norm_1783858823391.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.848910+00:00"
+    },
+    "createdAt": "2026-07-12T11:04:48.990000+00:00"
+  },
+  {
+    "_id": "Y9MZ0DX8ex9iQW6kqvfX",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 57.5,
+      "waistWidth": 41.5,
+      "pantsLength": 106.0,
+      "thighWidth": 35.7
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "트레이닝",
+        "반바지",
+        "여름",
+        "스트링"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.818218+00:00"
+    },
+    "createdAt": "2026-07-12T10:18:34.942000+00:00"
+  },
+  {
+    "_id": "YDvGmmns3pdFYikJAnv1",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 24.0,
+      "chestWidth": 59.5,
+      "totalLength": 64.5,
+      "shoulderWidth": 50.5
+    },
+    "attributes": {
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "레터링"
+      ],
+      "fit": "레귤러",
+      "color": "네이비",
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1785128796626.jpg",
+    "cutoutPath": "wardrobe_cutouts/1785128798310.png",
+    "createdAt": "2026-07-27T05:06:40.159000+00:00"
+  },
+  {
+    "_id": "YF6RogNUmwTKyrzRbyoN",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "베이지",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "스웨이드",
+        "데일리"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.520133+00:00"
+    },
+    "createdAt": "2026-07-12T10:53:56.370000+00:00"
+  },
+  {
+    "_id": "YftmR9j2FvnXI50kNqSB",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "프린팅"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1782956042888.jpg",
+    "cutoutPath": "wardrobe_cutouts/YftmR9j2FvnXI50kNqSB_norm_1783858824547.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.895980+00:00"
+    },
+    "createdAt": "2026-07-02T01:34:07.767000+00:00"
+  },
+  {
+    "_id": "Yt0GTgy3Z0z11GMP6bt9",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "나일론",
+        "크로스백",
+        "숄더백",
+        "데일리"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1645be4e1df23f0c47286f5415431132.jpg",
+    "cutoutPath": "wardrobe_cutouts/1645be4e1df23f0c47286f5415431132.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:44:56.331000+00:00"
+  },
+  {
+    "_id": "YvHOgiSsJh9AizIDJlg9",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "그레이",
+      "fit": "레귤러",
+      "tags": [
+        "볼캡",
+        "데미지",
+        "코튼",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1783236099445.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783236102711.png",
+    "subCategory": "모자",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.948572+00:00"
+    },
+    "createdAt": "2026-07-05T07:21:47.201000+00:00"
+  },
+  {
+    "_id": "YvqnuHTpWYXpkeEU0t1l",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "맨투맨",
+        "스포티",
+        "코튼",
+        "봄가을"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783849169626.jpg",
+    "cutoutPath": "wardrobe_cutouts/YvqnuHTpWYXpkeEU0t1l_norm_1783858826227.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:24.995466+00:00"
+    },
+    "createdAt": "2026-07-12T09:39:36.669000+00:00"
+  },
+  {
+    "_id": "Z0HlgPZ6ypYyAnIim9Jw",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "아이보리",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "클래식"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783854304952.jpg",
+    "cutoutPath": "wardrobe_cutouts/Z0HlgPZ6ypYyAnIim9Jw_norm_1783858827761.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.056555+00:00"
+    },
+    "createdAt": "2026-07-12T11:05:09.105000+00:00"
+  },
+  {
+    "_id": "ZJeI8yS7na1UK9UwIQwB",
+    "size": {
+      "sleeveLength": 78.0,
+      "chestWidth": 63.0,
+      "totalLength": 68.0,
+      "shoulderWidth": 50.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "네이비",
+      "fit": "레ギュラー",
+      "tags": [
+        "데님",
+        "청자켓",
+        "봄가을",
+        "아우터"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783853210378.jpg",
+    "cutoutPath": "wardrobe_cutouts/ZJeI8yS7na1UK9UwIQwB_norm_1783858828874.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.102428+00:00"
+    },
+    "createdAt": "2026-07-12T10:46:59.180000+00:00"
+  },
+  {
+    "_id": "ZNZx2wgjJQQh6uyEIy7L",
+    "imagePath": "wardrobe_images/fd1c9dd6cb9859d0613cdfc6ac41c1a7.jpg",
+    "category": "전신",
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "레드",
+      "tags": [
+        "트레이닝팬츠",
+        "반팔티",
+        "스트릿웨어",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "createdAt": "2026-08-07T09:41:34.859000+00:00"
+  },
+  {
+    "_id": "Zb4nmJZMzYuDiJk5rfVV",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 55.0,
+      "waistWidth": 39.0,
+      "pantsLength": 105.0,
+      "thighWidth": 34.5
+    },
+    "attributes": {
+      "fit": "와이드",
+      "color": "블루",
+      "tags": [
+        "트레이닝팬츠",
+        "사이드라인",
+        "밴딩팬츠",
+        "글로시"
+      ],
+      "formality": "캐주얼",
+      "pattern": "도트",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.316240+00:00"
+    },
+    "createdAt": "2026-07-12T08:57:53.335000+00:00"
+  },
+  {
+    "_id": "ZckzFZxd4RAcnfgoicRa",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "아이보리",
+      "fit": "레귤러",
+      "tags": [
+        "어글리슈즈",
+        "스니커즈",
+        "로고",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783854083949.jpg",
+    "cutoutPath": "wardrobe_cutouts/ZckzFZxd4RAcnfgoicRa_norm_1783858830499.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.154694+00:00"
+    },
+    "createdAt": "2026-07-12T11:01:32.650000+00:00"
+  },
+  {
+    "_id": "a0sJdOyoznPPUcSJVQFm",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "차콜",
+      "fit": "오버사이즈",
+      "tags": [
+        "피그먼트",
+        "레이어드",
+        "반소매",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1782913668521.jpg",
+    "cutoutPath": "wardrobe_cutouts/a0sJdOyoznPPUcSJVQFm_norm_1783858831633.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.198903+00:00"
+    },
+    "createdAt": "2026-07-01T13:47:53.088000+00:00"
+  },
+  {
+    "_id": "a3bh6uD7ChOYiB5H9U7G",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "나일론",
+        "숄더백",
+        "크로스백",
+        "아디다스"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "액세서리",
+    "subCategory": "가방",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.338153+00:00"
+    },
+    "createdAt": "2026-07-05T07:20:09.095000+00:00"
+  },
+  {
+    "_id": "bFd7qvN494sf0vdiJRUH",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "카키",
+      "tags": [
+        "볼캡",
+        "카모플라쥬",
+        "밀리터리",
+        "코튼"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "액세서리",
+    "subCategory": "모자",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.568359+00:00"
+    },
+    "createdAt": "2026-07-13T03:31:33.794000+00:00"
+  },
+  {
+    "_id": "bGhbOmnfsgeiCdWBMLfR",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "베이지",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "메쉬",
+        "아웃도어",
+        "키높이"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783816569550.jpg",
+    "cutoutPath": "wardrobe_cutouts/bGhbOmnfsgeiCdWBMLfR_norm_1783858832588.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.245391+00:00"
+    },
+    "createdAt": "2026-07-12T00:36:17.198000+00:00"
+  },
+  {
+    "_id": "bWk9NgofhatCf8o6NRAE",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "차콜",
+      "fit": "오버사이즈",
+      "tags": [
+        "반팔",
+        "레터링",
+        "코튼",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783849194329.jpg",
+    "cutoutPath": "wardrobe_cutouts/bWk9NgofhatCf8o6NRAE_norm_1783858834057.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.293293+00:00"
+    },
+    "createdAt": "2026-07-12T09:40:02.386000+00:00"
+  },
+  {
+    "_id": "c23NPIegNZMoWZum8xVX",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "맨투맨",
+        "스포티",
+        "코튼",
+        "봄가을"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.995466+00:00"
+    },
+    "createdAt": "2026-07-12T09:39:36.669000+00:00"
+  },
+  {
+    "_id": "cb7yrcouGGpbsZCYGS1F",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레ギュラー",
+      "tags": [
+        "볼캡",
+        "야구모자",
+        "사계절",
+        "코튼"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1783913691433.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783913695098.png",
+    "subCategory": "모자",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.345410+00:00"
+    },
+    "createdAt": "2026-07-13T03:34:58.193000+00:00"
+  },
+  {
+    "_id": "cnwqpOYioHPlFxgju1JO",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "가죽",
+        "숄더백",
+        "호보백",
+        "데일리"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/d43fecbe573a0c7cfa84eb4a7da6c06d.jpg",
+    "cutoutPath": "wardrobe_cutouts/d43fecbe573a0c7cfa84eb4a7da6c06d.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:46:56.786000+00:00"
+  },
+  {
+    "_id": "coE2gi4KJrPohXhY9eKY",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 50.0,
+      "waistWidth": 34.0,
+      "pantsLength": 103.0,
+      "thighWidth": 32.0
+    },
+    "attributes": {
+      "fit": "와이드",
+      "color": "브라운",
+      "tags": [
+        "밴딩팬츠",
+        "숏팬츠",
+        "피그먼트",
+        "스트링"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "아메카지"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.232910+00:00"
+    },
+    "createdAt": "2026-07-12T08:57:29.443000+00:00"
+  },
+  {
+    "_id": "dAKRmtWUywQ7tKZhdqga",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "아이보리",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "스웨이드",
+        "데일리",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783854322820.jpg",
+    "cutoutPath": "wardrobe_cutouts/dAKRmtWUywQ7tKZhdqga_norm_1783858835752.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.390276+00:00"
+    },
+    "createdAt": "2026-07-12T11:05:27.420000+00:00"
+  },
+  {
+    "_id": "dEAsmZdHz4xxtm9CFYxn",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "가죽",
+        "토트백",
+        "숄더백",
+        "비즈니스"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "포멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/8aae3806e670e2c8aae93a085b5f400c.jpg",
+    "cutoutPath": "wardrobe_cutouts/8aae3806e670e2c8aae93a085b5f400c.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:46:43.856000+00:00"
+  },
+  {
+    "_id": "dFdxgPOjvIhyTBoKGjtZ",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "화이트",
+      "tags": [
+        "반팔",
+        "그래피티",
+        "면",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.790734+00:00"
+    },
+    "createdAt": "2026-07-12T09:39:03.054000+00:00"
+  },
+  {
+    "_id": "dSy54ZUwmR0JcmW5wfdw",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "와인",
+      "fit": "오버사이즈",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "스포티",
+        "가을"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783853299392.jpg",
+    "cutoutPath": "wardrobe_cutouts/dSy54ZUwmR0JcmW5wfdw_norm_1783858837154.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.439582+00:00"
+    },
+    "createdAt": "2026-07-12T10:48:29.984000+00:00"
+  },
+  {
+    "_id": "djZOVsya7YZVZkaceQN8",
+    "size": {
+      "sleeveLength": 56.0,
+      "chestWidth": 66.0,
+      "totalLength": 67.5,
+      "shoulderWidth": 60.5
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "tags": [
+        "블루종",
+        "봄가을",
+        "나일론",
+        "집업"
+      ],
+      "color": "카키",
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1784978581975.jpg",
+    "cutoutPath": "wardrobe_cutouts/1784978583096.png",
+    "createdAt": "2026-07-25T11:23:04.450000+00:00"
+  },
+  {
+    "_id": "dqF7Z0xl3l6bnoxJD0Dh",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "해당없음",
+      "color": "블랙",
+      "tags": [
+        "캔버스",
+        "토트백",
+        "데일리",
+        "수납"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/d1b3ec4b50cc80cb56f14e2a200135b8.jpg",
+    "cutoutPath": "wardrobe_cutouts/d1b3ec4b50cc80cb56f14e2a200135b8.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:43:26.425000+00:00"
+  },
+  {
+    "_id": "eCOIiynqQwMddqXYTlax",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "블레이저",
+        "봄가을",
+        "아우터",
+        "데일리룩"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.469299+00:00"
+    },
+    "createdAt": "2026-07-12T10:48:53.447000+00:00"
+  },
+  {
+    "_id": "eH0dN1oSyg9G27QDPrdD",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "스니커즈",
+        "러닝화",
+        "메쉬",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.405272+00:00"
+    },
+    "createdAt": "2026-07-12T10:57:34.321000+00:00"
+  },
+  {
+    "_id": "eX4cHUhrSMhv5GIGaB5Z",
+    "imagePath": "wardrobe_images/1785333088990.jpg",
+    "size": {
+      "sleeveLength": 56.0,
+      "chestWidth": 66.0,
+      "totalLength": 67.5,
+      "shoulderWidth": 60.5
+    },
+    "createdAt": "2026-07-29T13:51:31.179000+00:00",
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "베이지",
+      "tags": [
+        "스웨이드",
+        "봄",
+        "가을",
+        "블루종"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터"
+  },
+  {
+    "_id": "fALNkdwgLqdZxYDpws1Y",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 60.0,
+      "waistWidth": 44.0,
+      "pantsLength": 107.0,
+      "thighWidth": 37.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "와이드팬츠",
+        "슬랙스",
+        "봄가을",
+        "벨티드"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:21.775980+00:00"
+    },
+    "createdAt": "2026-07-12T10:26:24.635000+00:00"
+  },
+  {
+    "_id": "fTq2v3BzHT4LoWTGDD2I",
+    "size": {
+      "sleeveLength": 20.0,
+      "chestWidth": 57.0,
+      "totalLength": 63.0,
+      "shoulderWidth": 52.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "버건디",
+      "tags": [
+        "반팔",
+        "면",
+        "롤업",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/ac8df683fda80d2ae4c69cddd490d64a.jpg",
+    "cutoutPath": "wardrobe_cutouts/ac8df683fda80d2ae4c69cddd490d64a.png",
+    "createdAt": "2026-08-07T07:21:41.413000+00:00"
+  },
+  {
+    "_id": "fhh1YSdn75pRJkSBQnDa",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 55.0,
+      "waistWidth": 39.0,
+      "pantsLength": 105.0,
+      "thighWidth": 34.5
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "나일론",
+        "카고팬츠",
+        "고프코어",
+        "밴딩"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.421927+00:00"
+    },
+    "createdAt": "2026-07-12T10:21:59.501000+00:00"
+  },
+  {
+    "_id": "fnJa8XarETojyI87RxbS",
+    "size": {
+      "hipWidth": 52.5,
+      "pantsLength": 104.0,
+      "thighWidth": 33.2,
+      "waistWidth": 36.5
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "아이보리",
+      "fit": "오버사이즈",
+      "tags": [
+        "밴딩팬츠",
+        "와이드핏",
+        "봄가을",
+        "편안함"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851219736.jpg",
+    "cutoutPath": "wardrobe_cutouts/fnJa8XarETojyI87RxbS_norm_1783858838054.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.485719+00:00"
+    },
+    "createdAt": "2026-07-12T10:13:46.886000+00:00"
+  },
+  {
+    "_id": "fr5YgdCqrO5WcMDYf0z0",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "그레이",
+      "tags": [
+        "스웨이드",
+        "스니커즈",
+        "데일리",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "스트라이프",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.772673+00:00"
+    },
+    "createdAt": "2026-07-12T10:54:20.231000+00:00"
+  },
+  {
+    "_id": "ftwiK1OrY9lQrpVAPR2o",
+    "size": {
+      "sleeveLength": 20.0,
+      "chestWidth": 57.0,
+      "totalLength": 63.0,
+      "shoulderWidth": 52.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "버건디",
+      "tags": [
+        "면",
+        "여름",
+        "반팔",
+        "링거티"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1d0fc978e0b8e8a96e608315f07e8cf9.jpg",
+    "cutoutPath": "wardrobe_cutouts/1d0fc978e0b8e8a96e608315f07e8cf9.png",
+    "createdAt": "2026-08-13T02:40:34.650000+00:00"
+  },
+  {
+    "_id": "gb0d0UH3xfJkwsmvJrd8",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 23.0,
+      "chestWidth": 57.5,
+      "totalLength": 63.0,
+      "shoulderWidth": 49.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "옐로우",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "레트로"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "createdAt": "2026-07-27T05:29:21.278000+00:00"
+  },
+  {
+    "_id": "gpT8LR6q5xHz0PGpOU62",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 56.0,
+      "chestWidth": 66.0,
+      "totalLength": 67.5,
+      "shoulderWidth": 60.5
+    },
+    "attributes": {
+      "fit": "레ギュラー",
+      "color": "퍼플",
+      "tags": [
+        "후드",
+        "캔버스",
+        "겨울",
+        "양털안감"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "createdAt": "2026-07-25T11:22:24.957000+00:00"
+  },
+  {
+    "_id": "gvNXys4KQoVTk0ECutQK",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "스티치"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783854163456.jpg",
+    "cutoutPath": "wardrobe_cutouts/gvNXys4KQoVTk0ECutQK_norm_1783858838994.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.531113+00:00"
+    },
+    "createdAt": "2026-07-12T11:02:51.580000+00:00"
+  },
+  {
+    "_id": "hJIfa8dxUPG7sLG9MjWC",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "카라티",
+        "니트",
+        "반팔",
+        "여름"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.555904+00:00"
+    },
+    "createdAt": "2026-07-12T09:34:13.827000+00:00"
+  },
+  {
+    "_id": "hReZYct1bgbr25bmQotu",
+    "size": {
+      "hipWidth": 55.0,
+      "pantsLength": 105.0,
+      "thighWidth": 34.5,
+      "waistWidth": 39.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "그레이",
+      "fit": "오버사이즈",
+      "tags": [
+        "스웨트팬츠",
+        "반바지",
+        "밴딩",
+        "캐릭터"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783220220871.jpg",
+    "cutoutPath": "wardrobe_cutouts/hReZYct1bgbr25bmQotu_norm_1783858839974.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.577106+00:00"
+    },
+    "createdAt": "2026-07-05T02:57:08.149000+00:00"
+  },
+  {
+    "_id": "hZ2sxrcryzccvPf6GiyA",
+    "size": {
+      "hipWidth": 55.0,
+      "pantsLength": 105.0,
+      "thighWidth": 34.5,
+      "waistWidth": 39.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "밴딩팬츠",
+        "와이드",
+        "사계절",
+        "편안함"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851264884.jpg",
+    "cutoutPath": "wardrobe_cutouts/hZ2sxrcryzccvPf6GiyA_norm_1783858841136.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.624489+00:00"
+    },
+    "createdAt": "2026-07-12T10:14:31.530000+00:00"
+  },
+  {
+    "_id": "hjsPa5hLtVuTrvt5do3u",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "나일론",
+        "크로스백",
+        "데일리백",
+        "미니멀"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/4ce4ed7cd448d57a7fc5b42a709dd102.jpg",
+    "cutoutPath": "wardrobe_cutouts/4ce4ed7cd448d57a7fc5b42a709dd102.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:44:04.650000+00:00"
+  },
+  {
+    "_id": "iA6ebYL7xS3oRV13VVfN",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 78.0,
+      "chestWidth": 63.0,
+      "totalLength": 68.0,
+      "shoulderWidth": 50.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "스포티",
+        "간절기"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.490177+00:00"
+    },
+    "createdAt": "2026-07-12T10:49:58.645000+00:00"
+  },
+  {
+    "_id": "iFSBWV3j1PKOEiTYpXN8",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "아이보리",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "클래식"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.056555+00:00"
+    },
+    "createdAt": "2026-07-12T11:05:09.105000+00:00"
+  },
+  {
+    "_id": "iHMXBfV0ANSyt1KCWema",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.390090+00:00"
+    },
+    "createdAt": "2026-07-12T10:45:45.393000+00:00"
+  },
+  {
+    "_id": "iQTBZCPtu85YPnNghYka",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 50.0,
+      "waistWidth": 34.0,
+      "pantsLength": 103.0,
+      "thighWidth": 32.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "데님",
+        "와이드팬츠",
+        "턱팬츠",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.678711+00:00"
+    },
+    "createdAt": "2026-07-12T10:13:15.101000+00:00"
+  },
+  {
+    "_id": "iVV5QjLZegzAK7JJJpWo",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 56.0,
+      "chestWidth": 66.0,
+      "totalLength": 67.5,
+      "shoulderWidth": 60.5
+    },
+    "attributes": {
+      "tags": [
+        "후드",
+        "캔버스",
+        "겨울",
+        "양털안감"
+      ],
+      "color": "퍼플",
+      "fit": "레ギュラー",
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1784978541236.jpg",
+    "cutoutPath": "wardrobe_cutouts/1784978542748.png",
+    "createdAt": "2026-07-25T11:22:24.957000+00:00"
+  },
+  {
+    "_id": "j8rb4LlhELUWCugUNnnb",
+    "size": {
+      "hipWidth": 52.5,
+      "pantsLength": 104.0,
+      "thighWidth": 33.2,
+      "waistWidth": 36.5
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "와이드팬츠",
+        "밴딩",
+        "봄가을",
+        "편안한"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851666037.jpg",
+    "cutoutPath": "wardrobe_cutouts/j8rb4LlhELUWCugUNnnb_norm_1783858842486.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.680188+00:00"
+    },
+    "createdAt": "2026-07-12T10:21:12.733000+00:00"
+  },
+  {
+    "_id": "jrP5aBQsMPRHz0CSBvsP",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 23.0,
+      "chestWidth": 66.0,
+      "totalLength": 73.0,
+      "shoulderWidth": 61.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "옐로우",
+      "tags": [
+        "반팔",
+        "레터링",
+        "면",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "createdAt": "2026-07-25T10:55:09.720000+00:00"
+  },
+  {
+    "_id": "kA80RsoWNkBtfK4cmCll",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "attributes": {
+      "fit": "레ギュラー",
+      "color": "네이비",
+      "tags": [
+        "데님",
+        "트러커",
+        "봄가을",
+        "아우터"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.800102+00:00"
+    },
+    "createdAt": "2026-07-12T10:50:52.040000+00:00"
+  },
+  {
+    "_id": "kC0gwb3bHizwF5TPp2Th",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "스웨이드",
+        "사계절",
+        "클래식"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783854349504.jpg",
+    "cutoutPath": "wardrobe_cutouts/kC0gwb3bHizwF5TPp2Th_norm_1783858843623.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.724856+00:00"
+    },
+    "createdAt": "2026-07-12T11:05:55.613000+00:00"
+  },
+  {
+    "_id": "kE32gD91bI843m1wQcy3",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 50.0,
+      "waistWidth": 34.0,
+      "pantsLength": 103.0,
+      "thighWidth": 32.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "차콜",
+      "tags": [
+        "슬랙스",
+        "가을",
+        "겨울",
+        "울혼방"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:21.857553+00:00"
+    },
+    "createdAt": "2026-07-12T10:20:41.915000+00:00"
+  },
+  {
+    "_id": "kP8IW0UDec6pwvq1Zapf",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "waistWidth": 38.5,
+      "pantsLength": 47.0,
+      "thighWidth": 36.5
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "나일론",
+        "여름",
+        "숏팬츠",
+        "밴딩"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "createdAt": "2026-07-28T03:50:56.348000+00:00"
+  },
+  {
+    "_id": "kRfU8DYJsP02lP8fpXwn",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "캐릭터"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.848458+00:00"
+    },
+    "createdAt": "2026-07-02T01:41:15.694000+00:00"
+  },
+  {
+    "_id": "kYxoirJV1oDWqnZoIsOF",
+    "size": {
+      "sleeveLength": 78.0,
+      "chestWidth": 63.0,
+      "totalLength": 68.0,
+      "shoulderWidth": 50.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블루",
+      "fit": "레귤러",
+      "tags": [
+        "반팔가디건",
+        "니트",
+        "여름아우터",
+        "라운드넥"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783853008785.jpg",
+    "cutoutPath": "wardrobe_cutouts/kYxoirJV1oDWqnZoIsOF_norm_1783858845299.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.770128+00:00"
+    },
+    "createdAt": "2026-07-12T10:43:35.009000+00:00"
+  },
+  {
+    "_id": "klM1hv8OiuUEPY9vWRXr",
+    "size": {
+      "hipWidth": 57.5,
+      "pantsLength": 106.0,
+      "thighWidth": 35.7,
+      "waistWidth": 41.5
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "트레이닝",
+        "반바지",
+        "여름",
+        "스트링"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851508245.jpg",
+    "cutoutPath": "wardrobe_cutouts/klM1hv8OiuUEPY9vWRXr_norm_1783858846361.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.818218+00:00"
+    },
+    "createdAt": "2026-07-12T10:18:34.942000+00:00"
+  },
+  {
+    "_id": "klko5KjvtliHRfnmIxqv",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "더플백",
+        "나일론",
+        "스포츠",
+        "여행용"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1483f6d9fce314e3e8764921fa2de1fd.jpg",
+    "cutoutPath": "wardrobe_cutouts/1483f6d9fce314e3e8764921fa2de1fd.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:45:47.998000+00:00"
+  },
+  {
+    "_id": "lbqoNfYFwIyjfdnnnP69",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "차콜",
+      "fit": "레귤러",
+      "tags": [
+        "스웨이드",
+        "스니커즈",
+        "사계절",
+        "데일리"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783854200044.jpg",
+    "cutoutPath": "wardrobe_cutouts/lbqoNfYFwIyjfdnnnP69_norm_1783858847469.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.863748+00:00"
+    },
+    "createdAt": "2026-07-12T11:03:29.001000+00:00"
+  },
+  {
+    "_id": "mUbxG8meDfGQZzcS3SX7",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 60.0,
+      "waistWidth": 44.0,
+      "pantsLength": 107.0,
+      "thighWidth": 37.0
+    },
+    "attributes": {
+      "fit": "와이드",
+      "color": "블랙",
+      "tags": [
+        "데님쇼츠",
+        "버뮤다팬츠",
+        "흑청",
+        "하프팬츠"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트리트"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.836785+00:00"
+    },
+    "createdAt": "2026-07-12T08:58:16.360000+00:00"
+  },
+  {
+    "_id": "n9o6Lpbm32neInMxjI0t",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "그레이",
+      "tags": [
+        "니트",
+        "카라티",
+        "여름",
+        "반소매"
+      ],
+      "formality": "세미포멀",
+      "pattern": "스트라이프",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.981250+00:00"
+    },
+    "createdAt": "2026-07-12T09:34:46.355000+00:00"
+  },
+  {
+    "_id": "nQIYnMYH2uzBCE1hwTxA",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 19.0,
+      "chestWidth": 63.0,
+      "totalLength": 69.0,
+      "shoulderWidth": 59.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "네이비",
+      "tags": [
+        "반팔",
+        "스트릿웨어",
+        "여름",
+        "사이드라인"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.206791+00:00"
+    },
+    "createdAt": "2026-07-13T01:31:17.621000+00:00"
+  },
+  {
+    "_id": "o5TishObmI191zEWGd3u",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "간절기",
+        "집업"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.837136+00:00"
+    },
+    "createdAt": "2026-07-12T10:50:26.807000+00:00"
+  },
+  {
+    "_id": "ocHh3cdrQwcb5YW03HIT",
+    "size": {
+      "hipWidth": 57.5,
+      "pantsLength": 106.0,
+      "thighWidth": 35.7,
+      "waistWidth": 41.5
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "차콜",
+      "fit": "오버사이즈",
+      "tags": [
+        "와이드팬츠",
+        "핀턱",
+        "슬랙스",
+        "가을/겨울"
+      ],
+      "formality": "세미포멀",
+      "pattern": "스트라이프",
+      "style": "포멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851783173.jpg",
+    "extractionAttemptedAt": "2026-07-12T10:38:00.161000+00:00",
+    "cutoutPath": "wardrobe_cutouts/ocHh3cdrQwcb5YW03HIT_norm_1783858848857.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.925027+00:00"
+    },
+    "createdAt": "2026-07-12T10:23:10.848000+00:00"
+  },
+  {
+    "_id": "pI9KtzDgTK1PFVtNhZVO",
+    "size": {
+      "sleeveLength": 22.0,
+      "chestWidth": 55.0,
+      "totalLength": 64.0,
+      "shoulderWidth": 48.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "옐로우",
+      "fit": "오버사이즈",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "로고"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783908939414.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783908943446.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:25.988772+00:00"
+    },
+    "createdAt": "2026-07-13T02:15:47.180000+00:00"
+  },
+  {
+    "_id": "pPrQqYTRkyYB4PEn7fJv",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "와인",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "스포티",
+        "가을"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.439582+00:00"
+    },
+    "createdAt": "2026-07-12T10:48:29.984000+00:00"
+  },
+  {
+    "_id": "pYgstuSEVpqiOuP6aM3z",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "블랙",
+      "tags": [
+        "차이나카라",
+        "버클디테일",
+        "봄가을",
+        "코튼"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.725974+00:00"
+    },
+    "createdAt": "2026-07-12T10:49:26.106000+00:00"
+  },
+  {
+    "_id": "pd0W4L1AZTY3ZpktYfhU",
+    "size": {
+      "sleeveLength": 23.0,
+      "chestWidth": 66.0,
+      "totalLength": 73.0,
+      "shoulderWidth": 61.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "옐로우",
+      "tags": [
+        "반팔",
+        "레터링",
+        "면",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1784976906397.jpg",
+    "cutoutPath": "wardrobe_cutouts/1784976908009.png",
+    "createdAt": "2026-07-25T10:55:09.720000+00:00"
+  },
+  {
+    "_id": "pybPgMfcxSYvkBtD4Dla",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 78.0,
+      "chestWidth": 63.0,
+      "totalLength": 68.0,
+      "shoulderWidth": 50.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "화이트",
+      "tags": [
+        "반팔셔츠",
+        "여름",
+        "포켓",
+        "코튼"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.352484+00:00"
+    },
+    "createdAt": "2026-07-12T09:35:48.530000+00:00"
+  },
+  {
+    "_id": "q5D0Du9gquhl1FHnenG1",
+    "size": {
+      "sleeveLength": 23.0,
+      "chestWidth": 57.5,
+      "totalLength": 66.0,
+      "shoulderWidth": 49.5
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "반팔",
+        "링거티",
+        "코튼",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783166065795.jpg",
+    "cutoutPath": "wardrobe_cutouts/q5D0Du9gquhl1FHnenG1_norm_1783858850234.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.036689+00:00"
+    },
+    "createdAt": "2026-07-04T11:54:30.026000+00:00"
+  },
+  {
+    "_id": "qHOrP1ECMCs7y6Ipxp9W",
+    "size": {
+      "sleeveLength": 21.0,
+      "chestWidth": 59.0,
+      "totalLength": 65.0,
+      "shoulderWidth": 54.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "화이트",
+      "tags": [
+        "반팔",
+        "면",
+        "여름",
+        "레터링"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/dcb44e0b8a706a793de708ad04e2ccd9.jpg",
+    "cutoutPath": "wardrobe_cutouts/dcb44e0b8a706a793de708ad04e2ccd9.png",
+    "createdAt": "2026-08-11T07:08:51.535000+00:00"
+  },
+  {
+    "_id": "qY4GMoo7VCIpopml8K4Q",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "카키",
+      "tags": [
+        "나일론",
+        "숄더백",
+        "스트링",
+        "데일리백"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/f3e596d359b5a2c2368b2760ce4cfda6.jpg",
+    "cutoutPath": "wardrobe_cutouts/f3e596d359b5a2c2368b2760ce4cfda6.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:46:14.919000+00:00"
+  },
+  {
+    "_id": "qaQCqcNfPWIASr9u3s8Y",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 56.0,
+      "chestWidth": 66.0,
+      "totalLength": 67.5,
+      "shoulderWidth": 60.5
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "옐로우",
+      "tags": [
+        "트랙재킷",
+        "봄가을",
+        "스포티룩",
+        "집업"
+      ],
+      "formality": "캐주얼",
+      "pattern": "스트라이프",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "아우터",
+    "isDemo": true,
+    "createdAt": "2026-07-25T11:25:51.094000+00:00"
+  },
+  {
+    "_id": "rgGW3eTnT0Xa3J4ICOCC",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 20.0,
+      "chestWidth": 57.0,
+      "totalLength": 63.0,
+      "shoulderWidth": 52.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "버건디",
+      "tags": [
+        "반팔",
+        "면",
+        "롤업",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "createdAt": "2026-08-07T07:21:41.413000+00:00"
+  },
+  {
+    "_id": "rlvQcP7BvL2b3UDF0n5Q",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "그레이",
+      "tags": [
+        "볼캡",
+        "데미지",
+        "코튼",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "액세서리",
+    "subCategory": "모자",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.948572+00:00"
+    },
+    "createdAt": "2026-07-05T07:21:47.201000+00:00"
+  },
+  {
+    "_id": "rrlYcMfgUVWpfrz17SiX",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "밀리터리",
+        "봄가을"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783852953100.jpg",
+    "cutoutPath": "wardrobe_cutouts/rrlYcMfgUVWpfrz17SiX_norm_1783858853158.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.160325+00:00"
+    },
+    "createdAt": "2026-07-12T10:42:40.649000+00:00"
+  },
+  {
+    "_id": "s0gvHyZRc6pbj7aiCAW5",
+    "size": {
+      "sleeveLength": 56.0,
+      "chestWidth": 66.0,
+      "totalLength": 67.5,
+      "shoulderWidth": 60.5
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "옐로우",
+      "tags": [
+        "트랙재킷",
+        "봄가을",
+        "스포티룩",
+        "집업"
+      ],
+      "fit": "레귤러",
+      "formality": "캐주얼",
+      "pattern": "스트라이프",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1784978748178.jpg",
+    "cutoutPath": "wardrobe_cutouts/1784978749498.png",
+    "createdAt": "2026-07-25T11:25:51.094000+00:00"
+  },
+  {
+    "_id": "sAdMyTMxYREXOPxdHByT",
+    "size": {
+      "sleeveLength": 19.0,
+      "chestWidth": 63.0,
+      "totalLength": 69.0,
+      "shoulderWidth": 59.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "네이비",
+      "fit": "오버사이즈",
+      "tags": [
+        "반팔",
+        "스트릿웨어",
+        "여름",
+        "사이드라인"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783906270974.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783906274555.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.206791+00:00"
+    },
+    "createdAt": "2026-07-13T01:31:17.621000+00:00"
+  },
+  {
+    "_id": "sVXZHzWvtfqDdaRtSFgx",
+    "size": {
+      "hipWidth": 60.0,
+      "pantsLength": 107.0,
+      "thighWidth": 37.0,
+      "waistWidth": 44.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "슬랙스",
+        "와이드팬츠",
+        "사계절",
+        "핀턱"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851338314.jpg",
+    "cutoutPath": "wardrobe_cutouts/sVXZHzWvtfqDdaRtSFgx_norm_1783858854795.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.261757+00:00"
+    },
+    "createdAt": "2026-07-12T10:15:46.170000+00:00"
+  },
+  {
+    "_id": "sZlc3aMFjvB1zEsINj0m",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "러닝화",
+        "메쉬",
+        "쿠셔닝",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.501624+00:00"
+    },
+    "createdAt": "2026-07-12T11:02:22.516000+00:00"
+  },
+  {
+    "_id": "t16mhpuSrkQq4KvRxiqx",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "가죽",
+        "여름",
+        "플랫폼",
+        "샌들"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783310623485.jpg",
+    "cutoutPath": "wardrobe_cutouts/t16mhpuSrkQq4KvRxiqx_norm_1783858855059.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.319543+00:00"
+    },
+    "createdAt": "2026-07-06T04:03:50.184000+00:00"
+  },
+  {
+    "_id": "tMo0IfBDpyonunMTDysJ",
+    "imagePath": "wardrobe_images/84893b8e43b9df9d92abf991d17f2105.jpg",
+    "category": "전신",
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "화이트",
+      "tags": [
+        "데님",
+        "반팔셔츠",
+        "카고팬츠",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "createdAt": "2026-08-07T07:11:07.728000+00:00"
+  },
+  {
+    "_id": "tbLe88oo9UryvErLHNu6",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "데님",
+        "반팔셔츠",
+        "스티치",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.725735+00:00"
+    },
+    "createdAt": "2026-07-12T09:40:34.792000+00:00"
+  },
+  {
+    "_id": "tvrLvM3MNmk3KOEplKUj",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "아이보리",
+      "tags": [
+        "스니커즈",
+        "스웨이드",
+        "데일리",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.390276+00:00"
+    },
+    "createdAt": "2026-07-12T11:05:27.420000+00:00"
+  },
+  {
+    "_id": "uIOXPiuzHmdemPsGAbD3",
+    "size": {
+      "sleeveLength": 19.0,
+      "chestWidth": 63.0,
+      "totalLength": 69.0,
+      "shoulderWidth": 59.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "차콜",
+      "fit": "오버사이즈",
+      "tags": [
+        "피그먼트",
+        "하프티셔츠",
+        "빈티지",
+        "여름"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1782985832327.jpg",
+    "cutoutPath": "wardrobe_cutouts/uIOXPiuzHmdemPsGAbD3_norm_1783858856289.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.374993+00:00"
+    },
+    "createdAt": "2026-07-02T09:50:37.756000+00:00"
+  },
+  {
+    "_id": "vJwbhdB8cuGz0nCfc63M",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "가죽",
+        "팔찌",
+        "실버",
+        "레이어드"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/300827cfda998f22a2ea5bbdd0514eca.jpg",
+    "cutoutPath": "wardrobe_cutouts/300827cfda998f22a2ea5bbdd0514eca.png",
+    "subCategory": "팔찌",
+    "createdAt": "2026-08-09T04:50:17.262000+00:00"
+  },
+  {
+    "_id": "vQIAH54fIAFgWe247pUe",
+    "size": {
+      "hipWidth": 55.0,
+      "pantsLength": 105.0,
+      "thighWidth": 34.5,
+      "waistWidth": 39.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "나일론",
+        "카고팬츠",
+        "고프코어",
+        "밴딩"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851712739.jpg",
+    "cutoutPath": "wardrobe_cutouts/vQIAH54fIAFgWe247pUe_norm_1783858857466.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.421927+00:00"
+    },
+    "createdAt": "2026-07-12T10:21:59.501000+00:00"
+  },
+  {
+    "_id": "vRnIn4pj9Nn1CBsxyrYA",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "블레이저",
+        "봄가을",
+        "아우터",
+        "데일리룩"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783853324236.jpg",
+    "cutoutPath": "wardrobe_cutouts/vRnIn4pj9Nn1CBsxyrYA_norm_1783858858772.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.469299+00:00"
+    },
+    "createdAt": "2026-07-12T10:48:53.447000+00:00"
+  },
+  {
+    "_id": "vbqPiiZ8Hn6xPmQrZLhs",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "스니커즈",
+        "나일론",
+        "스웨이드",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.848910+00:00"
+    },
+    "createdAt": "2026-07-12T11:04:48.990000+00:00"
+  },
+  {
+    "_id": "vrYOKevdtkRjzREzqsa2",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "콜라보레이션"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.735569+00:00"
+    },
+    "createdAt": "2026-07-12T10:58:04.869000+00:00"
+  },
+  {
+    "_id": "vtpqUhTRkueHAcmhyu6V",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "스티치"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "신발",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.531113+00:00"
+    },
+    "createdAt": "2026-07-12T11:02:51.580000+00:00"
+  },
+  {
+    "_id": "w2sYwm8s5CTRncztyD9r",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "사계절",
+        "클래식"
+      ],
+      "formality": "캐주얼",
+      "pattern": "스트라이프",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783853703968.jpg",
+    "cutoutPath": "wardrobe_cutouts/w2sYwm8s5CTRncztyD9r_norm_1783858859865.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.515177+00:00"
+    },
+    "createdAt": "2026-07-12T10:55:13+00:00"
+  },
+  {
+    "_id": "wDUTG0lfP1P0hXw517d0",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "브라운",
+      "fit": "레귤러",
+      "tags": [
+        "볼캡",
+        "야구모자",
+        "코튼",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/1783913604950.jpg",
+    "cutoutPath": "wardrobe_cutouts/1783913608354.png",
+    "subCategory": "모자",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.558102+00:00"
+    },
+    "createdAt": "2026-07-13T03:33:31.525000+00:00"
+  },
+  {
+    "_id": "wRnAEi9xDdYlKi1HVbK4",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 57.5,
+      "waistWidth": 41.5,
+      "pantsLength": 106.0,
+      "thighWidth": 35.7
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "차콜",
+      "tags": [
+        "슬랙스",
+        "와이드팬츠",
+        "핀턱",
+        "사계절"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:23.625738+00:00"
+    },
+    "createdAt": "2026-07-12T10:15:06.818000+00:00"
+  },
+  {
+    "_id": "whQ5IREpPXXzG4O3apWJ",
+    "size": {
+      "hipWidth": 60.0,
+      "pantsLength": 107.0,
+      "thighWidth": 37.0,
+      "waistWidth": 44.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블루",
+      "fit": "오버사이즈",
+      "tags": [
+        "데님",
+        "반바지",
+        "여름",
+        "워싱"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783854450373.jpg",
+    "cutoutPath": "wardrobe_cutouts/whQ5IREpPXXzG4O3apWJ_norm_1783858861524.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.609020+00:00"
+    },
+    "createdAt": "2026-07-12T11:07:41.318000+00:00"
+  },
+  {
+    "_id": "wnC2TN31h6deFkt5Kh0P",
+    "category": "전신",
+    "isDemo": true,
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "올블랙",
+        "슬랙스",
+        "터틀넥",
+        "가을/겨울"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "createdAt": "2026-08-06T04:51:46.843000+00:00"
+  },
+  {
+    "_id": "wteP4kIb9qJtBe6qgexg",
+    "size": {
+      "hipWidth": 50.0,
+      "pantsLength": 103.0,
+      "thighWidth": 32.0,
+      "waistWidth": 34.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "벌룬팬츠",
+        "밴딩",
+        "나일론",
+        "봄가을"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "하의",
+    "imagePath": "wardrobe_images/1783851405885.jpg",
+    "cutoutPath": "wardrobe_cutouts/wteP4kIb9qJtBe6qgexg_norm_1783858862600.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.669297+00:00"
+    },
+    "createdAt": "2026-07-12T10:16:52.401000+00:00"
+  },
+  {
+    "_id": "x1Tv6C2g7vdPJD4ecqNT",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 60.0,
+      "waistWidth": 44.0,
+      "pantsLength": 107.0,
+      "thighWidth": 37.0
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "슬랙스",
+        "와이드팬츠",
+        "사계절",
+        "핀턱"
+      ],
+      "formality": "세미포멀",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:26.261757+00:00"
+    },
+    "createdAt": "2026-07-12T10:15:46.170000+00:00"
+  },
+  {
+    "_id": "x6LceqIdyglrW2dei4BA",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "오버사이즈",
+      "tags": [
+        "차이나카라",
+        "버클디테일",
+        "봄가을",
+        "코튼"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783853356337.jpg",
+    "cutoutPath": "wardrobe_cutouts/x6LceqIdyglrW2dei4BA_norm_1783858863685.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.725974+00:00"
+    },
+    "createdAt": "2026-07-12T10:49:26.106000+00:00"
+  },
+  {
+    "_id": "xLCTSRYoiCtH8GstgnUE",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "볼캡",
+        "데미지",
+        "자수",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "액세서리",
+    "subCategory": "모자",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:24.644201+00:00"
+    },
+    "createdAt": "2026-07-13T03:30:49.661000+00:00"
+  },
+  {
+    "_id": "xSv2rYtW0u4NsW2Z68O4",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "그레이",
+      "fit": "레귤러",
+      "tags": [
+        "스웨이드",
+        "스니커즈",
+        "데일리",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "스트라이프",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783853650981.jpg",
+    "cutoutPath": "wardrobe_cutouts/xSv2rYtW0u4NsW2Z68O4_norm_1783858865173.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.772673+00:00"
+    },
+    "createdAt": "2026-07-12T10:54:20.231000+00:00"
+  },
+  {
+    "_id": "xk74sQFfOnIFHTOlyJyP",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 57.0,
+      "chestWidth": 68.0,
+      "totalLength": 69.0,
+      "shoulderWidth": 62.5
+    },
+    "attributes": {
+      "tags": [
+        "스웨이드",
+        "가을",
+        "겨울",
+        "블루종"
+      ],
+      "fit": "오버사이즈",
+      "color": "브라운",
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1784978154657.jpg",
+    "cutoutPath": "wardrobe_cutouts/1784978156196.png",
+    "createdAt": "2026-07-25T11:15:58.152000+00:00"
+  },
+  {
+    "_id": "y1RPtXZJirMMzGjMUv6i",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "attributes": {
+      "fit": "오버사이즈",
+      "color": "화이트",
+      "tags": [
+        "반팔",
+        "여름",
+        "스트릿웨어",
+        "블록코어"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스포티"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "상의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:21.707801+00:00"
+    },
+    "createdAt": "2026-07-12T09:38:34.842000+00:00"
+  },
+  {
+    "_id": "y3eGWtHRylvttgpUsJJo",
+    "size": {
+      "sleeveLength": 80.0,
+      "chestWidth": 65.0,
+      "totalLength": 70.0,
+      "shoulderWidth": 52.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "블랙",
+      "fit": "레귤러",
+      "tags": [
+        "바람막이",
+        "나일론",
+        "간절기",
+        "집업"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1783853418656.jpg",
+    "cutoutPath": "wardrobe_cutouts/y3eGWtHRylvttgpUsJJo_norm_1783858866259.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.837136+00:00"
+    },
+    "createdAt": "2026-07-12T10:50:26.807000+00:00"
+  },
+  {
+    "_id": "yEqKaFBOswzJ0MuHM8R9",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 55.0,
+      "waistWidth": 39.0,
+      "pantsLength": 105.0,
+      "thighWidth": 34.5
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "차콜",
+      "tags": [
+        "데님",
+        "워싱",
+        "사계절",
+        "와이드"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:22.906014+00:00"
+    },
+    "createdAt": "2026-07-12T10:17:46.361000+00:00"
+  },
+  {
+    "_id": "yrD0GCANCa0ODvXVANUZ",
+    "size": {
+      "sleeveLength": 82.0,
+      "chestWidth": 67.0,
+      "totalLength": 72.0,
+      "shoulderWidth": 54.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "카키",
+      "fit": "오버사이즈",
+      "tags": [
+        "항공점퍼",
+        "봄가을",
+        "나일론",
+        "밀리터리"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "아우터",
+    "imagePath": "wardrobe_images/1782954484372.jpg",
+    "cutoutPath": "wardrobe_cutouts/yrD0GCANCa0ODvXVANUZ_norm_1783858867419.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.884161+00:00"
+    },
+    "createdAt": "2026-07-02T01:08:08.481000+00:00"
+  },
+  {
+    "_id": "ytIHDu7L7iWfhDLaFDOh",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "화이트",
+      "fit": "레귤러",
+      "tags": [
+        "스니커즈",
+        "가죽",
+        "플랫폼",
+        "사계절"
+      ],
+      "formality": "캐주얼",
+      "pattern": "그래픽",
+      "style": "스트릿"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "신발",
+    "imagePath": "wardrobe_images/1783854017035.jpg",
+    "cutoutPath": "wardrobe_cutouts/ytIHDu7L7iWfhDLaFDOh_norm_1783858868617.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.928794+00:00"
+    },
+    "createdAt": "2026-07-12T11:00:26.189000+00:00"
+  },
+  {
+    "_id": "zIdC34ZtEAWIJMV9FAzO",
+    "size": {
+      "sleeveLength": 76.0,
+      "chestWidth": 61.0,
+      "totalLength": 66.0,
+      "shoulderWidth": 48.0
+    },
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "color": "그레이",
+      "fit": "레귤러",
+      "tags": [
+        "니트",
+        "카라티",
+        "여름",
+        "반소매"
+      ],
+      "formality": "세미포멀",
+      "pattern": "스트라이프",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "상의",
+    "imagePath": "wardrobe_images/1783848877461.jpg",
+    "cutoutPath": "wardrobe_cutouts/zIdC34ZtEAWIJMV9FAzO_norm_1783858870061.png",
+    "embedding": {
+      "dim": 512,
+      "model": "fashionclip",
+      "vector": "[REDACTED-VECTOR len=512]",
+      "createdAt": "2026-07-24T14:59:26.981250+00:00"
+    },
+    "createdAt": "2026-07-12T09:34:46.355000+00:00"
+  },
+  {
+    "_id": "zj6GQIQHJBiHxWhs4gcV",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "size": {
+      "hipWidth": 55.0,
+      "waistWidth": 39.0,
+      "pantsLength": 105.0,
+      "thighWidth": 34.5
+    },
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "밴딩팬츠",
+        "와이드",
+        "사계절",
+        "편안함"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "미니멀"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "category": "하의",
+    "isDemo": true,
+    "embedding": {
+      "vector": "[REDACTED-VECTOR len=512]",
+      "model": "fashionclip",
+      "dim": 512,
+      "createdAt": "2026-07-24T14:59:25.624489+00:00"
+    },
+    "createdAt": "2026-07-12T10:14:31.530000+00:00"
+  },
+  {
+    "_id": "zx4An8E0KKoltypei0U4",
+    "cutoutImageUrl": "[REDACTED-URL]",
+    "attributes": {
+      "fit": "레귤러",
+      "color": "블랙",
+      "tags": [
+        "숄더백",
+        "나일론",
+        "데일리백",
+        "미니멀"
+      ],
+      "formality": "캐주얼",
+      "pattern": "무지",
+      "style": "캐주얼"
+    },
+    "imageUrl": "[REDACTED-URL]",
+    "ownerUid": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "category": "액세서리",
+    "imagePath": "wardrobe_images/dc8a9e435aaac11bfe59f6e8a37b069f.jpg",
+    "cutoutPath": "wardrobe_cutouts/dc8a9e435aaac11bfe59f6e8a37b069f.png",
+    "subCategory": "가방",
+    "createdAt": "2026-08-09T04:46:01.060000+00:00"
+  }
+]

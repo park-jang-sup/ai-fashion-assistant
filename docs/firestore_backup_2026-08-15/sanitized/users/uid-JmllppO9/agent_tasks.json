@@ -1,0 +1,14 @@
+[
+  {
+    "_id": "CPkGsseClCq42AcbglFt",
+    "nextRetryAt": "2026-07-25T11:16:18.181933+00:00",
+    "status": "done",
+    "type": "generate_recommendation",
+    "payload": {
+      "itemId": "xk74sQFfOnIFHTOlyJyP"
+    },
+    "lastError": "추천 파이프라인 실패(자기 평가 루프가 Gemini 폴백까지 모두 실패했거나 저장 실패)",
+    "retryCount": 0,
+    "createdAt": "2026-07-25T11:16:51.434000+00:00"
+  }
+]

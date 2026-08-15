@@ -1,0 +1,228 @@
+[
+  {
+    "_id": "5xkLqK7XOu3lVVDeCHJe",
+    "tpoTag": "일상",
+    "createdAt": "2026-08-01T08:09:10.703000+00:00",
+    "source": "agent",
+    "date": "2026-08-03T15:00:00+00:00",
+    "itemSummaries": [
+      "상의: 버건디",
+      "하의: 차콜",
+      "신발: 블랙"
+    ],
+    "itemIds": [
+      "m1M2iVfl1kei69QUzSYE",
+      "dGOeFMrbtQOVIkkTDSNG",
+      "Z3rn0tIYDVDGFaymeLUt"
+    ],
+    "status": "recorded"
+  },
+  {
+    "_id": "9BGVpYtfC9auK2XWuJWp",
+    "tpoTag": "출근",
+    "createdAt": "2026-08-03T02:57:46.646000+00:00",
+    "source": "manual",
+    "date": "2026-08-05T15:00:00+00:00",
+    "itemSummaries": [],
+    "itemIds": [],
+    "status": "planned"
+  },
+  {
+    "_id": "A8pelRasAOBnA1Jm2OFV",
+    "tpoTag": "경조사",
+    "createdAt": "2026-08-02T12:32:05.868000+00:00",
+    "source": "manual",
+    "date": "2026-08-03T15:00:00+00:00",
+    "itemSummaries": [],
+    "itemIds": [],
+    "status": "planned"
+  },
+  {
+    "_id": "AaJWYVXe1PulTtA1E9DS",
+    "tpoTag": "결혼식",
+    "createdAt": "2026-08-15T10:45:14.326000+00:00",
+    "source": "manual",
+    "date": "2026-08-16T15:00:00+00:00",
+    "itemSummaries": [],
+    "itemIds": [],
+    "status": "planned"
+  },
+  {
+    "_id": "BauFu08ALbjb1sjY7zit",
+    "tpoTag": "데이트",
+    "createdAt": "2026-08-01T14:41:05.690000+00:00",
+    "source": "agent",
+    "date": "2026-08-01T15:00:00+00:00",
+    "itemSummaries": [
+      "상의: 블랙",
+      "하의: 차콜",
+      "신발: 아이보리"
+    ],
+    "itemIds": [
+      "fl4XAhRfGcRyX8OC6Q8n",
+      "Z6Ib8kyJaOaVZXfDEAbR",
+      "zoFJxMe5HujPPgyPcsBD"
+    ],
+    "status": "recorded"
+  },
+  {
+    "_id": "DCDUFl0RoeZMhUgs8pzP",
+    "tpoTag": "여행",
+    "createdAt": "2026-08-01T08:09:09.449000+00:00",
+    "source": "agent",
+    "date": "2026-07-31T15:00:00+00:00",
+    "itemSummaries": [
+      "상의: 차콜",
+      "하의: 블랙",
+      "신발: 블랙"
+    ],
+    "itemIds": [
+      "jV90Wb8UQ4u48hu2KnmV",
+      "P3vuNvYNiCRA3KGxPByr",
+      "Nwc7T7bkiXFRzoq6Swdx"
+    ],
+    "status": "recorded"
+  },
+  {
+    "_id": "IBCPM2DBSV3Cydv9wGEw",
+    "tpoTag": "여행",
+    "createdAt": "2026-07-31T01:54:55.985000+00:00",
+    "source": "manual",
+    "date": "2026-07-31T15:00:00+00:00",
+    "itemSummaries": [],
+    "itemIds": [],
+    "status": "planned"
+  },
+  {
+    "_id": "KxmezSUXFa4qDRRG2pxv",
+    "tpoTag": "일상",
+    "createdAt": "2026-08-15T10:45:36.801000+00:00",
+    "source": "agent",
+    "date": "2026-08-14T15:00:00+00:00",
+    "itemSummaries": [
+      "상의: 차콜",
+      "하의: 블랙",
+      "신발: 블랙"
+    ],
+    "itemIds": [
+      "UiSbDTWFquY3o2DBm68z",
+      "kP8IW0UDec6pwvq1Zapf",
+      "vbqPiiZ8Hn6xPmQrZLhs"
+    ],
+    "status": "recorded"
+  },
+  {
+    "_id": "M91WdeIL9aF45XU1CtSL",
+    "tpoTag": "일상",
+    "createdAt": "2026-08-01T08:09:11.604000+00:00",
+    "source": "agent",
+    "date": "2026-08-05T15:00:00+00:00",
+    "itemSummaries": [
+      "상의: 옐로우",
+      "하의: 카키",
+      "신발: 차콜"
+    ],
+    "itemIds": [
+      "GuyiGXyOYJL8xiEXMhPM",
+      "YyKaoxF8xcE8zPDILycJ",
+      "KAwACNO7aIqX7a77V3Mb"
+    ],
+    "status": "recorded"
+  },
+  {
+    "_id": "O7Nn6mbj3gv0cnF3qwNx",
+    "tpoTag": "운동",
+    "createdAt": "2026-07-31T01:48:39.775000+00:00",
+    "source": "manual",
+    "date": "2026-08-02T15:00:00+00:00",
+    "itemSummaries": [],
+    "itemIds": [],
+    "status": "planned"
+  },
+  {
+    "_id": "PjRaKft3ExnpEFtRJakn",
+    "tpoTag": "여행",
+    "createdAt": "2026-08-01T08:40:40.021000+00:00",
+    "source": "agent",
+    "date": "2026-07-31T15:00:00+00:00",
+    "itemSummaries": [
+      "상의: 차콜",
+      "하의: 블랙",
+      "신발: 블랙"
+    ],
+    "itemIds": [
+      "jV90Wb8UQ4u48hu2KnmV",
+      "P3vuNvYNiCRA3KGxPByr",
+      "Nwc7T7bkiXFRzoq6Swdx"
+    ],
+    "status": "recorded"
+  },
+  {
+    "_id": "ZlSMJbVtbCwaYdXTo4J8",
+    "tpoTag": "여행",
+    "createdAt": "2026-08-01T08:35:03.794000+00:00",
+    "source": "agent",
+    "date": "2026-07-31T15:00:00+00:00",
+    "itemSummaries": [
+      "상의: 차콜",
+      "하의: 차콜",
+      "신발: 블랙"
+    ],
+    "itemIds": [
+      "jV90Wb8UQ4u48hu2KnmV",
+      "dGOeFMrbtQOVIkkTDSNG",
+      "eDtIjkMaQhlI4d50Pw7V"
+    ],
+    "status": "recorded"
+  },
+  {
+    "_id": "gQEQt6c10yw7e8r9H7lu",
+    "tpoTag": "데이트",
+    "createdAt": "2026-08-01T08:35:06.622000+00:00",
+    "source": "agent",
+    "date": "2026-08-01T15:00:00+00:00",
+    "itemSummaries": [
+      "상의: 그레이",
+      "하의: 차콜",
+      "아우터: 블랙",
+      "신발: 아이보리"
+    ],
+    "itemIds": [
+      "7pmZeIPX80kPRzEfv2y7",
+      "2e7eoeXhakWU4BOw1qH2",
+      "HWPTJ0GfuIbNUqU6hnkD",
+      "zoFJxMe5HujPPgyPcsBD"
+    ],
+    "status": "recorded"
+  },
+  {
+    "_id": "iFYUEemXhqRp6o5SUmBi",
+    "tpoTag": "운동",
+    "createdAt": "2026-08-02T13:09:09.647000+00:00",
+    "source": "manual",
+    "date": "2026-08-04T15:00:00+00:00",
+    "itemSummaries": [],
+    "itemIds": [],
+    "status": "planned"
+  },
+  {
+    "_id": "n02uc232NVMITGaYzIIe",
+    "tpoTag": "데이트",
+    "createdAt": "2026-07-31T01:41:03.589000+00:00",
+    "source": "manual",
+    "date": "2026-08-01T15:00:00+00:00",
+    "itemSummaries": [],
+    "itemIds": [],
+    "status": "planned"
+  },
+  {
+    "_id": "xOH8r8UYSis86UNPTOes",
+    "tpoTag": "면접",
+    "createdAt": "2026-08-04T03:15:16.210000+00:00",
+    "source": "manual",
+    "date": "2026-08-06T15:00:00+00:00",
+    "itemSummaries": [],
+    "itemIds": [],
+    "status": "planned"
+  }
+]

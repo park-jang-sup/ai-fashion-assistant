@@ -1,0 +1,3980 @@
+[
+  {
+    "_id": "1QsgyXpTWqHTcBLIRLsY",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "tmpk1wzBDxxNCxOiVZ0R",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "whQ5IREpPXXzG4O3apWJ",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "lbqoNfYFwIyjfdnnnP69",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 88,
+    "itemIds": [
+      "lbqoNfYFwIyjfdnnnP69",
+      "tmpk1wzBDxxNCxOiVZ0R",
+      "whQ5IREpPXXzG4O3apWJ"
+    ],
+    "createdAt": "2026-08-06T09:33:47.471000+00:00"
+  },
+  {
+    "_id": "23LsEKWeqI0Chw5RRQxg",
+    "items": [
+      {
+        "color": "차콜",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "bWk9NgofhatCf8o6NRAE",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      },
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "ROIMhutWsJi7CuFAkheC",
+        "style": "스포티"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "ROIMhutWsJi7CuFAkheC",
+      "bWk9NgofhatCf8o6NRAE",
+      "dAKRmtWUywQ7tKZhdqga"
+    ],
+    "createdAt": "2026-08-06T07:48:52.417000+00:00"
+  },
+  {
+    "_id": "25rxRUQovyIJH5nV0snn",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "kC0gwb3bHizwF5TPp2Th",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 83,
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "UAssyHECUNPQqv3psL6Q",
+      "kC0gwb3bHizwF5TPp2Th"
+    ],
+    "createdAt": "2026-08-06T04:58:36.277000+00:00"
+  },
+  {
+    "_id": "292fc2Z7qo58vxD8dBC8",
+    "items": [
+      {
+        "color": "회색",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "0qpR6Bw8ZyzEyCcBah6x",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      },
+      {
+        "color": "블루",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "3rMPFsT0sbB3pWOrmbPm",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 80,
+    "itemIds": [
+      "0qpR6Bw8ZyzEyCcBah6x",
+      "3rMPFsT0sbB3pWOrmbPm",
+      "UAssyHECUNPQqv3psL6Q"
+    ],
+    "createdAt": "2026-08-06T08:04:58.952000+00:00"
+  },
+  {
+    "_id": "2QLtnlyFAYrpV1Ul15e8",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "YDvGmmns3pdFYikJAnv1",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "세미포멀",
+        "id": "ocHh3cdrQwcb5YW03HIT",
+        "style": "포멀"
+      },
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cb7yrcouGGpbsZCYGS1F",
+        "style": "스트릿"
+      }
+    ],
+    "fittingCacheKey": "8daf041a72f73ac09c1902d618bd766233b172145c27f7a45b242c98ea86caf1",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "YDvGmmns3pdFYikJAnv1",
+      "cb7yrcouGGpbsZCYGS1F",
+      "dAKRmtWUywQ7tKZhdqga",
+      "ocHh3cdrQwcb5YW03HIT"
+    ],
+    "createdAt": "2026-08-10T15:52:44.250000+00:00"
+  },
+  {
+    "_id": "2h0T5xkXw3NnMZMhFUbv",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "FMi4qRsCjiVLHtO6mUdF",
+        "style": "스포티"
+      },
+      {
+        "color": "카키",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "BpXytV9fxG9syPk0DvD4",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "ROIMhutWsJi7CuFAkheC",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "BpXytV9fxG9syPk0DvD4",
+      "FMi4qRsCjiVLHtO6mUdF",
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp",
+      "ROIMhutWsJi7CuFAkheC"
+    ],
+    "createdAt": "2026-08-08T04:47:37.120000+00:00"
+  },
+  {
+    "_id": "2m3X39Jmh8UTMfT1die1",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "createdAt": "2026-08-05T17:06:44.071000+00:00"
+  },
+  {
+    "_id": "2xgsRtqmkboVgJ9wJYxL",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "YvqnuHTpWYXpkeEU0t1l",
+        "style": "스트릿"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "UAssyHECUNPQqv3psL6Q",
+      "YvqnuHTpWYXpkeEU0t1l"
+    ],
+    "createdAt": "2026-08-06T06:28:00.505000+00:00"
+  },
+  {
+    "_id": "3SxEeqCv9uGjXqHzsrug",
+    "items": [
+      {
+        "color": "차콜",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "bWk9NgofhatCf8o6NRAE",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      },
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "ROIMhutWsJi7CuFAkheC",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "ROIMhutWsJi7CuFAkheC",
+      "bWk9NgofhatCf8o6NRAE",
+      "dAKRmtWUywQ7tKZhdqga"
+    ],
+    "createdAt": "2026-08-06T07:49:04.825000+00:00"
+  },
+  {
+    "_id": "3vEOMPbcrD2lCFhNA8Fr",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "ygx17wBZqrMoJwP547e7",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 70,
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "ygx17wBZqrMoJwP547e7"
+    ],
+    "createdAt": "2026-08-05T17:06:12.054000+00:00"
+  },
+  {
+    "_id": "4PTVonYeOOr45fDOpXzE",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "createdAt": "2026-08-08T14:21:03.829000+00:00"
+  },
+  {
+    "_id": "4eEBQCo3zBzavywkPsMa",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "createdAt": "2026-08-05T17:06:20.515000+00:00"
+  },
+  {
+    "_id": "4zCTZ63JIbtMgDtETiRu",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "sAdMyTMxYREXOPxdHByT",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "klM1hv8OiuUEPY9vWRXr",
+        "style": "스포티"
+      }
+    ],
+    "fittingCacheKey": "bcff94cb0561d5e12a96307973de6d7e7f61716a664c2d01004eb37d9566c091",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "klM1hv8OiuUEPY9vWRXr",
+      "sAdMyTMxYREXOPxdHByT"
+    ],
+    "createdAt": "2026-08-09T16:13:35.673000+00:00"
+  },
+  {
+    "_id": "6m9pebhZfUr4iTvYc70t",
+    "items": [
+      {
+        "color": "버건디",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "fTq2v3BzHT4LoWTGDD2I",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "세미포멀",
+        "id": "0PGRnY39FstR95fRVNTZ",
+        "style": "미니멀"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cb7yrcouGGpbsZCYGS1F",
+        "style": "스트릿"
+      }
+    ],
+    "fittingCacheKey": "733c9d92b218c53ecb2e63c3f28d961bfdbf2f945c9cff7e8414a4aae06e56cc",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "0PGRnY39FstR95fRVNTZ",
+      "cb7yrcouGGpbsZCYGS1F",
+      "fTq2v3BzHT4LoWTGDD2I"
+    ],
+    "createdAt": "2026-08-10T15:54:10.224000+00:00"
+  },
+  {
+    "_id": "78dx36iQQDDswhMugSHe",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 88,
+    "itemIds": [
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "UAssyHECUNPQqv3psL6Q"
+    ],
+    "createdAt": "2026-08-08T16:24:31.591000+00:00"
+  },
+  {
+    "_id": "78sea1cSWZNJHc4IThgF",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "sAdMyTMxYREXOPxdHByT",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "fittingCacheKey": "68ceaf8107522193750b391b7fc0d64f496761bfce047c98879161ccde24e261",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "sAdMyTMxYREXOPxdHByT"
+    ],
+    "createdAt": "2026-08-05T18:02:50.093000+00:00"
+  },
+  {
+    "_id": "7f43eOkwlKvxa91emB39",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "tmpk1wzBDxxNCxOiVZ0R",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "whQ5IREpPXXzG4O3apWJ",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "lbqoNfYFwIyjfdnnnP69",
+        "style": "캐주얼"
+      }
+    ],
+    "fittingCacheKey": "0224433fc334e87e2a7079e7b55e694b003dba517d311ae9d2264320d8c74deb",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "lbqoNfYFwIyjfdnnnP69",
+      "tmpk1wzBDxxNCxOiVZ0R",
+      "whQ5IREpPXXzG4O3apWJ"
+    ],
+    "createdAt": "2026-08-06T09:34:09.476000+00:00"
+  },
+  {
+    "_id": "7ihB5gzrlRmVRYtgIgpb",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "pd0W4L1AZTY3ZpktYfhU",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 92,
+    "itemIds": [
+      "RxlcBaWN0f0wKxvspYXX",
+      "pd0W4L1AZTY3ZpktYfhU"
+    ],
+    "createdAt": "2026-08-06T04:52:23.832000+00:00"
+  },
+  {
+    "_id": "7uNjmxSBk6LPR9Ew1OEQ",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "tmpk1wzBDxxNCxOiVZ0R",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "whQ5IREpPXXzG4O3apWJ",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "tmpk1wzBDxxNCxOiVZ0R",
+      "whQ5IREpPXXzG4O3apWJ"
+    ],
+    "createdAt": "2026-08-06T09:33:31.475000+00:00"
+  },
+  {
+    "_id": "80tC1lzLBknC40qmo5y9",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "3rMPFsT0sbB3pWOrmbPm",
+        "style": "스포티"
+      }
+    ],
+    "fittingCacheKey": "1748925542109a3bb9ef48c03b41269c1243bf1b8542ad329d35d840a2ba485f",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "3rMPFsT0sbB3pWOrmbPm",
+      "dAKRmtWUywQ7tKZhdqga"
+    ],
+    "createdAt": "2026-08-09T04:55:03.097000+00:00"
+  },
+  {
+    "_id": "8DNcEm2HNeXWt4nn4seR",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "sAdMyTMxYREXOPxdHByT",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "klM1hv8OiuUEPY9vWRXr",
+        "style": "스포티"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "klM1hv8OiuUEPY9vWRXr",
+      "sAdMyTMxYREXOPxdHByT"
+    ],
+    "createdAt": "2026-08-09T16:12:54.024000+00:00"
+  },
+  {
+    "_id": "8bbhPZGHDRxdVAWFRYJ2",
+    "items": [
+      {
+        "color": "차콜",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "ToS9n74SDle28ziL7ggB",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "ToS9n74SDle28ziL7ggB"
+    ],
+    "createdAt": "2026-08-06T04:51:58.225000+00:00"
+  },
+  {
+    "_id": "8iWjnhzK7HKDI0Ej09c8",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "fittingCacheKey": "579f5a0d0f7bd5b04d92f9760a63f8eefd2da3038e92fa61649380e88bd11008",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "RxlcBaWN0f0wKxvspYXX"
+    ],
+    "createdAt": "2026-08-06T05:12:47.182000+00:00"
+  },
+  {
+    "_id": "9gqDcYBNuCEIyB2buhlW",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "createdAt": "2026-08-09T16:27:55.799000+00:00"
+  },
+  {
+    "_id": "9kXZirIVi9VwBgk5neRx",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "YDvGmmns3pdFYikJAnv1",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "fittingCacheKey": "81f9f8f923c44393e3a1b1cdeb85e72f2fb0f6018e0b3eb50555cf91ed8b2326",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "UAssyHECUNPQqv3psL6Q",
+      "YDvGmmns3pdFYikJAnv1"
+    ],
+    "createdAt": "2026-08-05T17:38:56.433000+00:00"
+  },
+  {
+    "_id": "APYLvdRHMc41lm2ihvA7",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      },
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 88,
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "Q2TqinzkRVKNgDoQE5dp",
+      "dAKRmtWUywQ7tKZhdqga"
+    ],
+    "createdAt": "2026-08-05T14:25:53.441000+00:00"
+  },
+  {
+    "_id": "ARusSTfGQRClKFYW5Q5e",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 92,
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "RxlcBaWN0f0wKxvspYXX"
+    ],
+    "createdAt": "2026-08-06T05:12:33.489000+00:00"
+  },
+  {
+    "_id": "Cdi1zuFVMM654zFT8XO1",
+    "items": [
+      {
+        "color": "차콜",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "bWk9NgofhatCf8o6NRAE",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      },
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "ROIMhutWsJi7CuFAkheC",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "ROIMhutWsJi7CuFAkheC",
+      "bWk9NgofhatCf8o6NRAE",
+      "dAKRmtWUywQ7tKZhdqga"
+    ],
+    "createdAt": "2026-08-06T07:49:19.543000+00:00"
+  },
+  {
+    "_id": "Chny2Dx4bFeAE01MiIuq",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "whQ5IREpPXXzG4O3apWJ",
+        "style": "캐주얼"
+      },
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 92,
+    "itemIds": [
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "dAKRmtWUywQ7tKZhdqga",
+      "whQ5IREpPXXzG4O3apWJ"
+    ],
+    "createdAt": "2026-08-07T07:23:04.160000+00:00"
+  },
+  {
+    "_id": "CpR7TpdNDtHYSPpC44mM",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "sAdMyTMxYREXOPxdHByT",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "klM1hv8OiuUEPY9vWRXr",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 80,
+    "itemIds": [
+      "klM1hv8OiuUEPY9vWRXr",
+      "sAdMyTMxYREXOPxdHByT"
+    ],
+    "createdAt": "2026-08-09T16:13:14.685000+00:00"
+  },
+  {
+    "_id": "Cv6SHUAlyRkx0ciC0Fcw",
+    "items": [
+      {
+        "color": "버건디",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "PESXOofiPY2w5QbudP8a",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 75,
+    "itemIds": [
+      "PESXOofiPY2w5QbudP8a",
+      "RxlcBaWN0f0wKxvspYXX"
+    ],
+    "createdAt": "2026-08-06T04:52:36.421000+00:00"
+  },
+  {
+    "_id": "DMluEUG3azr9e2Zqs1Wr",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "8L9WdwcZHgw1sH13kAKk",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "whQ5IREpPXXzG4O3apWJ",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 80,
+    "itemIds": [
+      "8L9WdwcZHgw1sH13kAKk",
+      "whQ5IREpPXXzG4O3apWJ"
+    ],
+    "createdAt": "2026-08-08T14:43:01.539000+00:00"
+  },
+  {
+    "_id": "DaUwMiqaDfAVOTmIPIUD",
+    "items": [
+      {
+        "color": "차콜",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "bWk9NgofhatCf8o6NRAE",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      },
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "ROIMhutWsJi7CuFAkheC",
+        "style": "스포티"
+      }
+    ],
+    "fittingCacheKey": "aef7d5ce458cf306aacc91b0aae9945b17c34c8c1e4f565e6a61973f96d5aaf8",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "ROIMhutWsJi7CuFAkheC",
+      "bWk9NgofhatCf8o6NRAE",
+      "dAKRmtWUywQ7tKZhdqga"
+    ],
+    "createdAt": "2026-08-06T07:49:49.527000+00:00"
+  },
+  {
+    "_id": "DqI3wvwrLupYbU8GCk6B",
+    "items": [
+      {
+        "color": "버건디",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "fTq2v3BzHT4LoWTGDD2I",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "fTq2v3BzHT4LoWTGDD2I"
+    ],
+    "createdAt": "2026-08-10T04:23:04.505000+00:00"
+  },
+  {
+    "_id": "F7Zq8QYue9EQkXp0CSLj",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "createdAt": "2026-08-08T15:51:35.662000+00:00"
+  },
+  {
+    "_id": "Fh6OLvV43bVz27T7Quex",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      }
+    ],
+    "fittingCacheKey": "892ab8c882bcc05aa1e400f3aa2c6f792df6c9e216a19b7b163cc498ae5ae1cb",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc"
+    ],
+    "createdAt": "2026-08-09T04:36:33.651000+00:00"
+  },
+  {
+    "_id": "Gx5AOFhAiCiaDCaLxnbx",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "DnnaswQIu0qob72fC1L3",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "vQIAH54fIAFgWe247pUe",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "DnnaswQIu0qob72fC1L3",
+      "vQIAH54fIAFgWe247pUe"
+    ],
+    "createdAt": "2026-08-08T14:31:09.514000+00:00"
+  },
+  {
+    "_id": "HbOYPWwWPQTIC9Gl1nph",
+    "items": [
+      {
+        "color": "차콜",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "ToS9n74SDle28ziL7ggB",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 75,
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "ToS9n74SDle28ziL7ggB"
+    ],
+    "createdAt": "2026-08-06T04:52:06.767000+00:00"
+  },
+  {
+    "_id": "J3tkxNzWXOBls0CK6aJs",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "klM1hv8OiuUEPY9vWRXr",
+        "style": "스포티"
+      },
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "세미포멀",
+        "id": "dEAsmZdHz4xxtm9CFYxn",
+        "style": "포멀"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "dAKRmtWUywQ7tKZhdqga",
+      "dEAsmZdHz4xxtm9CFYxn",
+      "klM1hv8OiuUEPY9vWRXr"
+    ],
+    "createdAt": "2026-08-09T16:16:35.736000+00:00"
+  },
+  {
+    "_id": "JZuGmpmaBCQaAo47u6W9",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "YDvGmmns3pdFYikJAnv1",
+        "style": "캐주얼"
+      },
+      {
+        "color": "브라운",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "EtN8uOX8vwA2D1drEHDb",
+        "style": "아메카지"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "EtN8uOX8vwA2D1drEHDb",
+      "YDvGmmns3pdFYikJAnv1"
+    ],
+    "createdAt": "2026-08-06T07:01:18.950000+00:00"
+  },
+  {
+    "_id": "KmTka3dXl8OUsAH1EbOV",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "ygx17wBZqrMoJwP547e7",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "UAssyHECUNPQqv3psL6Q",
+      "ygx17wBZqrMoJwP547e7"
+    ],
+    "createdAt": "2026-08-05T16:01:42.732000+00:00"
+  },
+  {
+    "_id": "Kyrrje2tVt41CllWUKPf",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "UAssyHECUNPQqv3psL6Q"
+    ],
+    "createdAt": "2026-08-05T16:22:48.797000+00:00"
+  },
+  {
+    "_id": "L38YwBQLOygGiLeioiaW",
+    "items": [
+      {
+        "color": "버건디",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "fTq2v3BzHT4LoWTGDD2I",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "fTq2v3BzHT4LoWTGDD2I"
+    ],
+    "createdAt": "2026-08-07T07:21:59.095000+00:00"
+  },
+  {
+    "_id": "LbtmbHxWap0CE8TGD0D8",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "sAdMyTMxYREXOPxdHByT",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "klM1hv8OiuUEPY9vWRXr",
+        "style": "스포티"
+      }
+    ],
+    "fittingCacheKey": "bcff94cb0561d5e12a96307973de6d7e7f61716a664c2d01004eb37d9566c091",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "klM1hv8OiuUEPY9vWRXr",
+      "sAdMyTMxYREXOPxdHByT"
+    ],
+    "createdAt": "2026-08-09T16:13:40.109000+00:00"
+  },
+  {
+    "_id": "LhRviMh9zAk5zWoZn1lG",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "createdAt": "2026-08-08T15:51:47.198000+00:00"
+  },
+  {
+    "_id": "M1jMSRPX1i9braPS2AbN",
+    "items": [
+      {
+        "color": "버건디",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "fTq2v3BzHT4LoWTGDD2I",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "kC0gwb3bHizwF5TPp2Th",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 72,
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "fTq2v3BzHT4LoWTGDD2I",
+      "kC0gwb3bHizwF5TPp2Th"
+    ],
+    "createdAt": "2026-08-10T04:23:18.985000+00:00"
+  },
+  {
+    "_id": "McVX86J0YpxGoruHI3uK",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "8L9WdwcZHgw1sH13kAKk",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "8L9WdwcZHgw1sH13kAKk",
+      "RxlcBaWN0f0wKxvspYXX"
+    ],
+    "createdAt": "2026-08-06T04:54:14.767000+00:00"
+  },
+  {
+    "_id": "MwsrOBhsPcL3BKGkgQIq",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "klM1hv8OiuUEPY9vWRXr",
+        "style": "스포티"
+      },
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "세미포멀",
+        "id": "dEAsmZdHz4xxtm9CFYxn",
+        "style": "포멀"
+      }
+    ],
+    "fittingCacheKey": "e78e47206dfdee6975508e474cd3ce0cbac0b2b9e86a41071da1f4f137ed7f89",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "dAKRmtWUywQ7tKZhdqga",
+      "dEAsmZdHz4xxtm9CFYxn",
+      "klM1hv8OiuUEPY9vWRXr"
+    ],
+    "createdAt": "2026-08-09T16:16:52.515000+00:00"
+  },
+  {
+    "_id": "N5Vhe5NBnzk2DGeuwQzE",
+    "items": [
+      {
+        "color": "차콜",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "ToS9n74SDle28ziL7ggB",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "fittingCacheKey": "7774c456ff768c3b993395cdf3ffcf9884477c3c20232ff84a27103ac8b8ac98",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "ToS9n74SDle28ziL7ggB",
+      "UAssyHECUNPQqv3psL6Q"
+    ],
+    "createdAt": "2026-08-05T16:23:38.291000+00:00"
+  },
+  {
+    "_id": "N6Tp23t94zsDpY6wEGk7",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "klM1hv8OiuUEPY9vWRXr",
+        "style": "스포티"
+      }
+    ],
+    "fittingCacheKey": "fcb4d58cd3cbf6517d43e7c6ebcf895c2e2889251f299db6d0cc9b3e4b92fd9b",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "klM1hv8OiuUEPY9vWRXr"
+    ],
+    "createdAt": "2026-08-09T16:14:33.025000+00:00"
+  },
+  {
+    "_id": "PADpwO0NluWz2E76gsBs",
+    "items": [
+      {
+        "color": "버건디",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "fTq2v3BzHT4LoWTGDD2I",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 75,
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "fTq2v3BzHT4LoWTGDD2I"
+    ],
+    "createdAt": "2026-08-08T15:54:11.279000+00:00"
+  },
+  {
+    "_id": "PilzJDM82fZFIxDmhSOf",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "YDvGmmns3pdFYikJAnv1",
+        "style": "캐주얼"
+      },
+      {
+        "color": "브라운",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "EtN8uOX8vwA2D1drEHDb",
+        "style": "아메카지"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "EtN8uOX8vwA2D1drEHDb",
+      "YDvGmmns3pdFYikJAnv1"
+    ],
+    "createdAt": "2026-08-06T07:01:01.060000+00:00"
+  },
+  {
+    "_id": "Poc3YkdIAScj6Tltaxbn",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "pI9KtzDgTK1PFVtNhZVO",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "fittingCacheKey": "bb2d4199120e775e3746c0655b35a07d523170b652c8cc5bb440d506d32a9b2d",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "UAssyHECUNPQqv3psL6Q",
+      "pI9KtzDgTK1PFVtNhZVO"
+    ],
+    "createdAt": "2026-08-06T09:53:26.155000+00:00"
+  },
+  {
+    "_id": "QKkNiPYasm7NK746mA3G",
+    "items": [
+      {
+        "color": "버건디",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "PESXOofiPY2w5QbudP8a",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "세미포멀",
+        "id": "ocHh3cdrQwcb5YW03HIT",
+        "style": "포멀"
+      }
+    ],
+    "fittingCacheKey": "a230a52f9fd481027b2c8a2eae33e427243108cdcc9867b61617d8b3022d973b",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "PESXOofiPY2w5QbudP8a",
+      "ocHh3cdrQwcb5YW03HIT"
+    ],
+    "createdAt": "2026-08-05T16:17:40.279000+00:00"
+  },
+  {
+    "_id": "QdNmJZhVkQbRNWQUJyWi",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "Y1b218Xpq6cSnyRdTJU2",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cb7yrcouGGpbsZCYGS1F",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 80,
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Y1b218Xpq6cSnyRdTJU2",
+      "cb7yrcouGGpbsZCYGS1F"
+    ],
+    "createdAt": "2026-08-09T04:58:01.829000+00:00"
+  },
+  {
+    "_id": "RE0KaqjV0Ns8HlYAdaoS",
+    "items": [
+      {
+        "color": "카키",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "QJ1NeMGYxR3580vZad8p",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      },
+      {
+        "color": "화이트",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "ytIHDu7L7iWfhDLaFDOh",
+        "style": "스트릿"
+      },
+      {
+        "color": "카키",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "BpXytV9fxG9syPk0DvD4",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "세미포멀",
+        "id": "dEAsmZdHz4xxtm9CFYxn",
+        "style": "포멀"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "포멀",
+        "id": "WiyzsFM2QqSCYa3d8Uzp",
+        "style": "포멀"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "vJwbhdB8cuGz0nCfc63M",
+        "style": "캐주얼"
+      }
+    ],
+    "fittingCacheKey": "d01314dca9843e37a9ecd60d424bceae679df30e8c8433e80df02d3e64109fa3",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "BpXytV9fxG9syPk0DvD4",
+      "QJ1NeMGYxR3580vZad8p",
+      "UAssyHECUNPQqv3psL6Q",
+      "WiyzsFM2QqSCYa3d8Uzp",
+      "dEAsmZdHz4xxtm9CFYxn",
+      "vJwbhdB8cuGz0nCfc63M",
+      "ytIHDu7L7iWfhDLaFDOh"
+    ],
+    "createdAt": "2026-08-10T16:50:49.866000+00:00"
+  },
+  {
+    "_id": "RHCDLldSGfRzKM4rcNPo",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "세미포멀",
+        "id": "GdEAbAzK3G8u01DkS9a9",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      },
+      {
+        "color": "블루",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "3rMPFsT0sbB3pWOrmbPm",
+        "style": "스포티"
+      }
+    ],
+    "fittingCacheKey": "2e97eab2cc6bd27d049c74756077f3e4e4abe2ff1018251e886c846c94009529",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "3rMPFsT0sbB3pWOrmbPm",
+      "GdEAbAzK3G8u01DkS9a9",
+      "UAssyHECUNPQqv3psL6Q"
+    ],
+    "createdAt": "2026-08-06T08:06:54.950000+00:00"
+  },
+  {
+    "_id": "Rmz1PYAvpEJA3EDwekHY",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "3rMPFsT0sbB3pWOrmbPm",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "3rMPFsT0sbB3pWOrmbPm",
+      "dAKRmtWUywQ7tKZhdqga"
+    ],
+    "createdAt": "2026-08-09T04:55:09.375000+00:00"
+  },
+  {
+    "_id": "RvzWBFrdVYFXP1jZrAnA",
+    "items": [
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 88,
+    "itemIds": [
+      "RxlcBaWN0f0wKxvspYXX"
+    ],
+    "createdAt": "2026-08-09T04:36:48.632000+00:00"
+  },
+  {
+    "_id": "SX6HUoKnOluMjs5Xs5c8",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "fittingCacheKey": "12295eb907cf73edc842de9527a0b07d7b14a889b09a0b96caa9d1168a4f717d",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "RxlcBaWN0f0wKxvspYXX"
+    ],
+    "createdAt": "2026-08-09T16:30:08.032000+00:00"
+  },
+  {
+    "_id": "ShYntJLIrq75kstZtXbR",
+    "items": [
+      {
+        "color": "차콜",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "ToS9n74SDle28ziL7ggB",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 75,
+    "itemIds": [
+      "ToS9n74SDle28ziL7ggB",
+      "UAssyHECUNPQqv3psL6Q"
+    ],
+    "createdAt": "2026-08-05T16:23:53.567000+00:00"
+  },
+  {
+    "_id": "T4e7MFx8r0rcLQWemBVL",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "YvqnuHTpWYXpkeEU0t1l",
+        "style": "스트릿"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      },
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cb7yrcouGGpbsZCYGS1F",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "ROIMhutWsJi7CuFAkheC",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "포멀",
+        "id": "WiyzsFM2QqSCYa3d8Uzp",
+        "style": "포멀"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "ROIMhutWsJi7CuFAkheC",
+      "UAssyHECUNPQqv3psL6Q",
+      "WiyzsFM2QqSCYa3d8Uzp",
+      "YvqnuHTpWYXpkeEU0t1l",
+      "cb7yrcouGGpbsZCYGS1F",
+      "dAKRmtWUywQ7tKZhdqga"
+    ],
+    "createdAt": "2026-08-06T06:28:56.701000+00:00"
+  },
+  {
+    "_id": "THD1uiCZN6CKASbmcskC",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 92,
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "RxlcBaWN0f0wKxvspYXX"
+    ],
+    "createdAt": "2026-08-09T16:29:35.899000+00:00"
+  },
+  {
+    "_id": "U5WE3LahHuhZZ9vb6t1R",
+    "items": [
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "fittingCacheKey": "053bd90acb0d6df04b7f02338a38f40aecb597e27817cf4dced7b1f994367cc8",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "RxlcBaWN0f0wKxvspYXX"
+    ],
+    "createdAt": "2026-08-09T04:36:55.682000+00:00"
+  },
+  {
+    "_id": "U8jhlF1aKSbPtKYkXYFH",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cnwqpOYioHPlFxgju1JO",
+        "style": "캐주얼"
+      }
+    ],
+    "fittingCacheKey": "614a2e81a904551b85335f85ad1ef1382870bd5e62e8bc88f8d0dd0c59a16107",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp",
+      "cnwqpOYioHPlFxgju1JO"
+    ],
+    "createdAt": "2026-08-09T16:29:09.516000+00:00"
+  },
+  {
+    "_id": "V1vE4wSZj0OnqsqCv3xN",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "Y1b218Xpq6cSnyRdTJU2",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cb7yrcouGGpbsZCYGS1F",
+        "style": "스트릿"
+      }
+    ],
+    "fittingCacheKey": "a2942674d43ddd49099404e361fcbb4cfafd58f7113281d7f81bcf7adb5791fa",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "Y1b218Xpq6cSnyRdTJU2",
+      "cb7yrcouGGpbsZCYGS1F"
+    ],
+    "createdAt": "2026-08-09T04:57:04.409000+00:00"
+  },
+  {
+    "_id": "VblvXQ5UInhlj8H2I9lf",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "createdAt": "2026-08-08T04:46:48.764000+00:00"
+  },
+  {
+    "_id": "VojUJXLM122umRsSPAUi",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "whQ5IREpPXXzG4O3apWJ",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 92,
+    "itemIds": [
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "whQ5IREpPXXzG4O3apWJ"
+    ],
+    "createdAt": "2026-08-09T16:40:57.208000+00:00"
+  },
+  {
+    "_id": "VuX2LD0CyLvEdX5Jbyo2",
+    "items": [
+      {
+        "color": "카키",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "QJ1NeMGYxR3580vZad8p",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      },
+      {
+        "color": "화이트",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "ytIHDu7L7iWfhDLaFDOh",
+        "style": "스트릿"
+      },
+      {
+        "color": "카키",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "BpXytV9fxG9syPk0DvD4",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "세미포멀",
+        "id": "dEAsmZdHz4xxtm9CFYxn",
+        "style": "포멀"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "포멀",
+        "id": "WiyzsFM2QqSCYa3d8Uzp",
+        "style": "포멀"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "vJwbhdB8cuGz0nCfc63M",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "BpXytV9fxG9syPk0DvD4",
+      "QJ1NeMGYxR3580vZad8p",
+      "UAssyHECUNPQqv3psL6Q",
+      "WiyzsFM2QqSCYa3d8Uzp",
+      "dEAsmZdHz4xxtm9CFYxn",
+      "vJwbhdB8cuGz0nCfc63M",
+      "ytIHDu7L7iWfhDLaFDOh"
+    ],
+    "createdAt": "2026-08-10T16:49:21.291000+00:00"
+  },
+  {
+    "_id": "Xruxsr7sjaZ5NrDEfsv8",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "K7sflYUZaCQPDPenOKYk",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "FMi4qRsCjiVLHtO6mUdF",
+        "style": "스포티"
+      },
+      {
+        "color": "브라운",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "wDUTG0lfP1P0hXw517d0",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "dqF7Z0xl3l6bnoxJD0Dh",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "포멀",
+        "id": "WiyzsFM2QqSCYa3d8Uzp",
+        "style": "포멀"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "PrXMKQwnp2cXKZBwBmkH",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 92,
+    "itemIds": [
+      "FMi4qRsCjiVLHtO6mUdF",
+      "K7sflYUZaCQPDPenOKYk",
+      "PrXMKQwnp2cXKZBwBmkH",
+      "RxlcBaWN0f0wKxvspYXX",
+      "WiyzsFM2QqSCYa3d8Uzp",
+      "dqF7Z0xl3l6bnoxJD0Dh",
+      "wDUTG0lfP1P0hXw517d0"
+    ],
+    "createdAt": "2026-08-10T15:46:04.378000+00:00"
+  },
+  {
+    "_id": "XtzWZskXeTz96tMoxLc2",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 88,
+    "itemIds": [
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "UAssyHECUNPQqv3psL6Q"
+    ],
+    "createdAt": "2026-08-09T04:26:06.060000+00:00"
+  },
+  {
+    "_id": "YNvDbvR07wYwgLfcboh3",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "8L9WdwcZHgw1sH13kAKk",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "whQ5IREpPXXzG4O3apWJ",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "8L9WdwcZHgw1sH13kAKk",
+      "whQ5IREpPXXzG4O3apWJ"
+    ],
+    "createdAt": "2026-08-08T14:42:47.761000+00:00"
+  },
+  {
+    "_id": "YmpBD4twifJ9bKVPVb3a",
+    "items": [
+      {
+        "color": "버건디",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "PESXOofiPY2w5QbudP8a",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "세미포멀",
+        "id": "ocHh3cdrQwcb5YW03HIT",
+        "style": "포멀"
+      }
+    ],
+    "type": "analysis",
+    "score": 65,
+    "itemIds": [
+      "PESXOofiPY2w5QbudP8a",
+      "ocHh3cdrQwcb5YW03HIT"
+    ],
+    "createdAt": "2026-08-05T16:17:27.091000+00:00"
+  },
+  {
+    "_id": "Z9n5VlkMq8IJXSN6GKKT",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "klM1hv8OiuUEPY9vWRXr",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "klM1hv8OiuUEPY9vWRXr"
+    ],
+    "createdAt": "2026-08-09T16:14:15.001000+00:00"
+  },
+  {
+    "_id": "aQsQPxIH8ZoqmwMCIXlS",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "ROIMhutWsJi7CuFAkheC",
+        "style": "스포티"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "Q2TqinzkRVKNgDoQE5dp",
+      "ROIMhutWsJi7CuFAkheC"
+    ],
+    "createdAt": "2026-08-07T07:22:37.303000+00:00"
+  },
+  {
+    "_id": "aTPglrVWM9dB3e8P6ylM",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "YvqnuHTpWYXpkeEU0t1l",
+        "style": "스트릿"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "fittingCacheKey": "29792899ee232edef88962142a26246ef7d211c8d0aaded119bbbda3f04fa562",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "UAssyHECUNPQqv3psL6Q",
+      "YvqnuHTpWYXpkeEU0t1l"
+    ],
+    "createdAt": "2026-08-06T06:28:14.788000+00:00"
+  },
+  {
+    "_id": "aZ9jduvB6MmHtMdUVnCk",
+    "items": [
+      {
+        "color": "버건디",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "fTq2v3BzHT4LoWTGDD2I",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "세미포멀",
+        "id": "0PGRnY39FstR95fRVNTZ",
+        "style": "미니멀"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cb7yrcouGGpbsZCYGS1F",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "0PGRnY39FstR95fRVNTZ",
+      "cb7yrcouGGpbsZCYGS1F",
+      "fTq2v3BzHT4LoWTGDD2I"
+    ],
+    "createdAt": "2026-08-10T15:53:27.552000+00:00"
+  },
+  {
+    "_id": "ahZtvlqy2BqDAlSaDbid",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc"
+    ],
+    "createdAt": "2026-08-09T04:36:26.984000+00:00"
+  },
+  {
+    "_id": "bVoCIA6a1Ekjy5rtNCTS",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "RxlcBaWN0f0wKxvspYXX"
+    ],
+    "createdAt": "2026-08-09T16:30:04.370000+00:00"
+  },
+  {
+    "_id": "baCREEw7L73t5I5pTYWk",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "fittingCacheKey": "229c4aae631ef8d8c48bdae8329f8c4754b4c3558200364f3a8619282e50e510",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "UAssyHECUNPQqv3psL6Q"
+    ],
+    "createdAt": "2026-08-05T16:23:07.775000+00:00"
+  },
+  {
+    "_id": "cnxHHeFCOql4QdK1c96F",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "gvNXys4KQoVTk0ECutQK",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "3rMPFsT0sbB3pWOrmbPm",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cnwqpOYioHPlFxgju1JO",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 88,
+    "itemIds": [
+      "3rMPFsT0sbB3pWOrmbPm",
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "UAssyHECUNPQqv3psL6Q",
+      "cnwqpOYioHPlFxgju1JO",
+      "gvNXys4KQoVTk0ECutQK"
+    ],
+    "createdAt": "2026-08-10T15:49:38.379000+00:00"
+  },
+  {
+    "_id": "dgRIj5pFQECNhpKif6xC",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "세미포멀",
+        "id": "GdEAbAzK3G8u01DkS9a9",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      },
+      {
+        "color": "블루",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "3rMPFsT0sbB3pWOrmbPm",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "3rMPFsT0sbB3pWOrmbPm",
+      "GdEAbAzK3G8u01DkS9a9",
+      "UAssyHECUNPQqv3psL6Q"
+    ],
+    "createdAt": "2026-08-06T08:06:40.225000+00:00"
+  },
+  {
+    "_id": "dvcIHm8iTrRtzfAxlGgh",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "createdAt": "2026-08-08T14:37:45.090000+00:00"
+  },
+  {
+    "_id": "etjIragQuC4c6ZXW9vjA",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "FMi4qRsCjiVLHtO6mUdF",
+        "style": "스포티"
+      },
+      {
+        "id": "BpXytV9fxG9syPk0DvD4",
+        "category": "액세서리"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "ROIMhutWsJi7CuFAkheC",
+        "style": "스포티"
+      }
+    ],
+    "fittingCacheKey": "92a184d04a335e5fde364f13bcd18667de12078cfcbf544ed87b4ede38c0ebd3",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "BpXytV9fxG9syPk0DvD4",
+      "FMi4qRsCjiVLHtO6mUdF",
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp",
+      "ROIMhutWsJi7CuFAkheC"
+    ],
+    "createdAt": "2026-08-08T04:47:59.890000+00:00"
+  },
+  {
+    "_id": "f4XvL2JjFaO9IJkcLz6P",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "sAdMyTMxYREXOPxdHByT",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 78,
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "sAdMyTMxYREXOPxdHByT"
+    ],
+    "createdAt": "2026-08-05T18:02:51.043000+00:00"
+  },
+  {
+    "_id": "gVUfu8tkDlRwTVaqSDwE",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "sAdMyTMxYREXOPxdHByT",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "klM1hv8OiuUEPY9vWRXr",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 80,
+    "itemIds": [
+      "klM1hv8OiuUEPY9vWRXr",
+      "sAdMyTMxYREXOPxdHByT"
+    ],
+    "createdAt": "2026-08-09T16:13:48.232000+00:00"
+  },
+  {
+    "_id": "gbpUMZZEC9xlTpk1HWrO",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "FMi4qRsCjiVLHtO6mUdF",
+        "style": "스포티"
+      },
+      {
+        "color": "블루",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "3rMPFsT0sbB3pWOrmbPm",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "dqF7Z0xl3l6bnoxJD0Dh",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "3rMPFsT0sbB3pWOrmbPm",
+      "FMi4qRsCjiVLHtO6mUdF",
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "UAssyHECUNPQqv3psL6Q",
+      "dqF7Z0xl3l6bnoxJD0Dh"
+    ],
+    "createdAt": "2026-08-10T15:49:19.599000+00:00"
+  },
+  {
+    "_id": "gpFPatMYGRw8yJEclGl7",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "fittingCacheKey": "579f5a0d0f7bd5b04d92f9760a63f8eefd2da3038e92fa61649380e88bd11008",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "RxlcBaWN0f0wKxvspYXX"
+    ],
+    "createdAt": "2026-08-06T06:27:19.918000+00:00"
+  },
+  {
+    "_id": "h1HNctbTlyE6D50xtHeB",
+    "items": [
+      {
+        "color": "버건디",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "PESXOofiPY2w5QbudP8a",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "세미포멀",
+        "id": "ocHh3cdrQwcb5YW03HIT",
+        "style": "포멀"
+      }
+    ],
+    "fittingCacheKey": "e5161a15886ccce2e4943ce7ca4c5f5c406d7ee81303b59549df5548897d02d6",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "PESXOofiPY2w5QbudP8a",
+      "ocHh3cdrQwcb5YW03HIT"
+    ],
+    "createdAt": "2026-08-05T16:19:09.956000+00:00"
+  },
+  {
+    "_id": "h40CDMHF2SXB5IjyJl1L",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 92,
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "RxlcBaWN0f0wKxvspYXX"
+    ],
+    "createdAt": "2026-08-06T06:27:27.688000+00:00"
+  },
+  {
+    "_id": "hRxnQ6p4VBvDpjD5n7lZ",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "세미포멀",
+        "id": "6vVNoavk5DLduhTNKu0d",
+        "style": "미니멀"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "6CVPMcrOKtaBwW7xN0e5",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "ROIMhutWsJi7CuFAkheC",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 78,
+    "itemIds": [
+      "6CVPMcrOKtaBwW7xN0e5",
+      "6vVNoavk5DLduhTNKu0d",
+      "ROIMhutWsJi7CuFAkheC",
+      "UAssyHECUNPQqv3psL6Q"
+    ],
+    "createdAt": "2026-08-06T07:56:39.694000+00:00"
+  },
+  {
+    "_id": "hT8fpQUYqPaj79zr7Ou7",
+    "items": [
+      {
+        "color": "버건디",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "fTq2v3BzHT4LoWTGDD2I",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "kC0gwb3bHizwF5TPp2Th",
+        "style": "스포티"
+      }
+    ],
+    "fittingCacheKey": "e34d2c4dbb495bb658c9a74622c4f9d991da12e329ae8f856b653905b0723b53",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "fTq2v3BzHT4LoWTGDD2I",
+      "kC0gwb3bHizwF5TPp2Th"
+    ],
+    "createdAt": "2026-08-10T04:23:56.609000+00:00"
+  },
+  {
+    "_id": "iX92fChaMhtDoITySiUw",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "YDvGmmns3pdFYikJAnv1",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 75,
+    "itemIds": [
+      "UAssyHECUNPQqv3psL6Q",
+      "YDvGmmns3pdFYikJAnv1"
+    ],
+    "createdAt": "2026-08-05T17:38:38.520000+00:00"
+  },
+  {
+    "_id": "iYsAnJoEYsf6e6caczP9",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "YDvGmmns3pdFYikJAnv1",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "세미포멀",
+        "id": "ocHh3cdrQwcb5YW03HIT",
+        "style": "포멀"
+      },
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cb7yrcouGGpbsZCYGS1F",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 78,
+    "itemIds": [
+      "YDvGmmns3pdFYikJAnv1",
+      "cb7yrcouGGpbsZCYGS1F",
+      "dAKRmtWUywQ7tKZhdqga",
+      "ocHh3cdrQwcb5YW03HIT"
+    ],
+    "createdAt": "2026-08-10T15:51:48.071000+00:00"
+  },
+  {
+    "_id": "jAa8dF742Z0DN1sOfvN4",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "세미포멀",
+        "id": "6vVNoavk5DLduhTNKu0d",
+        "style": "미니멀"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "6CVPMcrOKtaBwW7xN0e5",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "ROIMhutWsJi7CuFAkheC",
+        "style": "스포티"
+      }
+    ],
+    "fittingCacheKey": "8af262acd0e3358a1cf7cb6e9b82981ef551878b6e5e3d308f3384266b802ad4",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "6CVPMcrOKtaBwW7xN0e5",
+      "6vVNoavk5DLduhTNKu0d",
+      "ROIMhutWsJi7CuFAkheC",
+      "UAssyHECUNPQqv3psL6Q"
+    ],
+    "createdAt": "2026-08-06T07:56:51.628000+00:00"
+  },
+  {
+    "_id": "jYWsVWY8A8Qy05msmi5D",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "FMi4qRsCjiVLHtO6mUdF",
+        "style": "스포티"
+      },
+      {
+        "color": "카키",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "BpXytV9fxG9syPk0DvD4",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "ROIMhutWsJi7CuFAkheC",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "BpXytV9fxG9syPk0DvD4",
+      "FMi4qRsCjiVLHtO6mUdF",
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp",
+      "ROIMhutWsJi7CuFAkheC"
+    ],
+    "createdAt": "2026-08-08T04:47:19.534000+00:00"
+  },
+  {
+    "_id": "jdfwKNj2I2k9qlFep4y3",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "8L9WdwcZHgw1sH13kAKk",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "8L9WdwcZHgw1sH13kAKk",
+      "RxlcBaWN0f0wKxvspYXX"
+    ],
+    "createdAt": "2026-08-06T04:52:50.579000+00:00"
+  },
+  {
+    "_id": "je4zFrlhdmXZFXIujlZk",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "YvqnuHTpWYXpkeEU0t1l",
+        "style": "스트릿"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "UAssyHECUNPQqv3psL6Q",
+      "YvqnuHTpWYXpkeEU0t1l"
+    ],
+    "createdAt": "2026-08-06T06:27:52.190000+00:00"
+  },
+  {
+    "_id": "kUQpM2vcVQVVVcqWaJUT",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "3rMPFsT0sbB3pWOrmbPm",
+        "style": "스포티"
+      },
+      {
+        "color": "카키",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "qY4GMoo7VCIpopml8K4Q",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 88,
+    "itemIds": [
+      "3rMPFsT0sbB3pWOrmbPm",
+      "dAKRmtWUywQ7tKZhdqga",
+      "qY4GMoo7VCIpopml8K4Q"
+    ],
+    "createdAt": "2026-08-09T04:52:07+00:00"
+  },
+  {
+    "_id": "kl5zJbaJ4tkW3PEho2K7",
+    "items": [
+      {
+        "color": "그레이",
+        "category": "상의",
+        "formality": "세미포멀",
+        "id": "zIdC34ZtEAWIJMV9FAzO",
+        "style": "미니멀"
+      },
+      {
+        "color": "블루",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "whQ5IREpPXXzG4O3apWJ",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 80,
+    "itemIds": [
+      "whQ5IREpPXXzG4O3apWJ",
+      "zIdC34ZtEAWIJMV9FAzO"
+    ],
+    "createdAt": "2026-08-06T04:55:01.497000+00:00"
+  },
+  {
+    "_id": "l0Zvck8q42uoyo8NEYe7",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "createdAt": "2026-08-08T16:22:01.705000+00:00"
+  },
+  {
+    "_id": "lGzQaS0P9U1NV4GXJRhg",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cnwqpOYioHPlFxgju1JO",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp",
+      "cnwqpOYioHPlFxgju1JO"
+    ],
+    "createdAt": "2026-08-09T16:28:10.944000+00:00"
+  },
+  {
+    "_id": "lTbaOxGNxGQzzep8sa8y",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "whQ5IREpPXXzG4O3apWJ",
+        "style": "캐주얼"
+      },
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      }
+    ],
+    "fittingCacheKey": "00774ed03a9b330a58df312f580bba95a5c9d74440d83cb9f5bb628a2c9adb0f",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "dAKRmtWUywQ7tKZhdqga",
+      "whQ5IREpPXXzG4O3apWJ"
+    ],
+    "createdAt": "2026-08-07T07:23:15.242000+00:00"
+  },
+  {
+    "_id": "lut8N0s4egDqL9bolV1P",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "3rMPFsT0sbB3pWOrmbPm",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "3rMPFsT0sbB3pWOrmbPm",
+      "dAKRmtWUywQ7tKZhdqga"
+    ],
+    "createdAt": "2026-08-09T04:41:26.702000+00:00"
+  },
+  {
+    "_id": "mXILBxyzihVI5xmDzjoI",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      },
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "3rMPFsT0sbB3pWOrmbPm",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "ROIMhutWsJi7CuFAkheC",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "포멀",
+        "id": "WiyzsFM2QqSCYa3d8Uzp",
+        "style": "포멀"
+      }
+    ],
+    "type": "analysis",
+    "score": 92,
+    "itemIds": [
+      "3rMPFsT0sbB3pWOrmbPm",
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "ROIMhutWsJi7CuFAkheC",
+      "RxlcBaWN0f0wKxvspYXX",
+      "WiyzsFM2QqSCYa3d8Uzp",
+      "dAKRmtWUywQ7tKZhdqga"
+    ],
+    "createdAt": "2026-08-09T04:37:17.523000+00:00"
+  },
+  {
+    "_id": "n5fewsn4SFFiVK2ESbj7",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "ygx17wBZqrMoJwP547e7",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "UAssyHECUNPQqv3psL6Q",
+      "ygx17wBZqrMoJwP547e7"
+    ],
+    "createdAt": "2026-08-05T16:08:04.303000+00:00"
+  },
+  {
+    "_id": "n8OM3NOvd71OiV5YnHaY",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "whQ5IREpPXXzG4O3apWJ",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "whQ5IREpPXXzG4O3apWJ"
+    ],
+    "createdAt": "2026-08-07T07:22:47.934000+00:00"
+  },
+  {
+    "_id": "nfvAhAYGfpxvrHsbUYNY",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "createdAt": "2026-08-09T04:15:03.515000+00:00"
+  },
+  {
+    "_id": "o70HXmxrQOHSIz89RTIK",
+    "items": [
+      {
+        "color": "네이비",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "YDvGmmns3pdFYikJAnv1",
+        "style": "캐주얼"
+      },
+      {
+        "color": "브라운",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "EtN8uOX8vwA2D1drEHDb",
+        "style": "아메카지"
+      }
+    ],
+    "fittingCacheKey": "e87caedb5ff73d5c993d3b6e754867b2f46ad12d65f68aa28cdc12db7d3e574c",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "EtN8uOX8vwA2D1drEHDb",
+      "YDvGmmns3pdFYikJAnv1"
+    ],
+    "createdAt": "2026-08-06T07:01:27.906000+00:00"
+  },
+  {
+    "_id": "oD6nudAs6EH0b3Bx31SJ",
+    "items": [
+      {
+        "color": "버건디",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "PESXOofiPY2w5QbudP8a",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "세미포멀",
+        "id": "ocHh3cdrQwcb5YW03HIT",
+        "style": "포멀"
+      }
+    ],
+    "type": "analysis",
+    "score": 75,
+    "itemIds": [
+      "PESXOofiPY2w5QbudP8a",
+      "ocHh3cdrQwcb5YW03HIT"
+    ],
+    "createdAt": "2026-08-05T16:18:51.893000+00:00"
+  },
+  {
+    "_id": "oajSMh783KjyN82j9Llm",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "K7sflYUZaCQPDPenOKYk",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "K7sflYUZaCQPDPenOKYk",
+      "RxlcBaWN0f0wKxvspYXX"
+    ],
+    "createdAt": "2026-08-10T15:45:10.763000+00:00"
+  },
+  {
+    "_id": "pFFx7hbolWuF7fDKw3gW",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "createdAt": "2026-08-08T16:22:12.007000+00:00"
+  },
+  {
+    "_id": "q6i5UAqDheobuDVvP2cP",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "30KjagITwHpse3gduN55",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "fittingCacheKey": "a65ded5f0564b83a2e863cdc800bb78201f5f93d50b345610560420356e266b9",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "30KjagITwHpse3gduN55",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "createdAt": "2026-08-05T17:06:58.443000+00:00"
+  },
+  {
+    "_id": "qddgMcYug4FmV6F6Iekl",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "K7sflYUZaCQPDPenOKYk",
+        "style": "캐주얼"
+      },
+      {
+        "color": "카키",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "RxlcBaWN0f0wKxvspYXX",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "FMi4qRsCjiVLHtO6mUdF",
+        "style": "스포티"
+      },
+      {
+        "color": "브라운",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "wDUTG0lfP1P0hXw517d0",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "dqF7Z0xl3l6bnoxJD0Dh",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "포멀",
+        "id": "WiyzsFM2QqSCYa3d8Uzp",
+        "style": "포멀"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "PrXMKQwnp2cXKZBwBmkH",
+        "style": "캐주얼"
+      }
+    ],
+    "fittingCacheKey": "6fc754c5418370a20a5a4469825ed0b47bfc64b223a1ffc5da7cb76243649a80",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "FMi4qRsCjiVLHtO6mUdF",
+      "K7sflYUZaCQPDPenOKYk",
+      "PrXMKQwnp2cXKZBwBmkH",
+      "RxlcBaWN0f0wKxvspYXX",
+      "WiyzsFM2QqSCYa3d8Uzp",
+      "dqF7Z0xl3l6bnoxJD0Dh",
+      "wDUTG0lfP1P0hXw517d0"
+    ],
+    "createdAt": "2026-08-10T15:48:36.605000+00:00"
+  },
+  {
+    "_id": "r6LFCYrAkD6Y0iBkkweI",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "ygx17wBZqrMoJwP547e7",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 72,
+    "itemIds": [
+      "Q2TqinzkRVKNgDoQE5dp",
+      "ygx17wBZqrMoJwP547e7"
+    ],
+    "createdAt": "2026-08-05T16:19:58.360000+00:00"
+  },
+  {
+    "_id": "rJRqUUCBX39TkOlJgEOI",
+    "items": [
+      {
+        "color": "옐로우",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "pI9KtzDgTK1PFVtNhZVO",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 88,
+    "itemIds": [
+      "UAssyHECUNPQqv3psL6Q",
+      "pI9KtzDgTK1PFVtNhZVO"
+    ],
+    "createdAt": "2026-08-06T09:53:17.350000+00:00"
+  },
+  {
+    "_id": "s7U75GToloWKraB1TK97",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "Y1b218Xpq6cSnyRdTJU2",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cb7yrcouGGpbsZCYGS1F",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 85,
+    "itemIds": [
+      "Y1b218Xpq6cSnyRdTJU2",
+      "cb7yrcouGGpbsZCYGS1F"
+    ],
+    "createdAt": "2026-08-09T04:55:22.006000+00:00"
+  },
+  {
+    "_id": "smbJ15YQce1NE04bYOqV",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "Y1b218Xpq6cSnyRdTJU2",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cb7yrcouGGpbsZCYGS1F",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 82,
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Y1b218Xpq6cSnyRdTJU2",
+      "cb7yrcouGGpbsZCYGS1F"
+    ],
+    "createdAt": "2026-08-09T04:58:42.882000+00:00"
+  },
+  {
+    "_id": "tUx5zl2s9z7ounjMA9Zh",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "whQ5IREpPXXzG4O3apWJ",
+        "style": "캐주얼"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "whQ5IREpPXXzG4O3apWJ"
+    ],
+    "createdAt": "2026-08-09T16:40:49.508000+00:00"
+  },
+  {
+    "_id": "wEQoFdBD9tu7lMlUZTBI",
+    "items": [
+      {
+        "color": "버건디",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "PESXOofiPY2w5QbudP8a",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "Q2TqinzkRVKNgDoQE5dp",
+        "style": "스포티"
+      }
+    ],
+    "type": "analysis",
+    "score": 72,
+    "itemIds": [
+      "PESXOofiPY2w5QbudP8a",
+      "Q2TqinzkRVKNgDoQE5dp"
+    ],
+    "createdAt": "2026-08-06T04:40:39.101000+00:00"
+  },
+  {
+    "_id": "wl0bHAEWiLhqQkBAIyZv",
+    "items": [
+      {
+        "color": "화이트",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "InhFLCWQZnP0zUDZjGEc",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "Y1b218Xpq6cSnyRdTJU2",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cb7yrcouGGpbsZCYGS1F",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 78,
+    "itemIds": [
+      "InhFLCWQZnP0zUDZjGEc",
+      "Y1b218Xpq6cSnyRdTJU2",
+      "cb7yrcouGGpbsZCYGS1F"
+    ],
+    "createdAt": "2026-08-09T04:58:54.742000+00:00"
+  },
+  {
+    "_id": "x76ZvkjQL3wyHqSCXfII",
+    "items": [
+      {
+        "color": "회색",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "0qpR6Bw8ZyzEyCcBah6x",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      },
+      {
+        "color": "블루",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "3rMPFsT0sbB3pWOrmbPm",
+        "style": "스포티"
+      }
+    ],
+    "type": "board",
+    "itemIds": [
+      "0qpR6Bw8ZyzEyCcBah6x",
+      "3rMPFsT0sbB3pWOrmbPm",
+      "UAssyHECUNPQqv3psL6Q"
+    ],
+    "createdAt": "2026-08-06T08:04:51.583000+00:00"
+  },
+  {
+    "_id": "xio8fLNJFdyd88W7xucK",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "whQ5IREpPXXzG4O3apWJ",
+        "style": "캐주얼"
+      }
+    ],
+    "fittingCacheKey": "6981f539cbe019f91acb4c3a7dfcae16b02f15f277e2d1dfb7d0af5c32c92019",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "whQ5IREpPXXzG4O3apWJ"
+    ],
+    "createdAt": "2026-08-09T16:41:28.123000+00:00"
+  },
+  {
+    "_id": "xksXRB9Xpvht5CMLjiRu",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "OcTZ4keKA2WeNN2ZtH8r",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      },
+      {
+        "color": "블랙",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "gvNXys4KQoVTk0ECutQK",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "3rMPFsT0sbB3pWOrmbPm",
+        "style": "스포티"
+      },
+      {
+        "color": "블랙",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "cnwqpOYioHPlFxgju1JO",
+        "style": "캐주얼"
+      }
+    ],
+    "fittingCacheKey": "d49beb90ea6a1ea4dba500cb36b2b77d977b910b02d8fec9b8128568100da1ce",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "3rMPFsT0sbB3pWOrmbPm",
+      "OcTZ4keKA2WeNN2ZtH8r",
+      "UAssyHECUNPQqv3psL6Q",
+      "cnwqpOYioHPlFxgju1JO",
+      "gvNXys4KQoVTk0ECutQK"
+    ],
+    "createdAt": "2026-08-10T15:50:42.524000+00:00"
+  },
+  {
+    "_id": "y4B8vLyOcztId1a3Zm7P",
+    "items": [
+      {
+        "color": "카키",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "QJ1NeMGYxR3580vZad8p",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 80,
+    "itemIds": [
+      "QJ1NeMGYxR3580vZad8p",
+      "UAssyHECUNPQqv3psL6Q"
+    ],
+    "createdAt": "2026-08-10T16:48:45.722000+00:00"
+  },
+  {
+    "_id": "y5TlMYVjHljvBsIOWlGU",
+    "items": [
+      {
+        "color": "블랙",
+        "category": "상의",
+        "formality": "캐주얼",
+        "id": "ygx17wBZqrMoJwP547e7",
+        "style": "캐주얼"
+      },
+      {
+        "color": "차콜",
+        "category": "하의",
+        "formality": "캐주얼",
+        "id": "UAssyHECUNPQqv3psL6Q",
+        "style": "스트릿"
+      }
+    ],
+    "type": "analysis",
+    "score": 80,
+    "itemIds": [
+      "UAssyHECUNPQqv3psL6Q",
+      "ygx17wBZqrMoJwP547e7"
+    ],
+    "createdAt": "2026-08-05T16:08:31.978000+00:00"
+  },
+  {
+    "_id": "yFFTHZYET2MZzIOPaU7v",
+    "items": [
+      {
+        "color": "아이보리",
+        "category": "신발",
+        "formality": "캐주얼",
+        "id": "dAKRmtWUywQ7tKZhdqga",
+        "style": "캐주얼"
+      },
+      {
+        "color": "블루",
+        "category": "액세서리",
+        "formality": "캐주얼",
+        "id": "3rMPFsT0sbB3pWOrmbPm",
+        "style": "스포티"
+      }
+    ],
+    "fittingCacheKey": "1748925542109a3bb9ef48c03b41269c1243bf1b8542ad329d35d840a2ba485f",
+    "type": "fitting",
+    "fittingImageUrl": "[REDACTED-URL]",
+    "itemIds": [
+      "3rMPFsT0sbB3pWOrmbPm",
+      "dAKRmtWUywQ7tKZhdqga"
+    ],
+    "createdAt": "2026-08-09T04:42:09.996000+00:00"
+  }
+]

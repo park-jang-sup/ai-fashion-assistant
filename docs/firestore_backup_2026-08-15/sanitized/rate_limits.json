@@ -1,0 +1,65 @@
+[
+  {
+    "_id": "02PYOZolOcd2O6o6VWdAoi6yR1W2",
+    "bucket": "2026081213",
+    "fittingCount": 0,
+    "rejectedCount": 0,
+    "signCount": 0,
+    "textCount": 10,
+    "imageCount": 0
+  },
+  {
+    "_id": "7EhOla25H6ZT33GWNENilGnsmiY2",
+    "bucket": "2026081213",
+    "fittingCount": 0,
+    "rejectedCount": 0,
+    "signCount": 0,
+    "textCount": 10,
+    "imageCount": 0
+  },
+  {
+    "_id": "BDDOIl08EhXnHu6oz6Zro47EtMw1",
+    "bucket": "2026081510",
+    "fittingCount": 0,
+    "rejectedCount": 0,
+    "signCount": 1,
+    "textCount": 0,
+    "imageCount": 0
+  },
+  {
+    "_id": "GCBuXhGqzHRwLeDsrRPKJoxGQmC3",
+    "bucket": "2026081208",
+    "fittingCount": 0,
+    "rejectedCount": 0,
+    "signCount": 0,
+    "textCount": 32,
+    "imageCount": 0
+  },
+  {
+    "_id": "Hk8WGwrtkBQK304AHTmUsqPzC7H3",
+    "bucket": "2026081213",
+    "fittingCount": 0,
+    "rejectedCount": 0,
+    "signCount": 0,
+    "textCount": 10,
+    "imageCount": 0
+  },
+  {
+    "_id": "nB3ansQmVWZaQ38opZPOox3Xr7h1",
+    "bucket": "2026081213",
+    "fittingCount": 0,
+    "rejectedCount": 0,
+    "signCount": 0,
+    "textCount": 10,
+    "imageCount": 0
+  },
+  {
+    "_id": "yPyw4DC2gkPXQ97i7c1h9JJdrgY2",
+    "bucket": "2026081510",
+    "fittingCount": 0,
+    "rejectedCount": 0,
+    "signCount": 7,
+    "textCount": 1,
+    "imageCount": 0
+  }
+]

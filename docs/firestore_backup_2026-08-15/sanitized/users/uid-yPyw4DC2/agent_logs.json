@@ -1,0 +1,1252 @@
+[
+  {
+    "_id": "189aTvK4Sby6NnNbfmtR",
+    "message": "주간 예보를 확인했습니다 — 화・토요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-02T13:08:52.037000+00:00"
+  },
+  {
+    "_id": "1PPX8OM3CRgsPVw8MMiS",
+    "message": "주간 예보를 확인했습니다 — 토요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-01T12:37:56.498000+00:00"
+  },
+  {
+    "_id": "23ZPDzWsuW62auBwYF2P",
+    "message": "코디 분석을 완료했습니다 (78점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-02T05:14:48.048000+00:00"
+  },
+  {
+    "_id": "2LKbsOyLoVmtP8NPmjIo",
+    "relatedDocId": "1PxqpADiGtoJ4BZoJAF6",
+    "message": "옷장 119벌과 대조해 후보 3개 조합을 생성했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-01T06:14:40.022000+00:00"
+  },
+  {
+    "_id": "2g227h7D3c8pKVtJJTVF",
+    "relatedDocId": "lAofjvOVHh4KbWA51k0a",
+    "message": "후보 1 평가 중...",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T18:02:19.920000+00:00"
+  },
+  {
+    "_id": "36gYdbieqEJt2Rk4t6DA",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "옷장에서 캐주얼 조합 3개를 검토했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-04T03:15:09.440000+00:00"
+  },
+  {
+    "_id": "3I0QHg4YN5PhvJivhq3H",
+    "relatedDocId": "O7Nn6mbj3gv0cnF3qwNx",
+    "message": "3일 뒤 [운동] 일정을 감지했습니다",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-07-31T01:50:05.028000+00:00"
+  },
+  {
+    "_id": "3MAFMXtjHQ4VesEqWjCR",
+    "relatedDocId": "lAofjvOVHh4KbWA51k0a",
+    "message": "옷장 분석으로 82점 조합을 추천으로 등록했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-01T18:02:29.326000+00:00"
+  },
+  {
+    "_id": "4KctASNibbynCDo33HUE",
+    "relatedDocId": "lAofjvOVHh4KbWA51k0a",
+    "message": "새 옷(버건디 상의) 등록을 감지했습니다",
+    "eventType": "new_item_detected",
+    "createdAt": "2026-08-01T18:02:19.822000+00:00"
+  },
+  {
+    "_id": "4SK7TVQBj8MOxqsMzTax",
+    "relatedDocId": "A8pelRasAOBnA1Jm2OFV",
+    "message": "옷장에서 포멀 조합 3개를 검토했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-02T12:47:56.347000+00:00"
+  },
+  {
+    "_id": "4UiI9AuyHjXzI6KJ46OZ",
+    "message": "주간 예보를 확인했습니다 — 토・일・월・화・수・목・금요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-15T10:44:47.357000+00:00"
+  },
+  {
+    "_id": "4fwr8WEMTmA43cI9g6cJ",
+    "relatedDocId": "A8pelRasAOBnA1Jm2OFV",
+    "message": "모레 예보를 확인했습니다 — 강수확률 73%, 최고 34°C/최저 26°C",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-02T12:47:55.737000+00:00"
+  },
+  {
+    "_id": "5r0eEcUc79CgJHijDCBE",
+    "message": "최근 추천 5건 중 5건이 반응 없음을 감지했습니다",
+    "eventType": "cadence_signal_detected",
+    "createdAt": "2026-08-15T10:34:27.554000+00:00"
+  },
+  {
+    "_id": "5sO2pv5ZZSEJ52jYeARc",
+    "relatedDocId": "ZM3OOBMIpHc72dBCSU2v",
+    "message": "새 옷(옐로우 상의) 등록을 감지했습니다",
+    "eventType": "new_item_detected",
+    "createdAt": "2026-07-31T01:14:07.432000+00:00"
+  },
+  {
+    "_id": "6N7F5tjd9QIauoLdNSEn",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-02T05:15:06.828000+00:00"
+  },
+  {
+    "_id": "6ujyUF8lBHu6kq2M6gKg",
+    "relatedDocId": "n02uc232NVMITGaYzIIe",
+    "message": "후보 1 평가: 82점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-07-31T01:43:47.614000+00:00"
+  },
+  {
+    "_id": "6yDldFflscHeMCKwmovs",
+    "message": "주간 예보를 확인했습니다 — 토요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-01T12:38:51.261000+00:00"
+  },
+  {
+    "_id": "76jpP4BO60f5PRiWrW86",
+    "message": "주간 예보를 확인했습니다 — 토요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-01T13:09:43.425000+00:00"
+  },
+  {
+    "_id": "7ELzSNbVzdQArwD0pkYW",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-01T13:09:49.172000+00:00"
+  },
+  {
+    "_id": "8cbtwfWmb7snWMgIZUlp",
+    "relatedDocId": "BMMgh8ANvWxSx9kUwwtd",
+    "message": "후보 1 평가: 78점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T08:06:47.118000+00:00"
+  },
+  {
+    "_id": "91aui2PfstfNZ7WhqgFS",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-01T14:41:02.971000+00:00"
+  },
+  {
+    "_id": "98DVHW7Zxb6ZkC8gvOGe",
+    "message": "코디 분석을 완료했습니다 (88점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T13:26:08.760000+00:00"
+  },
+  {
+    "_id": "9TlvH4cNv1EUrby9mGQw",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T18:24:31.981000+00:00"
+  },
+  {
+    "_id": "9q6jQf9CMQXkJPxEKxme",
+    "relatedDocId": "wFdfclQ9rmDyfFipblG2",
+    "message": "옷장 분석으로 75점 조합을 추천으로 등록했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-01T08:07:08.322000+00:00"
+  },
+  {
+    "_id": "9wlAA6217jLhp6j674D3",
+    "relatedDocId": "pFfRhFZ08F8t4jc2GOmL",
+    "message": "새 옷(네이비 상의) 등록을 감지했습니다",
+    "eventType": "new_item_detected",
+    "createdAt": "2026-07-31T01:13:29.255000+00:00"
+  },
+  {
+    "_id": "ALX8RW1hxYWP2itDO6lo",
+    "relatedDocId": "n02uc232NVMITGaYzIIe",
+    "message": "모레 [데이트] 일정을 감지했습니다",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-07-31T01:43:32.883000+00:00"
+  },
+  {
+    "_id": "ALtZti68dz4BQtT6J9HN",
+    "message": "8/1 [여행] 주간 플랜 코디를 캘린더에 확정했습니다",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-01T08:09:09.555000+00:00"
+  },
+  {
+    "_id": "AgDSX8FkMC1darg3mr2b",
+    "relatedDocId": "9BGVpYtfC9auK2XWuJWp",
+    "message": "3일 뒤 [출근] 일정을 감지했습니다",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-08-03T02:59:26.544000+00:00"
+  },
+  {
+    "_id": "AisHQb3PdwAkxdapzD1k",
+    "relatedDocId": "GD1riPVzJqXnqO2VDqqS",
+    "message": "옷장 116벌과 대조해 후보 3개 조합을 생성했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-01T14:41:42.612000+00:00"
+  },
+  {
+    "_id": "B3qL0ZF9j4mgEO6t6Tbv",
+    "relatedDocId": "pRvj9bPq6bvFRMNZLh1d",
+    "message": "내일 예보를 확인했습니다 — 강수확률 67%, 최고 33°C/최저 26°C",
+    "eventType": "weather_checked",
+    "createdAt": "2026-07-31T01:32:49.078000+00:00"
+  },
+  {
+    "_id": "BGR6FhhZ663Aokw70o2C",
+    "message": "주간 예보를 확인했습니다 — 토요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-01T12:36:17.254000+00:00"
+  },
+  {
+    "_id": "BOA4Z275MQ65XHKDwXOA",
+    "message": "8/1 [여행] 주간 플랜 코디를 캘린더에 확정했습니다",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-01T08:35:04.028000+00:00"
+  },
+  {
+    "_id": "ChIVuK7vNJPe4CjdwlPU",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "weeklyPlanCatalogChars": 10791,
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-15T10:45:30.883000+00:00"
+  },
+  {
+    "_id": "DCsRvIYWTqiD03EsshCx",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-01T08:34:54.614000+00:00"
+  },
+  {
+    "_id": "DPF1hLU8bRxARhHX5P44",
+    "relatedDocId": "9BGVpYtfC9auK2XWuJWp",
+    "message": "후보 1 평가: 93점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-03T02:59:38.052000+00:00"
+  },
+  {
+    "_id": "DTc3ODBcPQHOyfD3ylEN",
+    "relatedDocId": "77PcqFMP9TfNiXccc312",
+    "message": "옷장 116벌과 대조해 후보 3개 조합을 생성했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-01T17:34:57.795000+00:00"
+  },
+  {
+    "_id": "Dj5daRUvzBIEP3CTpUhs",
+    "relatedDocId": "1PxqpADiGtoJ4BZoJAF6",
+    "message": "옷장 분석으로 75점 조합을 추천으로 등록했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-01T06:14:54.925000+00:00"
+  },
+  {
+    "_id": "Dw5g1EQEILTqwYS7ueDG",
+    "message": "주간 예보를 확인했습니다 — 토・화요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-01T08:33:55.841000+00:00"
+  },
+  {
+    "_id": "ELOh7lvgXGIItdfNlH5U",
+    "relatedDocId": "n02uc232NVMITGaYzIIe",
+    "message": "모레 예보를 확인했습니다 — 강수확률 7%, 최고 33°C/최저 25°C",
+    "eventType": "weather_checked",
+    "createdAt": "2026-07-31T01:43:35.826000+00:00"
+  },
+  {
+    "_id": "ELuDDpuysn91wBEvPRI8",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "후보 1 평가: 82점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-04T03:15:35.418000+00:00"
+  },
+  {
+    "_id": "EOJZzkrvTakqVQ7xLnVL",
+    "relatedDocId": "wFdfclQ9rmDyfFipblG2",
+    "message": "후보 1 평가: 75점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T08:07:08.228000+00:00"
+  },
+  {
+    "_id": "G8QddDg2r2w4P4ImeCzf",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "후보 1 평가: 86점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-02T13:14:39.477000+00:00"
+  },
+  {
+    "_id": "GWEOZhYlSPrQT23MuNpF",
+    "relatedDocId": "O7Nn6mbj3gv0cnF3qwNx",
+    "message": "후보 1 평가: 72점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-07-31T01:50:14.409000+00:00"
+  },
+  {
+    "_id": "GfvPH7tYNAqAeRPMcpja",
+    "message": "코디 분석을 완료했습니다 (72점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T18:01:50.978000+00:00"
+  },
+  {
+    "_id": "H8NtoxxSJjsM6skxmwZy",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T14:40:08.309000+00:00"
+  },
+  {
+    "_id": "HH9hFKAGNWJsq7TGSW0n",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-01T13:09:20.475000+00:00"
+  },
+  {
+    "_id": "HSedldksDKZyEvnFk3nP",
+    "relatedDocId": "pRvj9bPq6bvFRMNZLh1d",
+    "message": "내일 [모임] 일정을 위해 92점 조합을 준비했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-07-31T01:32:58.309000+00:00"
+  },
+  {
+    "_id": "HYcmHOJisBwU64pUhthj",
+    "message": "코디 분석을 완료했습니다 (88점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-07-31T01:34:25.465000+00:00"
+  },
+  {
+    "_id": "Hlx0R0Brywcde259gL48",
+    "relatedDocId": "1PxqpADiGtoJ4BZoJAF6",
+    "message": "후보 1 평가 중...",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T06:14:40.049000+00:00"
+  },
+  {
+    "_id": "IA8gnGDvyRNAaQukschP",
+    "relatedDocId": "dXcEymfJVbfSouzGmdZo",
+    "message": "추천 대신 다른 조합을 선택하셨네요 ([여행]) — 다음 추천에 반영하겠습니다",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-01T08:40:40.368000+00:00"
+  },
+  {
+    "_id": "IJQGmOyVR20j3JgSnKuU",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T17:47:12.424000+00:00"
+  },
+  {
+    "_id": "ITHB4FcNMgep5VYPFj55",
+    "message": "코디 분석을 완료했습니다 (82점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T18:13:53.425000+00:00"
+  },
+  {
+    "_id": "JnKyfIZqbdoXBMbBxpjO",
+    "relatedDocId": "O7Nn6mbj3gv0cnF3qwNx",
+    "message": "3일 뒤 [운동] 일정을 위해 72점 조합을 준비했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-07-31T01:50:14.622000+00:00"
+  },
+  {
+    "_id": "Jpoe9hTrj6ds09kzkJta",
+    "relatedDocId": "K89sRdBGo4YEGixjCq1y",
+    "message": "추천 대신 다른 조합을 선택하셨네요 ([데이트]) — 다음 추천에 반영하겠습니다",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-01T14:41:06.089000+00:00"
+  },
+  {
+    "_id": "K1UyIaSYHtSQ3tgbmZGL",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "과거 [운동] 착장 2건을 참고했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-04T03:15:09.523000+00:00"
+  },
+  {
+    "_id": "KGgE1BjeEwiUvsCIW5r8",
+    "relatedDocId": "GD1riPVzJqXnqO2VDqqS",
+    "message": "새 옷(버건디 상의) 등록을 감지했습니다",
+    "eventType": "new_item_detected",
+    "createdAt": "2026-08-01T14:41:42.541000+00:00"
+  },
+  {
+    "_id": "LAn8AaJvUqnCmtg9Dwr6",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T06:21:07.245000+00:00"
+  },
+  {
+    "_id": "LBr9IwSu4LZnuf1P8nmW",
+    "relatedDocId": "NOMLB761w4h6nnCYADd7",
+    "message": "후보 1 평가 중...",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T18:34:24.345000+00:00"
+  },
+  {
+    "_id": "MFAYe9H9eawihLJkCIHi",
+    "relatedDocId": "m1M2iVfl1kei69QUzSYE",
+    "message": "후보 1 평가: 80점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T08:04:22.114000+00:00"
+  },
+  {
+    "_id": "Nn1pexn2CD032c58sWYS",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T13:27:28.646000+00:00"
+  },
+  {
+    "_id": "OVqaO0NEmiHxExZQdmxl",
+    "message": "코디 분석을 완료했습니다 (92점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T17:38:22.617000+00:00"
+  },
+  {
+    "_id": "OZmbQ2qz6WfwiBmYxUNZ",
+    "relatedDocId": "pRvj9bPq6bvFRMNZLh1d",
+    "message": "후보 1 평가: 92점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-07-31T01:32:58.097000+00:00"
+  },
+  {
+    "_id": "OahtZJSOkjYxTK896V4Y",
+    "relatedDocId": "O7Nn6mbj3gv0cnF3qwNx",
+    "message": "3일 뒤 예보를 확인했습니다 — 강수확률 36%, 최고 35°C/최저 26°C",
+    "eventType": "weather_checked",
+    "createdAt": "2026-07-31T01:50:05.054000+00:00"
+  },
+  {
+    "_id": "P3we55U1vKwYlK4cr7kA",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "3일 뒤 [운동] 일정을 감지했습니다",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-08-02T13:14:29.124000+00:00"
+  },
+  {
+    "_id": "PBG20mvFWbDpNjrPjlcU",
+    "message": "주간 예보를 확인했습니다 — 토・화요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-01T08:37:35.426000+00:00"
+  },
+  {
+    "_id": "PTRL3qOC6WWst25jTRhy",
+    "message": "8/15 [일상] 주간 플랜 코디를 캘린더에 확정했습니다",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-15T10:45:36.928000+00:00"
+  },
+  {
+    "_id": "Pe0WbvUfNDICkhY7ckqu",
+    "message": "주간 예보를 확인했습니다 — 토요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-01T13:09:05.978000+00:00"
+  },
+  {
+    "_id": "Pjrk01y5omRhlxm4fXl6",
+    "message": "8/4 [일상] 주간 플랜 코디를 캘린더에 확정했습니다",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-01T08:09:10.796000+00:00"
+  },
+  {
+    "_id": "PmxwRzpAEsJc3KllsNof",
+    "relatedDocId": "77PcqFMP9TfNiXccc312",
+    "message": "옷장 분석으로 75점 조합을 추천으로 등록했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-01T17:35:07.739000+00:00"
+  },
+  {
+    "_id": "PnE12dBmzkKMfFP2EVnQ",
+    "message": "코디 분석을 완료했습니다 (70점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T13:44:29.397000+00:00"
+  },
+  {
+    "_id": "Q1gBCvn1RaYOUzd3CuDJ",
+    "message": "코디 분석을 완료했습니다 (88점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-08T13:58:05.291000+00:00"
+  },
+  {
+    "_id": "Qi5P8SPV7lOC0Z2ZK5N4",
+    "relatedDocId": "NOMLB761w4h6nnCYADd7",
+    "message": "새 옷(버건디 상의) 등록을 감지했습니다",
+    "eventType": "new_item_detected",
+    "createdAt": "2026-08-01T18:34:24.236000+00:00"
+  },
+  {
+    "_id": "R8xYIw26uWJHdAywMEKm",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "내일 [운동] 비 예보가 새로 생겼어요 — 코디를 다시 준비합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-04T03:15:09.272000+00:00"
+  },
+  {
+    "_id": "ROHRdSd0bBvXmFL6Ps8r",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "옷장에서 캐주얼 조합 3개를 검토했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-02T13:14:29.756000+00:00"
+  },
+  {
+    "_id": "RWechiuap9gAbPxKlVei",
+    "relatedDocId": "pRvj9bPq6bvFRMNZLh1d",
+    "message": "내일 [모임] 일정을 감지했습니다",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-07-31T01:14:47.492000+00:00"
+  },
+  {
+    "_id": "RpfLhVzYVKqHBmxbCByi",
+    "relatedDocId": "1PxqpADiGtoJ4BZoJAF6",
+    "message": "새 옷(버건디 상의) 등록을 감지했습니다",
+    "eventType": "new_item_detected",
+    "createdAt": "2026-08-01T06:14:39.951000+00:00"
+  },
+  {
+    "_id": "Rxdo5qWsaKbTAgMF2Eal",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T17:37:32.733000+00:00"
+  },
+  {
+    "_id": "S3UKUCTbHS9MtDEj0Ya8",
+    "message": "코디 분석을 완료했습니다 (88점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T17:37:39.927000+00:00"
+  },
+  {
+    "_id": "S3lqon7jzvUadLMIlwNa",
+    "message": "코디 분석을 완료했습니다 (75점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T06:20:56.794000+00:00"
+  },
+  {
+    "_id": "S6Ty2uTg0GYHYGVejVQc",
+    "message": "주간 예보를 확인했습니다 — 토・화요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-01T08:04:51.582000+00:00"
+  },
+  {
+    "_id": "SDjoLjy9PmraOZ8OgMk9",
+    "relatedDocId": "1BnDaemO5xPdS7lrw7CW",
+    "message": "추천 코디가 채택되었습니다 ([데이트])",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-01T08:35:06.974000+00:00"
+  },
+  {
+    "_id": "SGRBjrYjZvNeKVLyfUSK",
+    "message": "코디 분석을 완료했습니다 (72점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T14:39:40.985000+00:00"
+  },
+  {
+    "_id": "SLCFGMecn92xo9cWX6tt",
+    "message": "주간 예보를 확인했습니다 — 토・화요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-01T08:04:37.634000+00:00"
+  },
+  {
+    "_id": "SNRKvnw3z9ktMEfCRDwg",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-01T12:38:03.429000+00:00"
+  },
+  {
+    "_id": "SZNb74fWBQVLTyC6U8rU",
+    "message": "코디 분석을 완료했습니다 (92점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T13:27:18.831000+00:00"
+  },
+  {
+    "_id": "TIxqiuguUyUOXp3WgPIw",
+    "message": "8/2 [데이트] 주간 플랜 코디를 캘린더에 확정했습니다",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-01T14:41:05.813000+00:00"
+  },
+  {
+    "_id": "TZCA5G5EUuxqN6ZwDSGx",
+    "relatedDocId": "BMMgh8ANvWxSx9kUwwtd",
+    "message": "옷장 117벌과 대조해 후보 3개 조합을 생성했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-01T08:06:36.636000+00:00"
+  },
+  {
+    "_id": "TZasj0V5erALnguXU3CS",
+    "relatedDocId": "wFdfclQ9rmDyfFipblG2",
+    "message": "새 옷(버건디 상의) 등록을 감지했습니다",
+    "eventType": "new_item_detected",
+    "createdAt": "2026-08-01T08:06:58.510000+00:00"
+  },
+  {
+    "_id": "U9oQhDQYDz0ZiUi0DsPz",
+    "relatedDocId": "O7Nn6mbj3gv0cnF3qwNx",
+    "message": "옷장에서 캐주얼 조합 3개를 검토했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-07-31T01:50:05.153000+00:00"
+  },
+  {
+    "_id": "Udep4lJsAyXERHEXzNAO",
+    "message": "코디 분석을 완료했습니다 (92점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-08T10:12:57.398000+00:00"
+  },
+  {
+    "_id": "V7Ha0jwAIUAOvSMHHbtv",
+    "message": "코디 분석을 완료했습니다 (85점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-08T10:27:18.559000+00:00"
+  },
+  {
+    "_id": "VZyqTCMwMPE409VFr7DI",
+    "relatedDocId": "LPZlnG7saqy56cCiOZ6L",
+    "message": "추천 대신 다른 조합을 선택하셨네요 ([여행]) — 다음 추천에 반영하겠습니다",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-01T08:09:09.796000+00:00"
+  },
+  {
+    "_id": "VpuWbNTfUWrHYC0wE9Qk",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T17:38:14.346000+00:00"
+  },
+  {
+    "_id": "VsuE8KRcaf9JUCH7bq3k",
+    "relatedDocId": "pRvj9bPq6bvFRMNZLh1d",
+    "message": "[모임] 일정용 조합을 찾지 못했습니다 — 세미포멀 조합에 필요한 하의가 옷장에 없어요",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-07-31T01:14:47.604000+00:00"
+  },
+  {
+    "_id": "W0qGRSNpGvqYJ9dtYkpF",
+    "relatedDocId": "pRvj9bPq6bvFRMNZLh1d",
+    "message": "내일 [모임] 일정을 감지했습니다",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-07-31T01:18:08.386000+00:00"
+  },
+  {
+    "_id": "W73ZGuGv56097FHEsLN4",
+    "relatedDocId": "9BGVpYtfC9auK2XWuJWp",
+    "message": "3일 뒤 [출근] 일정을 위해 93점 조합을 준비했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-03T02:59:38.314000+00:00"
+  },
+  {
+    "_id": "WDYJCVCBVQX2hcTzlg0U",
+    "relatedDocId": "5ICkONLN5YnXq9BmTJ3G",
+    "message": "새 옷(화이트 전신) 등록을 감지했습니다",
+    "eventType": "new_item_detected",
+    "createdAt": "2026-07-31T01:17:22.124000+00:00"
+  },
+  {
+    "_id": "WakfYMqFfuRukAm1ofVY",
+    "relatedDocId": "xOH8r8UYSis86UNPTOes",
+    "message": "3일 뒤 [면접] 일정을 위해 94점 조합을 준비했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-04T03:48:04.307000+00:00"
+  },
+  {
+    "_id": "Wu4UjmlZnTpD0wj7xC5W",
+    "relatedDocId": "A8pelRasAOBnA1Jm2OFV",
+    "message": "모레 [경조사] 일정을 감지했습니다",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-08-02T12:47:55.723000+00:00"
+  },
+  {
+    "_id": "XiAIXTcQQu2Nlqr3v8Bn",
+    "relatedDocId": "A8pelRasAOBnA1Jm2OFV",
+    "message": "후보 1 평가: 90점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-02T12:48:09.162000+00:00"
+  },
+  {
+    "_id": "XkhXU2fI2NJ6fKfto2DZ",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "내일 [운동] 일정을 감지했습니다",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-08-04T03:15:09.300000+00:00"
+  },
+  {
+    "_id": "Y9HgfPBwFbcGth7JVJat",
+    "message": "8/1 [여행] 주간 플랜 코디를 캘린더에 확정했습니다",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-01T08:40:40.135000+00:00"
+  },
+  {
+    "_id": "Z6MlZXMYvCgAGtUx2lGO",
+    "message": "코디 분석을 완료했습니다 (88점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T13:26:29.833000+00:00"
+  },
+  {
+    "_id": "ZPVMDZj0hG897KuwVHvZ",
+    "relatedDocId": "9BGVpYtfC9auK2XWuJWp",
+    "message": "3일 뒤 예보를 확인했습니다 — 강수확률 8%, 최고 37°C/최저 27°C",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-03T02:59:26.571000+00:00"
+  },
+  {
+    "_id": "ZaZACmyflLKRXCLQqKgB",
+    "relatedDocId": "xOH8r8UYSis86UNPTOes",
+    "message": "3일 뒤 [면접] 일정을 감지했습니다",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-08-04T03:47:51.698000+00:00"
+  },
+  {
+    "_id": "b4S1xXOxDufCc4QuAWJX",
+    "relatedDocId": "77PcqFMP9TfNiXccc312",
+    "message": "새 옷(버건디 상의) 등록을 감지했습니다",
+    "eventType": "new_item_detected",
+    "createdAt": "2026-08-01T17:34:57.758000+00:00"
+  },
+  {
+    "_id": "bBCrCLSHQXlufMKBO3VS",
+    "relatedDocId": "A8pelRasAOBnA1Jm2OFV",
+    "message": "모레 [경조사] 일정을 위해 90점 조합을 준비했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-02T12:48:10.509000+00:00"
+  },
+  {
+    "_id": "bCOsbnJXQJL9qiZNdIRo",
+    "relatedDocId": "xOH8r8UYSis86UNPTOes",
+    "message": "옷장에서 포멀 조합 3개를 검토했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-04T03:47:51.882000+00:00"
+  },
+  {
+    "_id": "bGtEQBUmImLG9ZKG5QBy",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T14:38:51.420000+00:00"
+  },
+  {
+    "_id": "bcxTUCGu7vmeHplka8ip",
+    "relatedDocId": "pRvj9bPq6bvFRMNZLh1d",
+    "message": "내일 [모임] 일정을 감지했습니다",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-07-31T01:32:49.052000+00:00"
+  },
+  {
+    "_id": "bdGfH9YOtPiHDxWAc7Y0",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-01T12:39:50.535000+00:00"
+  },
+  {
+    "_id": "bjSyQlTDiIlXOVkQpfyV",
+    "relatedDocId": "A8pelRasAOBnA1Jm2OFV",
+    "message": "후보 1 평가: 90점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-02T12:48:08.664000+00:00"
+  },
+  {
+    "_id": "chZaO1zIcjlqPcBcpLCA",
+    "relatedDocId": "NOMLB761w4h6nnCYADd7",
+    "message": "후보 1 평가: 78점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T18:34:33.101000+00:00"
+  },
+  {
+    "_id": "chdoe9KDG06pSGniTr11",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "내일 [운동] 일정을 위해 82점 조합을 준비했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-04T03:15:35.679000+00:00"
+  },
+  {
+    "_id": "cmEdElDvkZxpgYz9cCJn",
+    "relatedDocId": "77PcqFMP9TfNiXccc312",
+    "message": "후보 1 평가 중...",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T17:34:57.805000+00:00"
+  },
+  {
+    "_id": "cmgGGMhJDaUD3efFLMyB",
+    "relatedDocId": "A8pelRasAOBnA1Jm2OFV",
+    "message": "모레 [경조사] 일정을 감지했습니다",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-08-02T12:47:57.492000+00:00"
+  },
+  {
+    "_id": "cxtwvGBXoDnbwUXXNxNt",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-01T13:10:06.505000+00:00"
+  },
+  {
+    "_id": "dBBX7c1RIzZWzIjipd8H",
+    "relatedDocId": "Q2CJWM2HZ2FAS92be3RX",
+    "message": "추천 대신 다른 조합을 선택하셨네요 ([여행]) — 다음 추천에 반영하겠습니다",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-01T08:35:04.279000+00:00"
+  },
+  {
+    "_id": "eFCysIZRtvYH3auRibLL",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-01T08:37:09.884000+00:00"
+  },
+  {
+    "_id": "eJ76VSEyl1Lawsn6VNek",
+    "message": "8/2 [데이트] 주간 플랜 코디를 캘린더에 확정했습니다",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-01T08:35:06.736000+00:00"
+  },
+  {
+    "_id": "fBIqyaNWQVhRovktkg5P",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T18:14:10.895000+00:00"
+  },
+  {
+    "_id": "fBUJy5f54rgMnFsSaf99",
+    "message": "코디 분석을 완료했습니다 (90점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T17:38:53.579000+00:00"
+  },
+  {
+    "_id": "fJynxJbATuZR0GF1Vid8",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T17:34:10.058000+00:00"
+  },
+  {
+    "_id": "fnLdSIgTHt3xNH19eHTf",
+    "relatedDocId": "77PcqFMP9TfNiXccc312",
+    "message": "후보 1 평가: 75점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T17:35:06.949000+00:00"
+  },
+  {
+    "_id": "g2tWzKI2JCn5B1a2IJgL",
+    "relatedDocId": "A8pelRasAOBnA1Jm2OFV",
+    "message": "모레 예보를 확인했습니다 — 강수확률 73%, 최고 34°C/최저 26°C",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-02T12:47:57.501000+00:00"
+  },
+  {
+    "_id": "g78qn33ifVTI23zq2DMJ",
+    "relatedDocId": "n02uc232NVMITGaYzIIe",
+    "message": "후보 1 평가: 85점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-07-31T01:43:40.610000+00:00"
+  },
+  {
+    "_id": "gbjkytFtkjhkvxmCovtZ",
+    "relatedDocId": "BMMgh8ANvWxSx9kUwwtd",
+    "message": "새 옷(버건디 상의) 등록을 감지했습니다",
+    "eventType": "new_item_detected",
+    "createdAt": "2026-08-01T08:06:36.573000+00:00"
+  },
+  {
+    "_id": "haXlpqvaqIT2xedaIbpi",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-01T08:09:03.845000+00:00"
+  },
+  {
+    "_id": "hf7NC6AMt4xHI9yJbWFN",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-01T08:05:28.364000+00:00"
+  },
+  {
+    "_id": "hpdwGh36sLcEvdRbQZwY",
+    "message": "주간 예보를 확인했습니다 — 토・화요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-01T08:36:11.328000+00:00"
+  },
+  {
+    "_id": "i3wglZj1IPzEg1uinSfd",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "과거 [운동] 착장 1건을 참고했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-02T13:14:30.249000+00:00"
+  },
+  {
+    "_id": "iCoFcUJeXXGi6k7asN78",
+    "message": "코디 분석을 완료했습니다 (85점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T18:34:40.173000+00:00"
+  },
+  {
+    "_id": "j8ppQ8VxtPg7Pfcs7VhC",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "이전 조합에서 네이비 상의·차콜 하의·카키 아우터·블랙 신발 아이템을 뺐어요",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-04T03:15:35.689000+00:00"
+  },
+  {
+    "_id": "jDrsT0MeuGTFl8FlxmWd",
+    "relatedDocId": "xOH8r8UYSis86UNPTOes",
+    "message": "후보 1 평가: 94점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-04T03:48:04.028000+00:00"
+  },
+  {
+    "_id": "jmKseSrXsdN87tqCZxpE",
+    "relatedDocId": "pRvj9bPq6bvFRMNZLh1d",
+    "message": "내일 예보를 확인했습니다 — 강수확률 67%, 최고 33°C/최저 26°C",
+    "eventType": "weather_checked",
+    "createdAt": "2026-07-31T01:14:47.507000+00:00"
+  },
+  {
+    "_id": "k5aS4i92BgnFBPFkr6L3",
+    "relatedDocId": "sQ9OuFSpKPsRN8vPOXIF",
+    "message": "추천 대신 다른 조합을 선택하셨네요 ([일상]) — 다음 추천에 반영하겠습니다",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-01T08:09:11.008000+00:00"
+  },
+  {
+    "_id": "k9H3FPtA4Lpwib1Brdpf",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-07-31T01:37:44.347000+00:00"
+  },
+  {
+    "_id": "kDmUDCs1DKPQ8RRBYBIL",
+    "relatedDocId": "m1M2iVfl1kei69QUzSYE",
+    "message": "옷장 116벌과 대조해 후보 3개 조합을 생성했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-01T08:04:13.110000+00:00"
+  },
+  {
+    "_id": "klVP6tCb4hUOojRP5FQf",
+    "message": "코디 분석을 완료했습니다 (70점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T13:43:53.798000+00:00"
+  },
+  {
+    "_id": "knZnRg88yPCijiwh5uzl",
+    "relatedDocId": "BMMgh8ANvWxSx9kUwwtd",
+    "message": "후보 1 평가 중...",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T08:06:36.672000+00:00"
+  },
+  {
+    "_id": "ky4zModvavt3dosGgZbu",
+    "message": "주간 예보를 확인했습니다 — 토・화요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-01T08:08:26.647000+00:00"
+  },
+  {
+    "_id": "kzdRCLjVk5BfVKFtz47M",
+    "relatedDocId": "A8pelRasAOBnA1Jm2OFV",
+    "message": "모레 [경조사] 일정을 위해 90점 조합을 준비했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-02T12:48:10.004000+00:00"
+  },
+  {
+    "_id": "lBFplEKJBenq84aoq0ya",
+    "relatedDocId": "m1M2iVfl1kei69QUzSYE",
+    "message": "새 옷(버건디 상의) 등록을 감지했습니다",
+    "eventType": "new_item_detected",
+    "createdAt": "2026-08-01T08:04:13.012000+00:00"
+  },
+  {
+    "_id": "lfcuSG57uFsIyyzfT3NA",
+    "relatedDocId": "n02uc232NVMITGaYzIIe",
+    "message": "옷장에서 세미포멀 조합 3개를 검토했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-07-31T01:43:35.898000+00:00"
+  },
+  {
+    "_id": "lg9voj9xtnDAzV1oIRjp",
+    "message": "코디 분석을 완료했습니다 (74점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T17:47:24.301000+00:00"
+  },
+  {
+    "_id": "m4TBNfO132eAGfTsAP5c",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T17:39:14.537000+00:00"
+  },
+  {
+    "_id": "mNU3DHae3umVjPznZLBn",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-02T13:09:03.699000+00:00"
+  },
+  {
+    "_id": "mOKlqD1BMMOH59V8o1w4",
+    "message": "코디 분석을 완료했습니다 (88점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-07-31T01:37:10.117000+00:00"
+  },
+  {
+    "_id": "mQUDOBsdFBEoM8D9Y9Wr",
+    "message": "주간 예보를 확인했습니다 — 토・화요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-01T14:40:22.139000+00:00"
+  },
+  {
+    "_id": "mT5a8T3MZ6eUroGVVv5O",
+    "relatedDocId": "xOH8r8UYSis86UNPTOes",
+    "message": "3일 뒤 예보를 확인했습니다 — 강수확률 35%, 최고 37°C/최저 27°C",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-04T03:47:51.716000+00:00"
+  },
+  {
+    "_id": "mctW3Zf39iSIGg6PKzNA",
+    "message": "코디 분석을 완료했습니다 (75점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T14:38:30.283000+00:00"
+  },
+  {
+    "_id": "n4TBJl5H5Ain8u5BVM4l",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "3일 뒤 예보를 확인했습니다 — 강수확률 41%, 최고 35°C/최저 25°C",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-02T13:14:29.157000+00:00"
+  },
+  {
+    "_id": "nGeI9JJiXtmFGb3a7c1P",
+    "message": "코디 분석을 완료했습니다 (88점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T17:34:20.780000+00:00"
+  },
+  {
+    "_id": "nOz6DDSblqGPEb8GBdVg",
+    "relatedDocId": "m1M2iVfl1kei69QUzSYE",
+    "message": "옷장 분석으로 80점 조합을 추천으로 등록했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-01T08:04:22.256000+00:00"
+  },
+  {
+    "_id": "nXiXgJUOeBi7bqzJ8hBw",
+    "relatedDocId": "9BGVpYtfC9auK2XWuJWp",
+    "message": "옷장에서 세미포멀 조합 3개를 검토했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-03T02:59:26.704000+00:00"
+  },
+  {
+    "_id": "nZBvP8FBWCPIlrK6Lekf",
+    "relatedDocId": "GD1riPVzJqXnqO2VDqqS",
+    "message": "옷장 분석으로 75점 조합을 추천으로 등록했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-01T14:41:51.344000+00:00"
+  },
+  {
+    "_id": "njbChmM6KvWzzJvDOA60",
+    "message": "코디 분석을 완료했습니다 (70점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T18:01:39.059000+00:00"
+  },
+  {
+    "_id": "nsSGkFAZXcFLaEozS3g7",
+    "relatedDocId": "C7seU8RFQ8tujIE2aLR2",
+    "message": "새 옷(레드 전신) 등록을 감지했습니다",
+    "eventType": "new_item_detected",
+    "createdAt": "2026-07-31T01:17:58.974000+00:00"
+  },
+  {
+    "_id": "o7jkW9HpVzIxpJma4dE2",
+    "message": "코디 분석을 완료했습니다 (65점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T17:46:57+00:00"
+  },
+  {
+    "_id": "oiGJuqMobQxtLrIOOhXh",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T13:26:39.961000+00:00"
+  },
+  {
+    "_id": "oxnv0cfbEEpgNFOEKxQP",
+    "relatedDocId": "A8pelRasAOBnA1Jm2OFV",
+    "message": "옷장에서 포멀 조합 3개를 검토했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-02T12:47:58.007000+00:00"
+  },
+  {
+    "_id": "p6OCgMprCVIbJZ41GRgd",
+    "relatedDocId": "1PxqpADiGtoJ4BZoJAF6",
+    "message": "후보 1 평가: 75점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T06:14:54.567000+00:00"
+  },
+  {
+    "_id": "pPdXZn54Dyr9IRwr0Qik",
+    "relatedDocId": "n02uc232NVMITGaYzIIe",
+    "message": "모레 [데이트] 일정을 감지했습니다",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-07-31T01:43:35.792000+00:00"
+  },
+  {
+    "_id": "pbsGUdY7PSZiAzJrXiM2",
+    "relatedDocId": "m1M2iVfl1kei69QUzSYE",
+    "message": "후보 1 평가 중...",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T08:04:13.074000+00:00"
+  },
+  {
+    "_id": "pdYPrIAUxEISKKUiYP5X",
+    "relatedDocId": "pRvj9bPq6bvFRMNZLh1d",
+    "message": "내일 예보를 확인했습니다 — 강수확률 67%, 최고 33°C/최저 26°C",
+    "eventType": "weather_checked",
+    "createdAt": "2026-07-31T01:18:08.409000+00:00"
+  },
+  {
+    "_id": "qIg1D4iSGOHr7sylAJPC",
+    "relatedDocId": "wFdfclQ9rmDyfFipblG2",
+    "message": "옷장 117벌과 대조해 후보 3개 조합을 생성했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-01T08:06:58.564000+00:00"
+  },
+  {
+    "_id": "qXwS46fvihwu9L86Js7c",
+    "relatedDocId": "GD1riPVzJqXnqO2VDqqS",
+    "message": "후보 1 평가: 75점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T14:41:51.181000+00:00"
+  },
+  {
+    "_id": "qlSXDhhGmjgZisvgZ3iL",
+    "relatedDocId": "n02uc232NVMITGaYzIIe",
+    "message": "모레 [데이트] 일정을 위해 85점 조합을 준비했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-07-31T01:43:40.848000+00:00"
+  },
+  {
+    "_id": "r3eChUqNvQZuGBDRW5MG",
+    "relatedDocId": "wFdfclQ9rmDyfFipblG2",
+    "message": "후보 1 평가 중...",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T08:06:58.575000+00:00"
+  },
+  {
+    "_id": "rBfgZHrz1xf1F6CsjgkU",
+    "relatedDocId": "pRvj9bPq6bvFRMNZLh1d",
+    "message": "[모임] 일정용 조합을 찾지 못했습니다 — 세미포멀 조합에 필요한 상의·하의가 옷장에 없어요",
+    "eventType": "schedule_detected",
+    "createdAt": "2026-07-31T01:18:08.502000+00:00"
+  },
+  {
+    "_id": "rhoilHScGqXUfhB12HEa",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-01T08:38:30.336000+00:00"
+  },
+  {
+    "_id": "s1hs2AKKtkNA8X9as8vy",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T08:07:33.157000+00:00"
+  },
+  {
+    "_id": "sfRLXko1f66RDjHDdj3y",
+    "relatedDocId": "BMMgh8ANvWxSx9kUwwtd",
+    "message": "옷장 분석으로 78점 조합을 추천으로 등록했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-01T08:06:47.215000+00:00"
+  },
+  {
+    "_id": "t4uFMrdo377HKEZVeom5",
+    "relatedDocId": "pRvj9bPq6bvFRMNZLh1d",
+    "message": "옷장에서 세미포멀 조합 3개를 검토했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-07-31T01:32:49.168000+00:00"
+  },
+  {
+    "_id": "tYngFfpq0GZc8BXjkmA3",
+    "relatedDocId": "NOMLB761w4h6nnCYADd7",
+    "message": "옷장 분석으로 78점 조합을 추천으로 등록했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-01T18:34:33.222000+00:00"
+  },
+  {
+    "_id": "tai2Pcj275bgVlH5azwm",
+    "relatedDocId": "lAofjvOVHh4KbWA51k0a",
+    "message": "옷장 116벌과 대조해 후보 3개 조합을 생성했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-01T18:02:19.892000+00:00"
+  },
+  {
+    "_id": "tgP8wAjy7VejYl6yDncS",
+    "message": "코디 분석을 완료했습니다 (76점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T08:07:20.505000+00:00"
+  },
+  {
+    "_id": "tqKOqTksFTqD5V2xMFGL",
+    "message": "주간 예보를 확인했습니다 — 토요일 비 예보를 플랜에 반영합니다",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-01T13:10:00.490000+00:00"
+  },
+  {
+    "_id": "uA0XmV1YvpiZfwWHoHjQ",
+    "relatedDocId": "GD1riPVzJqXnqO2VDqqS",
+    "message": "후보 1 평가 중...",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T14:41:42.639000+00:00"
+  },
+  {
+    "_id": "wDplUsbKyvkAzkrf8a1w",
+    "relatedDocId": "NOMLB761w4h6nnCYADd7",
+    "message": "옷장 116벌과 대조해 후보 3개 조합을 생성했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-08-01T18:34:24.326000+00:00"
+  },
+  {
+    "_id": "xBSIzBtYoRjINQfyiMDI",
+    "message": "8/6 [일상] 주간 플랜 코디를 캘린더에 확정했습니다",
+    "eventType": "calendar_logged",
+    "createdAt": "2026-08-01T08:09:11.688000+00:00"
+  },
+  {
+    "_id": "xJTMuMvuj8BIF6UIwl80",
+    "message": "코디 분석을 완료했습니다 (75점)",
+    "eventType": "analysis_completed",
+    "createdAt": "2026-08-01T18:24:15.294000+00:00"
+  },
+  {
+    "_id": "xONsUSpIzwUgKsMXOSsw",
+    "message": "가상 피팅 이미지를 생성했습니다",
+    "eventType": "fitting_generated",
+    "createdAt": "2026-08-01T18:34:49.668000+00:00"
+  },
+  {
+    "_id": "xXQ1zsRnqC2M0FUDGgW8",
+    "relatedDocId": "lAofjvOVHh4KbWA51k0a",
+    "message": "후보 1 평가: 82점 — 기준(70점) 통과, 채택",
+    "eventType": "candidate_evaluated",
+    "createdAt": "2026-08-01T18:02:29.202000+00:00"
+  },
+  {
+    "_id": "z1ddl1XfFHmpfRhS6rF6",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "내일 예보를 확인했습니다 — 강수확률 80%, 최고 36°C/최저 27°C",
+    "eventType": "weather_checked",
+    "createdAt": "2026-08-04T03:15:09.328000+00:00"
+  },
+  {
+    "_id": "z8fg5yHuYjwApuiXNTKR",
+    "message": "발화 간격을 10시간에서 12시간으로 조정합니다",
+    "eventType": "cadence_adjusted",
+    "createdAt": "2026-08-15T10:34:27.572000+00:00"
+  },
+  {
+    "_id": "zVkZuxzMA0fsBLWYq4dQ",
+    "relatedDocId": "iFYUEemXhqRp6o5SUmBi",
+    "message": "3일 뒤 [운동] 일정을 위해 86점 조합을 준비했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-08-02T13:14:40.837000+00:00"
+  },
+  {
+    "_id": "zhJYLisbXRExZmE7XQh7",
+    "message": "주간 플랜을 수립했습니다 — 7일 일정에 대해 중복 없이 조합을 배분했습니다",
+    "eventType": "weekly_planned",
+    "createdAt": "2026-08-01T12:37:17.777000+00:00"
+  },
+  {
+    "_id": "zhW6TN0lxUYGcntxPmOb",
+    "relatedDocId": "n02uc232NVMITGaYzIIe",
+    "message": "모레 [데이트] 일정을 위해 82점 조합을 준비했습니다",
+    "eventType": "recommendation_registered",
+    "createdAt": "2026-07-31T01:43:47.852000+00:00"
+  },
+  {
+    "_id": "zpiU4PeLjtcFksoDic2W",
+    "relatedDocId": "n02uc232NVMITGaYzIIe",
+    "message": "옷장에서 세미포멀 조합 3개를 검토했습니다",
+    "eventType": "candidates_generated",
+    "createdAt": "2026-07-31T01:43:32.908000+00:00"
+  }
+]
