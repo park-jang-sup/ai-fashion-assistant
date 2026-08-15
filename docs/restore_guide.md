@@ -74,8 +74,9 @@ Blaze(종량제) 플랜을 해제하면 일부 기능(Cloud Functions, Cloud Sch
 
 ## 5. Firebase App Check — 현재 상태와 이유
 
-**현재 상태: 미등록.** `com.fashionai.ai_fashion_assistant`(Android) 앱이 Firebase 콘솔의 App
-Check에 등록되어 있지 않다. 클라이언트는 `activate()`를 호출하지만(`main.dart:57`) 서버
+**현재 상태 확인 경로**: Firebase 콘솔 → 왼쪽 메뉴 "빌드(Build)" 그룹 → App Check. 이 문서
+작성 시점 기준 **미등록**이다 — `com.fashionai.ai_fashion_assistant`(Android) 앱이 위 화면에
+목록으로 뜨지 않는다. 클라이언트는 `activate()`를 호출하지만(`main.dart:57`) 서버
 어디에도 `enforceAppCheck`가 없어 강제되지 않는다 — 즉 설계상 미강제가 아니라 등록 자체가
 안 된 상태다.
 
@@ -113,7 +114,12 @@ Cloud Functions 코드는 `admin.initializeApp()`를 인자 없이 호출한다(
 생성 시점의 GCP 기본값에 따라 다름)의 자격 증명을 암묵적으로 사용한다. 이 계정에 부여된
 정확한 IAM 역할 목록은 저장소에서 확인할 수 없다 — **콘솔에서 직접 확인해야 한다**
 (IAM 및 관리자 → IAM, `...@appspot.gserviceaccount.com` 또는
-`...-compute@developer.gserviceaccount.com` 검색).
+`...-compute@developer.gserviceaccount.com` 검색). **[2026-08-15 확인]** 로컬
+Firestore 덤프에 쓰는 어드민 SDK 키로 Cloud Resource Manager API
+(`projects:getIamPolicy`)를 직접 호출해 자동화를 시도했으나 403(권한 부족)으로
+실패했다 — 이 키는 Firestore 관리 용도로만 발급되어 있어 프로젝트 IAM 조회 권한이
+없다. 즉 이 목록은 스크립트로 대신할 수 없고, Blaze 해제 전 지금 콘솔에 직접
+접속해 확인하거나 최소한 화면을 캡처해 두는 것이 유일한 방법이다.
 
 로컬 스크립트(Firestore 덤프 등)에서 쓰는 별도 자격 증명은 이 서비스 계정과 다르다 —
 `GOOGLE_APPLICATION_CREDENTIALS` 환경변수가 가리키는
