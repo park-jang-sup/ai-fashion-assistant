@@ -188,6 +188,14 @@ class FcmService {
         'serverTapCount': FieldValue.increment(1),
         'serverTapAt': Timestamp.fromDate(DateTime.now()),
       }));
+      // pushId(docs/task_agent_cadence_v1.md §3-2) - 서버가 이번 발송에
+      // 붙인 매칭 키. 구버전 서버 배포분이 보낸 알림에는 없을 수 있으므로
+      // (마이그레이션 경계) null이면 매칭 계측을 건너뛴다 - serverTapCount/At은
+      // 이미 위에서 기록됐으니 탭 자체를 놓치는 건 아니다.
+      final pushId = message.data['pushId'] as String?;
+      if (pushId != null) {
+        unawaited(_recordServerTap(uid, pushId: pushId, isColdStart: isColdStart));
+      }
     }
 
     if (isColdStart) {
@@ -203,6 +211,39 @@ class FcmService {
           })));
     } else {
       unawaited(check);
+    }
+  }
+
+  // 서버 serverInvocationLog와 매칭할 캡핑 배열 - background_agent.dart의
+  // invocationLog 캡핑과 동일한 방식(읽어서 상한 넘으면 잘라 통짜로 덮어씀,
+  // 그 경계에서만 read-modify-write 경합 가능 - 같은 이유로 감수한다,
+  // background_agent.dart:196-198 참고). 탭은 발송보다도 드물어 경합
+  // 가능성이 더 낮다. 이 필드는 §4-2 전환 기준 전까지 어떤 판정 로직도
+  // 읽지 않는다(docs/task_agent_cadence_v1.md §3-4) - 기록만 한다.
+  static const _serverTapLogCap = 500;
+
+  static Future<void> _recordServerTap(
+    String uid, {
+    required String pushId,
+    required bool isColdStart,
+  }) async {
+    try {
+      final meta = await FirestoreService.getBackgroundAgentMeta(uid);
+      final currentLog = (meta?['serverTapLog'] as List?) ?? const [];
+      final entry = {
+        'pushId': pushId,
+        'tappedAt': Timestamp.fromDate(DateTime.now()),
+        'isColdStart': isColdStart,
+      };
+      final nextLog = currentLog.length >= _serverTapLogCap
+          ? [...currentLog.skip(currentLog.length - _serverTapLogCap + 1), entry]
+          : [...currentLog, entry];
+      await FirestoreService.setBackgroundAgentMeta(uid, {'serverTapLog': nextLog});
+    } catch (e) {
+      // 매칭 계측 실패는 탭 처리 자체를 막지 않는다 - serverTapCount/At은
+      // 이미 별도로 기록됐으므로, 이 실패는 §4-2 전환 판정의 표본을 한 건
+      // 줄일 뿐이다.
+      debugPrint('[FCM-TAP] serverTapLog 기록 실패(무시): $e');
     }
   }
 

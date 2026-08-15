@@ -1228,10 +1228,15 @@ async function findNextUntriggeredDate(uid: string): Promise<Date | undefined> {
 // (2026-08-02 이전 항목엔 없음). 클라이언트 invocationLog와는 어차피
 // 항목 형태가 이제 갈리므로, 나란히 비교할 땐 공통 필드(at, triggered)만
 // 본다.
+// pushId(docs/task_agent_cadence_v1.md §3-2) - 이 발송을 클라이언트의
+// serverTapLog와 매칭할 키. 발송이 아예 없었으면(토큰 0개) 매칭할 대상
+// 자체가 없으므로 undefined로 둔다. 이 필드는 §4-2 전환 기준(uid당 매칭
+// 가능 30건)에 도달하기 전까지는 어떤 판정 로직도 읽지 않는다 - 지금은
+// 기록만 한다.
 async function recordServerInvocation(
   uid: string,
   triggered: boolean,
-  sendResult?: {successCount: number; failureCount: number}
+  sendResult?: {successCount: number; failureCount: number; pushId?: string}
 ): Promise<void> {
   const db = getFirestore();
   const docRef = db.collection("users").doc(uid).collection("agent_meta").doc("background");
@@ -1242,7 +1247,13 @@ async function recordServerInvocation(
       const snap = await tx.get(docRef);
       const currentLog = (snap.data()?.serverInvocationLog as unknown[] | undefined) ?? [];
       const entry = sendResult ?
-        {at: now, triggered, successCount: sendResult.successCount, failureCount: sendResult.failureCount} :
+        {
+          at: now,
+          triggered,
+          successCount: sendResult.successCount,
+          failureCount: sendResult.failureCount,
+          ...(sendResult.pushId ? {pushId: sendResult.pushId} : {}),
+        } :
         {at: now, triggered};
       const nextLog = currentLog.length >= SERVER_INVOCATION_LOG_CAP ?
         [...currentLog.slice(currentLog.length - SERVER_INVOCATION_LOG_CAP + 1), entry] :
@@ -1289,23 +1300,30 @@ async function runScheduledCheckCore(
     .collection("users").doc(uid).collection("fcm_tokens").get();
   const tokens = tokensSnap.docs.map((doc) => doc.id);
 
-  let sendResult: {successCount: number; failureCount: number} | undefined;
+  let sendResult: {successCount: number; failureCount: number; pushId?: string} | undefined;
 
   if (tokens.length > 0) {
     // [3] data 페이로드로 서버 발화임을 클라이언트가 구분할 수 있게 한다 -
     // 안 그러면 탭 이후 경로에서 기기 발화와 서버 발화가 다시 섞인다(함정 8이
     // 막으려는 것이 서버 쪽 기록만은 아니다). 채널은 B단계와 동일하게
     // agent_recommendation.
+    //
+    // pushId(docs/task_agent_cadence_v1.md §3-2) - reqId(위 다른 함수들의
+    // randomUUID().slice(0,8))와 달리 자르지 않는다. reqId는 사람이 로그에서
+    // grep하는 용도라 8자로 충분하지만, 이건 두 개의 캡 500 배열
+    // (serverInvocationLog ↔ 클라이언트 serverTapLog)을 매칭하는 키라
+    // 충돌 여지를 줄이는 쪽을 택한다.
+    const pushId = randomUUID();
     const response = await getMessaging().sendEachForMulticast({
       tokens,
       notification: {
         title: "DOT",
         body: "다가오는 일정에 맞는 코디를 준비했어요",
       },
-      data: {source: "server_scheduler", targetDate: targetDateStr},
+      data: {source: "server_scheduler", targetDate: targetDateStr, pushId},
       android: {notification: {channelId: FCM_NOTIFICATION_CHANNEL_ID}},
     });
-    sendResult = {successCount: response.successCount, failureCount: response.failureCount};
+    sendResult = {successCount: response.successCount, failureCount: response.failureCount, pushId};
     await cleanupInvalidTokens(uid, tokens, response.responses);
   }
 
