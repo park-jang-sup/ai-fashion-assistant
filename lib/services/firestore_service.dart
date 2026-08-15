@@ -457,6 +457,11 @@ class FirestoreService {
 
   // 최근 추천 이력 원본 조회 — getRelevantHistorySilently가 관련도 계산의
   // 재료로 쓴다. orderBy 단독이라 복합 인덱스 불필요.
+  // 발화 정책 자기 조정(docs/task_agent_cadence_v1.md §4~§8,
+  // background_agent.dart의 judgeCadence 호출부)도 이 쿼리를 그대로
+  // 재사용한다 — "최근 N건"이 필요하다는 점이 RAG와 동일하고, 기본
+  // limit(30)이 판정 창(5건)보다 넉넉해 response_signal.dart가
+  // dismissed=true 문서를 걸러내도 5건을 채우는 데 무리가 없다.
   static Future<List<RecommendationEntry>> recentRecommendationsSilently(
     String uid, {
     int limit = 30,

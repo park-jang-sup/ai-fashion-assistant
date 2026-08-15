@@ -10,8 +10,10 @@ import 'package:workmanager/workmanager.dart';
 import '../firebase_options.dart';
 import 'agent_planner.dart';
 import 'agent_sweeper.dart';
+import 'cadence_policy.dart';
 import 'firestore_service.dart';
 import 'notification_service.dart';
+import 'response_signal.dart';
 import 'weather_service.dart';
 
 // WorkManager가 부르는 진입점. @pragma('vm:entry-point')가 없으면 릴리스
@@ -186,7 +188,20 @@ class BackgroundAgent {
 
     final lastRunAt = (meta?['lastRunAt'] as Timestamp?)?.toDate();
     final now = DateTime.now();
-    final skippedByGuard = !shouldRunNow(lastRunAt: lastRunAt, now: now, force: force);
+    // adjustedIntervalHours(docs/task_agent_cadence_v1.md §8) — 발화 정책
+    // 자기 조정이 낸 값. 필드가 없으면(아직 한 번도 조정 안 됨, 또는
+    // 조정 로직 도입 이전 문서) 기존 상수 _minInterval을 그대로 쓴다 —
+    // 이 폴백이 기존 동작과의 diff 0을 보장한다.
+    final adjustedIntervalHours = (meta?['adjustedIntervalHours'] as num?)?.toInt();
+    final effectiveMinInterval = adjustedIntervalHours != null
+        ? Duration(hours: adjustedIntervalHours)
+        : _minInterval;
+    final skippedByGuard = !shouldRunNow(
+      lastRunAt: lastRunAt,
+      now: now,
+      force: force,
+      minInterval: effectiveMinInterval,
+    );
 
     // F'.3 발화 간격 계측 — invokeCount/skipCount는 위 주석대로 "meta 읽기
     // 성공까지 도달한 실행"만 센다. invocationLog는 시계열(구간 목록)이
@@ -270,6 +285,29 @@ class BackgroundAgent {
     // 하지 않는다 — 여기서 짧게 기다리는 것으로 한계를 감수한다.
     await Future.delayed(const Duration(seconds: 3));
 
+    // 6-6. 발화 정책 자기 조정 판정(docs/task_agent_cadence_v1.md §4~§8).
+    // 판정 자체(judgeCadence)와 입력 산출(summarizeRecentResponses)이
+    // 분리돼 있는 이유는 §4-4가 사전 등록한 대로, 나중에 이 입력이
+    // (a)의 발송-탭 매칭 데이터로 교체될 때 판정부·그 단위 테스트를
+    // 건드리지 않기 위해서다 — 여기(배선부)만 입력 산출 함수 교체에
+    // 맞춰 바뀐다. 이 판정이 실패해도 이번 실행 자체(추천 생성 등)는
+    // 이미 끝났으므로 실행을 막지 않는다 — lastRunAt 기록과 같은
+    // 실패 관용도로 다룬다.
+    CadenceDecision? cadenceDecision;
+    try {
+      final recentRecs = await FirestoreService.recentRecommendationsSilently(uid);
+      final signal = summarizeRecentResponses(candidates: recentRecs, now: DateTime.now());
+      cadenceDecision = judgeCadence(
+        currentIntervalHours: effectiveMinInterval.inHours,
+        sampleSize: signal.sampleSize,
+        respondedCount: signal.respondedCount,
+        noResponseCount: signal.noResponseCount,
+        acceptedCount: signal.acceptedCount,
+      );
+    } catch (e) {
+      debugPrint('[BG] 발화 정책 판정 실패(무시): $e');
+    }
+
     try {
       await FirestoreService.setBackgroundAgentMeta(uid, {
         'lastRunAt': Timestamp.fromDate(DateTime.now()),
@@ -285,6 +323,14 @@ class BackgroundAgent {
         // 시작하므로 기존 문서에 없던 필드라도 별도 초기화가 필요 없다.
         'weatherTotalCount': FieldValue.increment(1),
         'weatherOkCount': FieldValue.increment(WeatherService.lastFetchOk ? 1 : 0),
+        // 조정이 없었을 때도 매번 남긴다(docs §6-2) — agent_logs(서사)는
+        // 조정이 실제로 있을 때만 남기지만(4/5 단계에서 배선), 이 진단
+        // 필드는 "판단했으나 유지했다"까지 항상 관측 가능해야 한다.
+        if (cadenceDecision != null) ...{
+          'adjustedIntervalHours': cadenceDecision.recommendedIntervalHours,
+          'lastCadenceReason': cadenceDecision.signalReason,
+          'lastCadenceCheckAt': Timestamp.fromDate(DateTime.now()),
+        },
       });
     } catch (e) {
       // 완료 기록 실패는 다음 실행 판단에 영향을 주지만, 이번 실행 자체는
