@@ -52,5 +52,29 @@ void main() {
       );
       expect(result, isTrue);
     });
+
+    // 발화 정책 자기 조정(docs/task_agent_cadence_v1.md §8)이 adjustedIntervalHours를
+    // minInterval로 넘긴다 - 기본값(10h) 대신 실제로 커스텀 간격을 존중하는지
+    // 확인한다. 실기기에서는 12시간까지 기다려야 관측되는 경로라(§9-3 실기기
+    // 검증 참고) 여기서 대신 확정적으로 고정한다.
+    test('조정된 minInterval(12시간) — 3시간 경과는 미실행', () {
+      final result = BackgroundAgent.shouldRunNow(
+        lastRunAt: now.subtract(const Duration(hours: 3)),
+        now: now,
+        force: false,
+        minInterval: const Duration(hours: 12),
+      );
+      expect(result, isFalse);
+    });
+
+    test('조정된 minInterval(12시간) — 13시간 경과는 실행', () {
+      final result = BackgroundAgent.shouldRunNow(
+        lastRunAt: now.subtract(const Duration(hours: 13)),
+        now: now,
+        force: false,
+        minInterval: const Duration(hours: 12),
+      );
+      expect(result, isTrue);
+    });
   });
 }
