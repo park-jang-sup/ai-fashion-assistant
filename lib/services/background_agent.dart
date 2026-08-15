@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show DartPluginRegistrant;
 
@@ -8,6 +9,7 @@ import 'package:flutter/widgets.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:workmanager/workmanager.dart';
 import '../firebase_options.dart';
+import '../models/agent_log_entry.dart';
 import 'agent_planner.dart';
 import 'agent_sweeper.dart';
 import 'cadence_policy.dart';
@@ -306,6 +308,32 @@ class BackgroundAgent {
       );
     } catch (e) {
       debugPrint('[BG] 발화 정책 판정 실패(무시): $e');
+    }
+
+    // 6-7. 조정이 실제로 있을 때만 활동 로그(서사)에 남긴다 — 유지 판단은
+    // 위 6-6이 agent_meta에 이미 기록했다(진단 채널, §6-2). 감지·조정을
+    // 별도 이벤트 두 건으로 남기는 이유는 다른 파이프라인과 같다 — "무엇을
+    // 감지했는지"와 "그래서 무엇을 했는지"가 같은 문장에 섞이면 활동 로그
+    // 화면에서 판단 근거와 결과가 구분되지 않는다.
+    if (cadenceDecision != null && cadenceDecision.changed) {
+      final fromHours = effectiveMinInterval.inHours;
+      final toHours = cadenceDecision.recommendedIntervalHours;
+      unawaited(FirestoreService.addAgentLogSilently(
+        uid,
+        AgentLogEntry(
+          id: '',
+          eventType: AgentLogEntry.typeCadenceSignalDetected,
+          message: cadenceDecision.signalReason,
+        ),
+      ));
+      unawaited(FirestoreService.addAgentLogSilently(
+        uid,
+        AgentLogEntry(
+          id: '',
+          eventType: AgentLogEntry.typeCadenceAdjusted,
+          message: '발화 간격을 $fromHours시간에서 $toHours시간으로 조정합니다',
+        ),
+      ));
     }
 
     try {

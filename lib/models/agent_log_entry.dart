@@ -19,6 +19,13 @@ class AgentLogEntry {
   static const typeTaskRecovered = 'task_recovered'; // 실패했던 작업을 재발견/재개/보류(상태 지속성)
   static const typeWeatherChecked = 'weather_checked'; // 날씨를 관찰 도구로 확인(주간 플랜/선제 추천)
   static const typeWeeklyPlanFailed = 'weekly_plan_failed'; // 주간 플랜 생성 실패(docs/task_weekly_plan_scale_v1.md 4단계)
+  // 발화 정책 자기 조정(docs/task_agent_cadence_v1.md §6-1) — 판단 근거와
+  // 결과를 별도 이벤트 두 개로 남긴다(다른 파이프라인들과 같은 관례,
+  // "감지 → 조정" 두 단계). 조정이 실제로 있을 때만 남기고, 유지 판단은
+  // agent_logs(서사)가 아니라 agent_meta(진단, lastCadenceReason)에만
+  // 남긴다 — §6-2 참고.
+  static const typeCadenceSignalDetected = 'cadence_signal_detected';
+  static const typeCadenceAdjusted = 'cadence_adjusted';
 
   final String id;
   final DateTime? createdAt; // 읽을 때만 채워짐(쓸 때는 서버 타임스탬프 사용)
