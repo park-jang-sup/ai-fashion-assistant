@@ -173,4 +173,69 @@ void main() {
       expect(d.signalReason, contains('유지'));
     });
   });
+
+  group('CadencePolicyConfig(enabled: false) — diff 0 재현 (docs §9-1)', () {
+    const disabled = CadencePolicyConfig(enabled: false);
+
+    test('무반응 3건이어도(원래는 2배) 꺼져 있으면 그대로 유지 — 이 기능이 없던 상태와 산출물이 같다', () {
+      final d = judgeCadence(
+        currentIntervalHours: 3,
+        sampleSize: 5,
+        respondedCount: 2,
+        noResponseCount: 3,
+        acceptedCount: 0,
+        config: disabled,
+      );
+      expect(d.changed, isFalse);
+      expect(d.recommendedIntervalHours, 3);
+    });
+
+    test('채택 3건이어도(원래는 절반) 꺼져 있으면 그대로 유지', () {
+      final d = judgeCadence(
+        currentIntervalHours: 6,
+        sampleSize: 5,
+        respondedCount: 5,
+        noResponseCount: 0,
+        acceptedCount: 3,
+        config: disabled,
+      );
+      expect(d.changed, isFalse);
+      expect(d.recommendedIntervalHours, 6);
+    });
+
+    test('표본 부족이어도 꺼져 있으면 결과가 같다(둘 다 유지) — 이 경로는 원래도 유지라 구분이 안 되므로 changed만 확인', () {
+      final d = judgeCadence(
+        currentIntervalHours: 3,
+        sampleSize: 2,
+        respondedCount: 1,
+        noResponseCount: 1,
+        acceptedCount: 0,
+        config: disabled,
+      );
+      expect(d.changed, isFalse);
+      expect(d.recommendedIntervalHours, 3);
+    });
+  });
+
+  group('CadencePolicyConfig 기본값 — 명시적으로 안 넘겨도 enabled 정책과 동일', () {
+    test('config를 안 넘긴 호출과 CadencePolicyConfig()를 명시한 호출이 같은 결과를 낸다', () {
+      final withoutConfig = judgeCadence(
+        currentIntervalHours: 3,
+        sampleSize: 5,
+        respondedCount: 2,
+        noResponseCount: 3,
+        acceptedCount: 0,
+      );
+      final withDefaultConfig = judgeCadence(
+        currentIntervalHours: 3,
+        sampleSize: 5,
+        respondedCount: 2,
+        noResponseCount: 3,
+        acceptedCount: 0,
+        config: const CadencePolicyConfig(),
+      );
+      expect(withoutConfig.recommendedIntervalHours, withDefaultConfig.recommendedIntervalHours);
+      expect(withoutConfig.changed, withDefaultConfig.changed);
+    });
+  });
 }

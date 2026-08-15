@@ -21,10 +21,30 @@ class CadenceDecision {
   });
 }
 
-const int _minIntervalHours = 3; // 하한 - 지금보다 더 자주는 안 간다(보수적 시작점)
-const int _maxIntervalHours = 12; // 상한 - 클라이언트 _minInterval(10h)보다 약간 커, 최소 하루 한 번은 확인 기회가 남는다
-const int _windowSize = 5;
-const int _thresholdCount = 3; // windowSize 5건 중 3건 이상
+// TpoMatchPolicy(outfit_matcher.dart:56)와 같은 발상 — 판정 규칙의 값을
+// 재료(ResponseSignal)와 분리된 정책 객체로 빼서, 기본값이 "지금 배포된
+// 동작"을 정확히 재현하도록 만든다. `enabled: false`가 그 재현체다 —
+// 이 값을 쓰면 sampleSize·noResponseCount·acceptedCount가 무엇이든
+// 항상 "유지"만 반환하므로, 이 기능이 아예 없던 이전 상태(agent_meta에
+// adjustedIntervalHours가 결코 쓰이지 않는 상태)와 산출물이 diff 0이다.
+// 배포 시 기본값은 `enabled: true`(아래 CadenceDecision을 실제로 쓴다) —
+// off 상태는 "혹시 되돌려야 할 때"를 위한 스위치로 존재하는 것이지,
+// 배포 기본값이 꺼진 채로 나가지 않는다.
+class CadencePolicyConfig {
+  final bool enabled;
+  final int windowSize;
+  final int thresholdCount; // windowSize건 중 몇 건이면 발동하는지
+  final int minIntervalHours; // 하한 - 지금보다 더 자주는 안 간다(보수적 시작점)
+  final int maxIntervalHours; // 상한 - 클라이언트 _minInterval(10h)보다 약간 커, 최소 하루 한 번은 확인 기회가 남는다
+
+  const CadencePolicyConfig({
+    this.enabled = true,
+    this.windowSize = 5,
+    this.thresholdCount = 3,
+    this.minIntervalHours = 3,
+    this.maxIntervalHours = 12,
+  });
+}
 
 // sampleSize < windowSize면 판정하지 않고 현재 간격을 유지한다
 // (docs/task_agent_cadence_v1.md §4-3) - 반응할 시간도 없었는데 성급히
@@ -35,17 +55,28 @@ CadenceDecision judgeCadence({
   required int respondedCount,
   required int noResponseCount,
   required int acceptedCount,
+  CadencePolicyConfig config = const CadencePolicyConfig(),
 }) {
-  if (sampleSize < _windowSize) {
+  if (!config.enabled) {
     return CadenceDecision(
       recommendedIntervalHours: currentIntervalHours,
       changed: false,
-      signalReason: '최근 추천이 $_windowSize건 미만이라(표본 $sampleSize건) 판정을 보류합니다',
+      signalReason: '발화 정책 자기 조정이 꺼져 있어 현재 간격을 유지합니다',
     );
   }
 
-  if (noResponseCount >= _thresholdCount) {
-    final recommended = (currentIntervalHours * 2).clamp(_minIntervalHours, _maxIntervalHours);
+  if (sampleSize < config.windowSize) {
+    return CadenceDecision(
+      recommendedIntervalHours: currentIntervalHours,
+      changed: false,
+      signalReason:
+          '최근 추천이 ${config.windowSize}건 미만이라(표본 $sampleSize건) 판정을 보류합니다',
+    );
+  }
+
+  if (noResponseCount >= config.thresholdCount) {
+    final recommended =
+        (currentIntervalHours * 2).clamp(config.minIntervalHours, config.maxIntervalHours);
     return CadenceDecision(
       recommendedIntervalHours: recommended,
       changed: recommended != currentIntervalHours,
@@ -53,8 +84,9 @@ CadenceDecision judgeCadence({
     );
   }
 
-  if (acceptedCount >= _thresholdCount) {
-    final recommended = (currentIntervalHours ~/ 2).clamp(_minIntervalHours, _maxIntervalHours);
+  if (acceptedCount >= config.thresholdCount) {
+    final recommended =
+        (currentIntervalHours ~/ 2).clamp(config.minIntervalHours, config.maxIntervalHours);
     return CadenceDecision(
       recommendedIntervalHours: recommended,
       changed: recommended != currentIntervalHours,

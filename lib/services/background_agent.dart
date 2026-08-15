@@ -305,6 +305,11 @@ class BackgroundAgent {
         respondedCount: signal.respondedCount,
         noResponseCount: signal.noResponseCount,
         acceptedCount: signal.acceptedCount,
+        // 명시적으로 켠 상태로 배포한다 — 이 기능을 되돌려야 할 때
+        // CadencePolicyConfig(enabled: false)로 바꾸면 diff 0을
+        // 재현한다는 것이 단위 테스트(cadence_policy_test.dart
+        // "diff 0 재현" 그룹)로 확인돼 있다.
+        config: const CadencePolicyConfig(enabled: true),
       );
     } catch (e) {
       debugPrint('[BG] 발화 정책 판정 실패(무시): $e');
