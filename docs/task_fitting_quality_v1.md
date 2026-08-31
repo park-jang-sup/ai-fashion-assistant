@@ -57,6 +57,36 @@ handoff_2026-08-15 §2 표 26번의 3번 항목. §6-3이 명시한 판별
   플래그 off 상태로만 실행한다**를 여기서 함께 고정한다.
 - 이 커밋은 로그만 바꾼다. 다른 어떤 동작도 바꾸지 않는다.
 
+### 0단계 관문 통과 (2026-08-31)
+
+`firebase deploy --only functions` 배포 후 실기기(릴리스 APK,
+`adb install -r`로 기존 앱 위에 설치) 관문 피팅 1회 실측.
+
+- **아이템**: 팔찌 1개 + 전신 사진. 1단계 실험 슬롯 표(3/4/5/7벌
+  집합) 어디에도 없는 조합 — 신규 조합이라 기본 경로가 곧 캐시
+  미스 실행이다(§1단계 "유효 실행" 정의). 실제로 `fetchUpstream`
+  왕복(대형 `responseBytes=1482779`, 이미지 응답)이 관측돼 캐시
+  히트로 단락되지 않았음이 로그로도 확인된다.
+- **실행 시각**: 2026-08-31T10:23:06Z(UTC) = 19:23:06 KST.
+- **서버 로그 실측**(`firebase functions:log --only callGeminiText`,
+  reqId=27d96bf1):
+
+  ```
+  [callGeminiText] start reqId=27d96bf1 uid=BDDOIl08EhXnHu6oz6Zro47EtMw1 model=gemini-3.1-flash-image requestBytes=155252 category=액세서리
+  [callGeminiText] done reqId=27d96bf1 elapsedMs=19048 outcome=success upstreamStatus=200 responseBytes=1482779 category=액세서리
+  ```
+
+- **판정**: 통과. start/done 양쪽에 `category=액세서리`가 실렸다
+  — 팔찌의 최상위 category가 '액세서리'라는 지시서 서술
+  (`wardrobe_item.dart:10`, `fitting_job_controller.dart:283`)과
+  일치. 아이템 1개라 순차 루프 1단계뿐이라 start 로그도 1건만
+  나온 것이 기대대로다(같은 시간대 reqId=9a401ec5는 category
+  없이 짧은 응답(10857바이트)으로 끝난 별도 호출 — 피팅 순차
+  루프가 아닌 다른 callGeminiText 사용처로 보이며 이 관문 판정과
+  무관).
+- **후속 조치**: 관문에 쓴 팔찌는 1단계 실험 아이템에서 제외한다
+  (아래 슬롯 표를 채울 때 이 팔찌를 쓰지 않는다).
+
 ## 1단계 — 접두사 집합 판별 실험 (H-1 vs H-3)
 
 설계는 `task_hardening_v2.md` §6-3 원문을 따른다. 여기서는 집합
@@ -286,7 +316,7 @@ thinking_level 기본값은 minimal이고 high가 지원된다.
 ## 산출물
 
 - 0단계: 로그 커밋 + **실기기 로그 실측 1건**(카테고리 포함 서버
-  로그 — 관문)
+  로그 — 관문) — **완료(2026-08-31, §0단계 관문 통과 절 참고)**
 - 1단계: 판별 결과(H-1/H-3/혼재)와 근거 표(집합별 슬롯 구성,
   크롭·배율 조건, 실행 순서, 캐시 미스 확인 포함) — 이 문서에 추기
 - 2단계: 분리 커밋 + 캐시 키 테스트(렌더링 4개 = 키 입력 4개)
