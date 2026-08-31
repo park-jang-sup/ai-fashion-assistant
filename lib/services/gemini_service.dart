@@ -112,15 +112,25 @@ class GeminiService {
   // _extractTextFromResponse/_parseJsonObject 등 파싱 코드는 프록시 도입
   // 전과 한 글자도 다르지 않다 — 직접 호출 때의 response.body(String)
   // 자리에 프록시 결과를 문자열로 되돌려주는 것뿐이다.
+  // docs/task_fitting_quality_v1.md 0단계 - category는 requestBody의
+  // 형제 키로만 싣는다. requestBody를 안 건드리므로 evaluateRequestShape
+  // (requestBody만 검사)를 그대로 통과하고 프롬프트·모델 입력은 한
+  // 비트도 안 바뀐다 - 서버 쪽 구조화 로그(start/done)에 단계별 카테고리를
+  // 남기기 위한 계측 전용 필드다.
   static Future<String> _callProxyText({
     required String model,
     required Map<String, dynamic> requestBody,
+    String? category,
   }) async {
     try {
       final result = await _functions
           .httpsCallable('callGeminiText',
               options: HttpsCallableOptions(timeout: const Duration(seconds: 60)))
-          .call({'model': model, 'requestBody': requestBody});
+          .call({
+        'model': model,
+        'requestBody': requestBody,
+        if (category != null) 'category': category,
+      });
       return jsonEncode(result.data);
     } on FirebaseFunctionsException catch (e) {
       throw _mapProxyException(e);
@@ -464,7 +474,8 @@ class GeminiService {
                   requestBody: requestBody,
                 ))
             : await _stepWithRetry(
-                () => _callProxyText(model: _imageModel, requestBody: requestBody));
+                () => _callProxyText(
+                    model: _imageModel, requestBody: requestBody, category: category));
         currentBytes = _extractImageFromResponse(responseBody);
       } catch (e) {
         // 1단계(첫 옷)부터 실패하면 보여줄 게 아무것도 없어 전체 실패로

@@ -314,9 +314,10 @@ export const callGeminiText = onCall(
         `hasApp=${request.app != null}`
     );
 
-    const {model, requestBody} = (request.data ?? {}) as {
+    const {model, requestBody, category} = (request.data ?? {}) as {
       model?: unknown;
       requestBody?: unknown;
+      category?: unknown;
     };
     if (typeof model !== "string" || !ALLOWED_MODELS.includes(model)) {
       throw new HttpsError("invalid-argument", `허용되지 않은 모델: ${String(model)}`);
@@ -324,6 +325,13 @@ export const callGeminiText = onCall(
     if (requestBody === null || typeof requestBody !== "object") {
       throw new HttpsError("invalid-argument", "requestBody가 필요합니다.");
     }
+
+    // docs/task_fitting_quality_v1.md 0단계 - requestBody의 형제 키로만
+    // 싣는 계측 전용 필드. evaluateRequestShape는 requestBody만 검사하므로
+    // 이 필드는 그 검사에 닿지 않는다 - requestBody·model 처리는 위 두 검사
+    // 그대로, 아래는 로그에 남길 문자열 하나를 뽑아두는 것뿐이다.
+    const categoryLabel = typeof category === "string" ? category : undefined;
+    const categorySuffix = categoryLabel !== undefined ? ` category=${categoryLabel}` : "";
 
     const requestBodyJson = JSON.stringify(requestBody);
     // A-2 이미지 경로 페이로드 실측용 - 핸드오프의 "3.5MB 안팎" 추산을
@@ -334,7 +342,7 @@ export const callGeminiText = onCall(
     const requestBytes = Buffer.byteLength(requestBodyJson, "utf8");
     console.log(
       `[callGeminiText] start reqId=${reqId} uid=${request.auth.uid} ` +
-        `model=${model} requestBytes=${requestBytes}`
+        `model=${model} requestBytes=${requestBytes}${categorySuffix}`
     );
 
     // 호출량 상한과 같은 model→kind 파생을 쓴다(payload_limit.ts
@@ -388,7 +396,7 @@ export const callGeminiText = onCall(
       // 알 수 있게 requestBytes/limitBytes/kind를 싣는다.
       console.log(
         `[callGeminiText] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
-          "outcome=rejected reason=payload_limit"
+          `outcome=rejected reason=payload_limit${categorySuffix}`
       );
       throw new HttpsError("invalid-argument", "요청 페이로드가 너무 큽니다.", {
         requestBytes,
@@ -446,7 +454,7 @@ export const callGeminiText = onCall(
           console.log(
             `[callGeminiText] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
               `outcome=success upstreamStatus=${upstream.status} ` +
-              `responseBytes=${Buffer.byteLength(text, "utf8")}`
+              `responseBytes=${Buffer.byteLength(text, "utf8")}${categorySuffix}`
           );
           return parsed;
         } catch (err) {
@@ -525,7 +533,8 @@ export const callGeminiText = onCall(
       }
       console.log(
         `[callGeminiText] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
-          `outcome=success upstreamStatus=${upstream.status} responseBytes=${streamedBytes}`
+          `outcome=success upstreamStatus=${upstream.status} ` +
+          `responseBytes=${streamedBytes}${categorySuffix}`
       );
       // 최종 반환값은 쓰지 않는다 - 클라이언트가 청크를 누적해 직접 파싱한다.
       return {};
@@ -545,7 +554,7 @@ export const callGeminiText = onCall(
         `[callGeminiText] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
           "outcome=error " +
           (upstreamStatus !== undefined ? `upstreamStatus=${upstreamStatus} ` : "") +
-          `code=${code} message=${message}`
+          `code=${code} message=${message}${categorySuffix}`
       );
       throw err;
     }
