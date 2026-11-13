@@ -28,6 +28,15 @@ export const TEXT_MODEL_ROUTES: Readonly<Record<string, ModelRoute>> = {
   [TEXT_FALLBACK_ALIAS]: {provider: "gemini", model: "gemini-3.5-flash"},
 };
 
+// 자기평가 점수를 판정에 써도 되는 모델 — docs/task_agent_grounding_v1.md 부분 A.
+// 클라이언트 OutfitSelfEvaluator.judgeCandidate는 응답 모델이 text-primary 또는
+// text-fallback이면 점수를 신뢰한다. 그 전제는 "두 별칭이 이 목록의 모델로만
+// 풀린다"이고, text_model_routes.test.ts가 이를 검사한다. 이 목록에 모델을
+// 추가하려면 docs/task_text_model_v1.md §3-4의 관문(형식·사람 일치·통과 기준
+// 적합·재현성·속도·본문 품질)을 먼저 통과해야 한다 — 검증 안 된 모델로 경로를
+// 바꾸면 그 테스트가 깨져 배포 전에 드러난다.
+export const TRUSTED_SCORE_MODELS: readonly string[] = ["claude-sonnet-5-5", "gemini-3.5-flash"];
+
 export function resolveModelRoute(requested: string, kind: PayloadKind): ModelRoute {
   if (kind === "image") return {provider: "gemini", model: requested};
   return TEXT_MODEL_ROUTES[requested] ?? {provider: "gemini", model: requested};

@@ -2,6 +2,9 @@
 // docs/task_selfeval_followup_v1.md 2단계 — 폴백(주 모델이 아닌) 모델이
 // 응답한 후보는 점수가 있어도 통과/미달 판정에 쓰지 않고 판정을 유보
 // (verdictWithheld)한다. Firestore/Gemini 없이 결정적으로 검증한다.
+// [2026-11-13 변경 — docs/task_agent_grounding_v1.md 부분 A] 폴백 별칭
+// (text-fallback = gemini-3.5-flash, 프로브 관문 통과) 응답도 이제 신뢰한다.
+// 판정 유보는 주 모델·폴백 어느 쪽도 아닌 모르는 모델일 때만이다.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ai_fashion_assistant/services/gemini_service.dart';
 import 'package:ai_fashion_assistant/services/outfit_self_evaluator.dart';
@@ -45,11 +48,40 @@ void main() {
       expect(r.verdictWithheld, isFalse);
     });
 
-    test('알려진 폴백 모델이 응답하면 점수가 높아도(임계값 이상) 통과로 '
-        '쓰지 않는다 — fail-closed', () {
+    test('[2026-11-13 변경] 폴백 별칭 응답 + 임계값 이상이면 통과, 판정 유보 아님 '
+        '— Claude 장애 동안에도 추천이 만들어진다', () {
       final r = OutfitSelfEvaluator.judgeCandidate(
         score: 85,
         respondingModel: GeminiService.textModelFallback,
+      );
+      expect(r.passed, isTrue);
+      expect(r.verdictWithheld, isFalse);
+    });
+
+    test('[2026-11-13 변경] 폴백 별칭 응답 + 임계값 미만이면 미달(유보 아님) '
+        '— 자기 수리 대상이 된다', () {
+      final r = OutfitSelfEvaluator.judgeCandidate(
+        score: 62,
+        respondingModel: GeminiService.textModelFallback,
+      );
+      expect(r.passed, isFalse);
+      expect(r.verdictWithheld, isFalse);
+    });
+
+    test('[2026-11-13 변경] 폴백 별칭 응답이라도 점수 파싱 실패면 미달, 유보 아님', () {
+      final r = OutfitSelfEvaluator.judgeCandidate(
+        score: null,
+        respondingModel: GeminiService.textModelFallback,
+      );
+      expect(r.passed, isFalse);
+      expect(r.verdictWithheld, isFalse);
+    });
+
+    test('별칭이 아니라 실제 모델명(gemini-3.5-flash)으로 응답 모델이 기록돼도 '
+        '신뢰하지 않는다 — 화이트리스트는 클라이언트가 보낸 별칭 기준', () {
+      final r = OutfitSelfEvaluator.judgeCandidate(
+        score: 90,
+        respondingModel: 'gemini-3.5-flash',
       );
       expect(r.passed, isFalse);
       expect(r.verdictWithheld, isTrue);
@@ -78,7 +110,7 @@ void main() {
       expect(r.verdictWithheld, isTrue);
     });
 
-    test('보정 오프셋을 쓰지 않는다 — 폴백 응답의 점수는 그대로 반환하지 '
+    test('보정 오프셋을 쓰지 않는다 — 신뢰하지 않는 모델 응답의 점수는 그대로 반환하지 '
         '않고(judgeCandidate가 점수를 바꾸지 않음을 간접 확인) 판정만 '
         '유보한다', () {
       // judgeCandidate는 (passed, verdictWithheld) 튜플만 반환하고 점수
@@ -86,9 +118,10 @@ void main() {
       // 원점수를 그대로 쓰는지는 run() 통합 동작이라 여기서 재확인하지
       // 않는다(이 테스트는 judgeCandidate 자체가 점수를 변형하는 필드를
       // 반환하지 않는다는 시그니처 계약만 고정한다).
+      // [2026-11-13] 폴백 별칭은 이제 신뢰하므로 모르는 모델로 바꿨다.
       final r = OutfitSelfEvaluator.judgeCandidate(
         score: 62,
-        respondingModel: GeminiService.textModelFallback,
+        respondingModel: 'gemini-9-hypothetical-future-model',
       );
       expect(r.verdictWithheld, isTrue);
       // (passed, verdictWithheld) 둘뿐이라는 반환 형태 자체가 "점수를

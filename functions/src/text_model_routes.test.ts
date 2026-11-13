@@ -6,6 +6,7 @@ import {
   TEXT_FALLBACK_ALIAS,
   TEXT_MODEL_ROUTES,
   TEXT_PRIMARY_ALIAS,
+  TRUSTED_SCORE_MODELS,
 } from "./text_model_routes";
 
 function run(name: string, fn: () => void): void {
@@ -57,6 +58,13 @@ run("폴백은 Gemini다 — Claude 주 모델이 실패하면 Gemini로 끝낸�
 run("별칭은 text로 분류된다 — 페이로드·호출량 검사가 지금 텍스트 요청과 똑같이 적용", () => {
   assert.strictEqual(kindForModel(TEXT_PRIMARY_ALIAS), "text");
   assert.strictEqual(kindForModel(TEXT_FALLBACK_ALIAS), "text");
+});
+
+run("두 별칭의 경로가 모두 '점수를 믿을 수 있는 모델' 목록 안이다 — 클라이언트 자기평가가 두 별칭의 점수를 판정에 쓰는 전제", () => {
+  for (const alias of [TEXT_PRIMARY_ALIAS, TEXT_FALLBACK_ALIAS]) {
+    assert.ok(TRUSTED_SCORE_MODELS.includes(TEXT_MODEL_ROUTES[alias].model),
+      `${alias} → ${TEXT_MODEL_ROUTES[alias].model}이 TRUSTED_SCORE_MODELS에 없다(§3-4 관문 통과 후 추가)`);
+  }
 });
 
 run("gemini-3.8-flash는 표에 없다(2단계 결정 3 — 쓰지 않음)", () => {

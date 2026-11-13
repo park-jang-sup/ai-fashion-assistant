@@ -461,7 +461,7 @@ class AgentPlanner {
           // 로그로 발생 빈도를 셀 때 판정이 내려진 적 없는 건과 실제 미달이
           // 섞인다), 통과·미달 어느 쪽으로도 안 읽히는 라벨을 쓴다.
           final scoreText = score != null ? '$score점' : '점수 파싱 실패';
-          message = '후보 ${index + 1} 평가: $scoreText — 판정 불가(대체 모델 응답, 자기 수리 미발동)';
+          message = '후보 ${index + 1} 평가: $scoreText — 판정 불가(점수를 믿을 수 없는 모델 응답, 자기 수리 미발동)';
         } else {
           final scoreText = score != null ? '$score점' : '점수 파싱 실패';
           final verdict = passed
@@ -1044,7 +1044,7 @@ class AgentPlanner {
             // agent_planner.dart의 다른 onStep 콜백과 같은 이유로 같은 라벨을
             // 쓴다 — "기준 미달"로 적으면 실제 미달과 구분이 안 된다.
             final scoreText = score != null ? '$score점' : '점수 파싱 실패';
-            message = '후보 ${index + 1} 평가: $scoreText — 판정 불가(대체 모델 응답, 자기 수리 미발동)';
+            message = '후보 ${index + 1} 평가: $scoreText — 판정 불가(점수를 믿을 수 없는 모델 응답, 자기 수리 미발동)';
           } else {
             final scoreText = score != null ? '$score점' : '점수 파싱 실패';
             final verdict = passed

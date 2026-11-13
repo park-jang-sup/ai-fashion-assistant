@@ -55,6 +55,9 @@ class SelfEvalOutcome {
 // 경우(docs/task_selfeval_followup_v1.md 2단계). 이때 passed는 항상
 // false이지만, 이 값이 "실제로 미달"이 아니라 "판정을 유보했다"는 뜻임을
 // 호출부가 구분할 수 있어야 한다 — 그래서 별도 필드로 둔다.
+// [2026-11-13 변경] 폴백 별칭(text-fallback) 응답은 이제 신뢰한다
+// (judgeCandidate 주석). verdictWithheld는 주 모델·폴백 어느 쪽도 아닌
+// 모르는 모델이 응답했을 때만 true다.
 typedef SelfEvalStep = void Function({
   required int index,
   required int total,
@@ -136,11 +139,24 @@ class OutfitSelfEvaluator {
   // 공개(밑줄 없음) — 단위 테스트가 다른 파일(test/)에서 직접 호출해야
   // 하는데 Dart의 비공개는 파일 단위라 밑줄이 붙으면 테스트가 접근할
   // 수 없다.
+  //
+  // [2026-11-13 변경 — docs/task_agent_grounding_v1.md 부분 A] 화이트리스트에
+  // 폴백 별칭(GeminiService.textModelFallback)을 더했다. 위 서술의 "폴백 점수를
+  // 믿지 않는다"는 폴백이 검증되지 않은 Flash-Lite였을 때의 규칙이다. 지금
+  // 클라이언트는 별칭(text-primary/text-fallback)을 보내고, 서버 경로 표가
+  // text-fallback을 gemini-3.5-flash로 푸는데 이 모델은 프로브
+  // (docs/task_text_model_v1.md §3)에서 사람 일치 10/14로 관문을 통과했다.
+  // 그대로 두면 Claude 장애 동안 모든 후보가 "판정 불가"가 되어 새 추천이
+  // 만들어지지 않는다(2026-11-13 폴백 리허설 실측). 두 별칭이 "점수를 믿을 수
+  // 있는 모델"로만 풀린다는 전제는 서버 text_model_routes.ts의
+  // TRUSTED_SCORE_MODELS와 그 단위 테스트가 고정한다. 화이트리스트 방식 자체
+  // (모르는 모델은 믿지 않음)와 보정 오프셋 금지는 그대로다.
   static ({bool passed, bool verdictWithheld}) judgeCandidate({
     required int? score,
     required String? respondingModel,
   }) {
-    if (respondingModel != GeminiService.primaryTextModel) {
+    if (respondingModel != GeminiService.primaryTextModel &&
+        respondingModel != GeminiService.textModelFallback) {
       return (passed: false, verdictWithheld: true);
     }
     return (passed: score != null && score >= threshold, verdictWithheld: false);
