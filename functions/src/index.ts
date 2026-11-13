@@ -1,5 +1,5 @@
 import {randomUUID} from "node:crypto";
-import {onCall, HttpsError} from "firebase-functions/v2/https";
+import {onCall, HttpsError, CallableResponse} from "firebase-functions/v2/https";
 import {onSchedule} from "firebase-functions/v2/scheduler";
 import {onObjectFinalized} from "firebase-functions/v2/storage";
 import {defineSecret} from "firebase-functions/params";
@@ -23,6 +23,14 @@ import {buildFittingCacheKey} from "./fitting_cache_key";
 import {verifyFittingOwnership} from "./fitting_ownership_policy";
 import {evaluateRequestShape, REQUEST_SHAPE_CONFIG, RequestShapeDecision} from "./request_shape";
 import {stripThoughtSignatures} from "./strip_thought_signature";
+import {ModelRoute, resolveModelRoute, TEXT_FALLBACK_ALIAS, TEXT_PRIMARY_ALIAS} from "./text_model_routes";
+import {
+  CLAUDE_API_URL,
+  CLAUDE_API_VERSION,
+  createClaudeStreamTranslator,
+  fromClaudeResponse,
+  toClaudeRequest,
+} from "./claude_adapter";
 
 // firebase-admin 14.x부터 admin.firestore()/admin.messaging() 같은
 // 네임스페이스 호환 API가 최상위 export에서 빠졌다 - getFirestore()/
@@ -30,6 +38,9 @@ import {stripThoughtSignatures} from "./strip_thought_signature";
 initializeApp();
 
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
+// docs/task_text_model_v1.md §4-B - text-primary가 Claude로 풀릴 때만 쓴다.
+// 등록은 사용자가 `firebase functions:secrets:set ANTHROPIC_API_KEY`로 한다.
+const anthropicApiKey = defineSecret("ANTHROPIC_API_KEY");
 
 // notification_service.dart(로컬 알림)와 반드시 같은 채널을 써야 한다 -
 // B단계 함정 6. 다르면 사용자가 알림 설정을 두 번 관리해야 한다.
@@ -57,6 +68,11 @@ const ALLOWED_MODELS = [
   // payload_limit.ts의 IMAGE_MODELS에도 같이 넣어야 한다(빠뜨리면 text로
   // 분류돼 첫 호출부터 조용히 거부된다 - v1 5단계 경고).
   "gemini-nano-banana-2.1",
+  // docs/task_text_model_v1.md §4-0-a - 텍스트 모델 별칭. 실제 모델은 서버의
+  // 경로 표(text_model_routes.ts)가 정한다 - 전환은 표 한 줄 + 함수 배포로
+  // 끝나고 APK는 건드리지 않는다. 위의 실제 모델명은 지우지 않는다(배포된 APK).
+  TEXT_PRIMARY_ALIAS,
+  TEXT_FALLBACK_ALIAS,
 ];
 
 // generateFittingImage가 쓰는 이미지 모델 - 엔드포인트 URL에 하드코딩돼
@@ -156,7 +172,8 @@ async function fetchUpstream(
   endpoint: string,
   body: string,
   reqId: string,
-  startedAt: number
+  startedAt: number,
+  extraHeaders: Record<string, string> = {}
 ): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => {
@@ -184,6 +201,7 @@ async function fetchUpstream(
         // §2-9 참고). 유해하지는 않고 응답이 긴 경로(주간 플랜 등)에서는
         // 값을 할 수 있어 제거하지 않고 유지한다.
         "Accept-Encoding": "identity",
+        ...extraHeaders,
       },
       body,
       signal: controller.signal,
@@ -209,6 +227,121 @@ async function fetchUpstream(
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ── Claude 중계(docs/task_text_model_v1.md §4-B) ─────────────────────
+// 경로 표가 text-primary를 Claude로 풀면 callGeminiText가 여기로 온다. 요청은
+// claude_adapter.ts가 Gemini 형식 → Messages 형식으로 바꾸고, 응답은 다시
+// Gemini 형식으로 돌려준다 — 클라이언트 파싱 코드는 그대로다.
+//
+// 오류 규칙(2단계 결정 4): Claude 쪽 2xx가 아닌 응답(크레딧 소진·키 오류 같은
+// 400대 포함), 시한 초과, 네트워크 실패, 거절(stop_reason refusal), 빈 본문,
+// 변환 실패를 **전부 upstreamStatus 503으로** 돌려준다. 클라이언트
+// _mapProxyException이 이를 GeminiApiException(503)으로 재구성해 isRetryable
+// → withTextModelFallback이 text-fallback(Gemini)으로 넘어간다. 원래 상태
+// 코드와 메시지는 서버 로그에만 남긴다. Anthropic 서버 측 fallbacks는 쓰지
+// 않는다(같은 결정).
+function claudeUnavailable(reqId: string, reason: string, originalStatus?: number): HttpsError {
+  console.log(
+    `[callGeminiText] claude-error reqId=${reqId}` +
+      (originalStatus !== undefined ? ` originalStatus=${originalStatus}` : "") + ` reason=${reason}`
+  );
+  const message = `Claude 호출 실패: ${reason}`;
+  return new HttpsError("internal", message, {upstreamStatus: 503, upstreamMessage: message, provider: "claude"});
+}
+
+async function relayClaude(args: {
+  route: ModelRoute;
+  requestBody: unknown;
+  stream: boolean;
+  response: CallableResponse<unknown> | undefined;
+  reqId: string;
+  startedAt: number;
+  logSuffix: string;
+}): Promise<unknown> {
+  const {route, requestBody, stream, response, reqId, startedAt, logSuffix} = args;
+  let claudeBody: Record<string, unknown>;
+  try {
+    claudeBody = toClaudeRequest(requestBody, route.model, stream);
+  } catch (err) {
+    throw claudeUnavailable(reqId, `요청 변환 실패: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  let upstream: Response;
+  try {
+    upstream = await fetchUpstream(CLAUDE_API_URL, JSON.stringify(claudeBody), reqId, startedAt, {
+      "x-api-key": anthropicApiKey.value(),
+      "anthropic-version": CLAUDE_API_VERSION,
+    });
+  } catch (err) {
+    // fetchUpstream은 시한 초과를 deadline-exceeded로 던진다 — Claude 경로에선
+    // 시한 초과도 503으로 통일한다(폴백을 확실히 타게).
+    throw claudeUnavailable(reqId, `요청 실패: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  if (!upstream.ok || (stream && !upstream.body)) {
+    const text = await upstream.text().catch(() => "");
+    throw claudeUnavailable(reqId, extractUpstreamErrorMessage(text), upstream.status);
+  }
+
+  if (!stream) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await upstream.text());
+    } catch (err) {
+      throw claudeUnavailable(reqId, `응답 읽기 실패: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    const converted = fromClaudeResponse(parsed, route.model);
+    if (!converted.ok) throw claudeUnavailable(reqId, converted.reason, upstream.status);
+    console.log(
+      `[callGeminiText] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
+        `outcome=success upstreamStatus=${upstream.status}${logSuffix}`
+    );
+    return converted.body;
+  }
+
+  // 스트리밍: Anthropic SSE의 data: 줄마다 이벤트를 변환해 text_delta를 Gemini
+  // 형식 청크로 보낸다. 끝에 거절·빈 본문·error 이벤트면 503 — 클라이언트는
+  // 스트림 실패 시 [STREAM-FALLBACK]으로 비스트리밍 + 폴백 경로를 탄다.
+  const translator = createClaudeStreamTranslator();
+  const reader = (upstream.body as ReadableStream<Uint8Array>).getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let streamedBytes = 0;
+  for (;;) {
+    let done: boolean;
+    let value: Uint8Array | undefined;
+    try {
+      ({done, value} = await reader.read());
+    } catch (err) {
+      throw claudeUnavailable(reqId, `스트리밍 중 연결 끊김: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    if (done) break;
+    streamedBytes += value?.byteLength ?? 0;
+    buffer += decoder.decode(value, {stream: true});
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.startsWith("data:")) continue;
+      const jsonStr = line.slice(5).trim();
+      if (!jsonStr) continue;
+      let event: unknown;
+      try {
+        event = JSON.parse(jsonStr);
+      } catch {
+        throw claudeUnavailable(reqId, "SSE 이벤트가 유효한 JSON이 아님");
+      }
+      const chunk = translator.push(event);
+      if (chunk) response?.sendChunk(chunk);
+    }
+  }
+  const result = translator.finish();
+  if (!result.ok) throw claudeUnavailable(reqId, result.reason, upstream.status);
+  console.log(
+    `[callGeminiText] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
+      `outcome=success upstreamStatus=${upstream.status} responseBytes=${streamedBytes}${logSuffix}`
+  );
+  return {};
 }
 
 // 프록시 호출량 상한(논문 5.13.5/7.1 "프록시의 호출량 무제한") — 값은
@@ -285,6 +418,13 @@ function clientPrepMsSuffix(value: unknown): string {
 
 // 텍스트 계열 Gemini 호출을 그대로 중계하는 단순 프록시. 클라이언트가 만든
 // requestBody를 가공 없이 그대로 넘기고, 응답도 원본 JSON을 그대로 돌려준다.
+// [예외 2026-11-13, docs/task_text_model_v1.md §4-0·§4-B] 모델명은 이제 경로
+// 표(text_model_routes.ts)로 푼다 — 별칭 text-primary는 Claude로 가서
+// claude_adapter.ts가 요청·응답을 Gemini 형식과 Messages 형식 사이에서
+// 변환한다(무가공 중계가 아니다). Claude 쪽 실패는 전부 503으로 통일해
+// 클라이언트 폴백(text-fallback = Gemini)을 탄다(relayClaude 주석). Gemini로
+// 풀리는 요청(text-fallback, 배포된 APK의 실제 모델명, 이미지 모델)은 지금처럼
+// 그대로 중계한다.
 // [예외 2026-11-13, docs/task_fitting_quality_v2.md §7 [1]] 이미지 모델
 // (kindForModel === "image") 비스트리밍 응답만은 thoughtSignature 키와
 // thought: true part를 떼고 돌려준다(strip_thought_signature.ts). 프로브
@@ -312,7 +452,7 @@ function clientPrepMsSuffix(value: unknown): string {
 // 상한"이 아니라 "비정상 사용(버그·남용)의 천장"이다. 실사용자가 붙으면
 // 반드시 재산정해야 한다.
 export const callGeminiText = onCall(
-  {secrets: [geminiApiKey], region: "asia-northeast3", timeoutSeconds: 320, maxInstances: 10},
+  {secrets: [geminiApiKey, anthropicApiKey], region: "asia-northeast3", timeoutSeconds: 320, maxInstances: 10},
   async (request, response) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
@@ -372,14 +512,18 @@ export const callGeminiText = onCall(
     // 그대로 재사용한다 - 대용량 페이로드에서 JSON.stringify를 두 번
     // 하는 비용을 피한다.
     const requestBytes = Buffer.byteLength(requestBodyJson, "utf8");
-    console.log(
-      `[callGeminiText] start reqId=${reqId} uid=${request.auth.uid} ` +
-        `model=${model} requestBytes=${requestBytes}${categorySuffix}${prepSuffix}`
-    );
-
     // 호출량 상한과 같은 model→kind 파생을 쓴다(payload_limit.ts
     // kindForModel - 단일 출처, 이전엔 여기 인라인 삼항연산자였다).
     const kind = kindForModel(model);
+    // §4-0-a - 요청 모델명(별칭 또는 실제 이름)을 실제 {provider, model}로
+    // 푼다. 아래 검사(요청 형태·페이로드·호출량)는 전부 요청 모델명·kind
+    // 기준이라 별칭 요청에도 지금과 똑같이 적용되고, 분기는 그 뒤에서만 한다.
+    const route = resolveModelRoute(model, kind);
+    const routeLabel = `${route.provider}:${route.model}`;
+    console.log(
+      `[callGeminiText] start reqId=${reqId} uid=${request.auth.uid} ` +
+        `model=${model} route=${routeLabel} requestBytes=${requestBytes}${categorySuffix}${prepSuffix}`
+    );
 
     // 요청 본문 스키마 계측(S3-b) - 페이로드 크기 검사보다 앞에 둔다.
     // 형식이 틀린 요청이 아래 checkAndRecordRateLimit에 도달해 정상
@@ -448,10 +592,17 @@ export const callGeminiText = onCall(
       // fetchUpstream은 아예 호출되지 않는다.
       await checkAndRecordRateLimit(request.auth.uid, kind);
 
+      if (route.provider === "claude") {
+        return await relayClaude({
+          route, requestBody, stream: request.acceptsStreaming, response,
+          reqId, startedAt, logSuffix: ` route=${routeLabel}${categorySuffix}`,
+        });
+      }
+
       const key = geminiApiKey.value();
       const endpoint = request.acceptsStreaming ?
-        `${GEMINI_BASE_URL}/models/${model}:streamGenerateContent?alt=sse&key=${key}` :
-        `${GEMINI_BASE_URL}/models/${model}:generateContent?key=${key}`;
+        `${GEMINI_BASE_URL}/models/${route.model}:streamGenerateContent?alt=sse&key=${key}` :
+        `${GEMINI_BASE_URL}/models/${route.model}:generateContent?key=${key}`;
 
       const upstream = await fetchUpstream(endpoint, requestBodyJson, reqId, startedAt);
 
@@ -486,6 +637,11 @@ export const callGeminiText = onCall(
           // 이미지 응답만 서명을 뗀다(위 함수 주석의 예외). responseBytes는
           // 업스트림 원본 크기 그대로, 돌려준 크기는 returnedBytes로 따로 남긴다.
           const returned = kind === "image" ? stripThoughtSignatures(parsed) : parsed;
+          // §4-0-a - 별칭으로 들어온 요청도 실제로 쓴 모델명을 응답에서 알 수
+          // 있게 한다(Gemini는 보통 modelVersion을 이미 싣는다 - 없을 때만 채움).
+          if (returned !== null && typeof returned === "object" && !("modelVersion" in returned)) {
+            (returned as Record<string, unknown>).modelVersion = route.model;
+          }
           const returnedSuffix = kind === "image" ?
             ` returnedBytes=${Buffer.byteLength(JSON.stringify(returned), "utf8")}` : "";
           console.log(

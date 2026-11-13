@@ -776,8 +776,53 @@ ${body}</body></html>`;
   writeFileSync(join(OUTPUT, "index.html"), html);
 }
 
+// ── fixtures: 서버 어댑터(functions/src/claude_adapter.ts) 대조용 ─────────
+// docs/task_text_model_v1.md "2단계 결정" 보충 a). 프로브가 C에 보낸 요청을
+// 같은 함수(claudeBody)로 다시 만들어, 앱의 Gemini 형식 요청과 짝지어 남긴다.
+// effort는 프로브가 실제로 잰 설정 — T2·T3은 C(low), T1·T4는 C@medium.
+// 이미지 base64는 앞 64자만 남긴다(양쪽에 같은 변환 — 구조 대조에는 충분).
+// 응답 픽스처는 results.json에 남은 C의 실제 본문·토큰·stop_reason으로
+// Messages API 응답 모양을 다시 만든 것이다(원본 JSON은 저장하지 않았다).
+function runFixtures() {
+  const schema = JSON.parse(readFileSync(join(OUTPUT, "schema.json"), "utf8"));
+  const cfg = {...schema.claude.config};
+  const model = CANDIDATES.C.model;
+  const trim = (t) => ({...t, parts: t.parts.map((p) => (p.inlineData ?
+    {inlineData: {mimeType: p.inlineData.mimeType, data: p.inlineData.data.slice(0, 64)}} : p))});
+  const tasks = buildTasks(loadPrompts());
+  const pickTask = (name) => trim(tasks.find((t) => t.task === name));
+  const effortOf = {T1: "medium", T2: "low", T3: "low", T4: "medium"};
+  const requests = ["T1", "T2", "T3", "T4"].map((name) => {
+    const t = pickTask(name);
+    return {task: name, effort: effortOf[name], stream: !!t.stream,
+      geminiRequest: {contents: [{parts: t.parts}], generationConfig: t.generationConfig},
+      claudeRequest: claudeBody(model, t, {...cfg, effort: effortOf[name]})};
+  });
+  const rows = loadResults().rows ?? [];
+  const row = (cand, task) => rows.find((x) => x.cand === cand && x.task === task && x.status === 200 && x.text);
+  const asMessage = (r) => ({id: "msg_fixture", type: "message", role: "assistant", model,
+    content: [{type: "text", text: r.text}], stop_reason: r.finish ?? "end_turn", usage: r.usage ?? {}});
+  const responses = {T1: asMessage(row("C@medium", "T1") ?? row("C", "T1")), T2: asMessage(row("C", "T2")), T3: asMessage(row("C", "T3"))};
+  const t4 = row("C@medium", "T4") ?? row("C", "T4");
+  const pieces = t4.text.match(/[\s\S]{1,40}/g) ?? [];
+  const streamEvents = [
+    {type: "message_start", message: {id: "msg_fixture", type: "message", role: "assistant", model, content: [], usage: {input_tokens: t4.usage?.input_tokens ?? 0}}},
+    {type: "content_block_start", index: 0, content_block: {type: "text", text: ""}},
+    {type: "ping"},
+    ...pieces.map((text) => ({type: "content_block_delta", index: 0, delta: {type: "text_delta", text}})),
+    {type: "content_block_stop", index: 0},
+    {type: "message_delta", delta: {stop_reason: t4.finish ?? "end_turn"}, usage: {output_tokens: t4.usage?.output_tokens ?? 0}},
+    {type: "message_stop"},
+  ];
+  const out = {source: "tools/text_probe/probe.mjs fixtures", model, version: schema.claude.version, requests,
+    responses, stream: {text: t4.text, events: streamEvents}};
+  writeFileSync(join(OUTPUT, "claude_fixtures.json"), JSON.stringify(out, null, 2));
+  log(`→ ${join(OUTPUT, "claude_fixtures.json")}`);
+}
+
 // ── main ──────────────────────────────────────────────────────────
 const [cmd = "", ...args] = process.argv.slice(2);
+if (cmd === "fixtures") { runFixtures(); process.exit(0); }
 if (cmd === "report") { writeReports(); log(`→ ${join(OUTPUT, "results.md")}\n→ ${join(OUTPUT, "index.html")}`); process.exit(0); }
 if (!["schema", "run"].includes(cmd)) {
   console.error("사용법: node probe.mjs schema | run [--candidates G0,G1,C] [--tasks T1,T2,T3,T4] | report");

@@ -64,7 +64,12 @@ class GeminiService {
   // 모델명을 한 곳에 모아서 나중에 교체하기 쉽게 관리한다.
   // gemini-3-flash-preview로 시도해봤으나 응답이 중간에 잘리는 등
   // preview 특유의 불안정함이 반복 확인돼 안정적인 gemini-3.5-flash로 되돌림.
-  static const _textModel = 'gemini-3.5-flash';
+  // [별칭 전환 2026-11-13, docs/task_text_model_v1.md §4-0-a] 실제 모델명 대신
+  // 별칭을 보낸다 — 실제 모델은 서버 경로 표(functions/src/text_model_routes.ts)가
+  // 정한다(현재 text-primary = claude-sonnet-5-5, text-fallback = gemini-3.5-flash).
+  // 모델 전환은 서버 표 한 줄 + 함수 배포로 끝나고 APK는 다시 배포하지 않는다.
+  // 서버 ALLOWED_MODELS의 별칭 항목과 같은 커밋에서 바꾼다.
+  static const _textModel = 'text-primary';
 
   // _textModel의 공개 별칭 — 자기평가 루프(OutfitSelfEvaluator, 다른 파일)가
   // "이 응답이 주 모델에서 왔는가"를 판정하려면 이 값이 필요한데 _textModel은
@@ -78,7 +83,10 @@ class GeminiService {
   // gemini-2.5-flash가 "no longer available to new users" 오류로 막혀
   // gemini-3.1-flash-lite로 교체(ListModels로 모델명 확인 + generateContent
   // 실호출 성공 검증 완료 — 2026-07-12). Lite라 응답도 더 빠르다.
-  static const textModelFallback = 'gemini-3.1-flash-lite';
+  // [별칭 전환 2026-11-13] 위 _textModel과 같은 이유로 별칭을 보낸다. 서버가
+  // 주 모델(Claude)과 다른 제공자(Gemini)로 풀어, 주 모델이 Claude 쪽 오류·
+  // 거절로 503을 받으면 여기로 넘어온다.
+  static const textModelFallback = 'text-fallback';
 
   // extractAttributes/extractSizeFromChart/analyzeOutfitFromAttributes(Stream)
   // 등 텍스트 모델을 쓰는 모든 호출에 공통 적용하는 재시도 정책 — 기본
@@ -643,7 +651,14 @@ class GeminiService {
         await _callProxyText(model: model ?? _textModel, requestBody: requestBody);
 
     final text = _extractTextFromResponse(responseBody);
-    return ClothingAttributes.fromJson(_parseJsonObject(text));
+    final attributes = ClothingAttributes.fromJson(_parseJsonObject(text));
+    // §4-0-b - 값에 일본어(가나)·한자가 섞이면 저장하지 않고 FormatException으로
+    // 처리한다 — withTextModelFallback이 폴백 모델로 다시 추출한다(일본어 값
+    // "레ギュラー" 24건이 저장됐던 원인 차단).
+    if (attributesContainJapanese(attributes)) {
+      throw FormatException('속성 값에 일본어·한자가 섞여 있습니다: $text');
+    }
+    return attributes;
   }
 
   // ── 사이즈표 사진 한 장 → 특정 사이즈 행의 치수 추출 ──
@@ -1068,6 +1083,24 @@ class GeminiService {
       {'text': fittingRulesText},
     ];
   }
+
+  // 속성 값 한국어 검증(docs/task_text_model_v1.md §4-0-b) — 히라가나·가타카나
+  // (반각 포함)·CJK 한자가 있으면 true. 라틴 문자·숫자는 허용한다(V넥, A라인).
+  static final _japaneseOrHanja =
+      RegExp('[぀-ヿㇰ-ㇿｦ-ﾟ㐀-䶿一-鿿]');
+
+  @visibleForTesting
+  static bool containsJapaneseOrHanja(String value) => _japaneseOrHanja.hasMatch(value);
+
+  @visibleForTesting
+  static bool attributesContainJapanese(ClothingAttributes a) => [
+        a.color,
+        a.style,
+        a.pattern,
+        a.formality,
+        a.fit,
+        ...a.tags,
+      ].any(containsJapaneseOrHanja);
 
   // 주간 플랜 프롬프트 — planWeeklyOutfits에서 문자열 그대로 꺼낸 순수 함수
   // (tools/text_probe 덤프용, 동작 변경 없음).

@@ -261,3 +261,45 @@ Claude가 인증·형식 문제로 한 번도 성공하지 못하면 멈추고 �
 - **사용자 판단: C가 G0보다 좋다**(사용자가 `tools/text_probe/output/index.html`을 직접 읽고 판단). 관문 6 통과.
 - 판단 시점의 비교 페이지에는 T4 본문 3개(전신 사진 + 조합, C는 effort low)와 T1 본문 쌍 3개(`p001`·`p007`·`p013`, C(low)와 C@medium 모두)가 G0·G1과 나란히 있었다.
 - 이로써 C(low)는 관문 2만 미달(8.5), C@medium은 T1 기준 관문 2~5 통과 + 관문 6 통과다. 채택 후보·effort·폴백은 사용자가 정한다.
+
+## 2단계 결정 (2026-11-13, 사용자)
+
+1. **채택: C = `claude-sonnet-5-5`.** `thinking: {"type": "between_tools"}`, 버전 헤더 `2023-06-01`.
+2. **effort**: 요청의 `generationConfig.thinkingConfig.thinkingBudget`이 0이면 `low`, 아니면 `medium`. JSON 호출(속성 추출·사이즈표·주간 플랜)은 low, 분석·자기평가·스트리밍 분석은 medium이 된다.
+3. **경로 표**: `text-primary → claude:claude-sonnet-5-5`, `text-fallback → gemini:gemini-3.5-flash`. 기존 모델명(`gemini-3.5-flash`, `gemini-3.1-flash-lite`)은 자기 자신으로 푼다. `gemini-3.8-flash`는 쓰지 않는다.
+4. **거절**: Anthropic 서버 측 `fallbacks`는 넣지 않는다. 거절(`stop_reason`이 거절이거나 text 블록이 비어 있음)은 다른 Claude 오류와 똑같이 503으로 돌려 앱의 폴백을 타게 한다.
+5. **채택 근거**: 사람 일치는 G0과 구별되지 않는 수준이고(C(low) 8.5·C@medium 9.5 vs G0 10, 14쌍), 속도(T1 중앙값 7.2초 vs 11.9초, T4 첫 글자 0.9초 vs 9.0초)와 본문 품질(관문 6, 사용자 판단)에서 앞선다. low→medium 일치 상승(8.5→9.5)은 변동일 가능성이 크다 — 뒤집힌 6쌍 중 5쌍의 좌우 평균 차가 0~2점이었고, `between_tools`에서는 effort를 올려도 출력 토큰·소요 시간이 거의 같았다(791→794토큰, 7.2→7.2초).
+
+보충:
+- a) 어댑터가 만드는 Claude 요청은 프로브가 C에 보낸 요청과 같아야 한다(모델, thinking, effort, max_tokens 정책, 이미지 블록 형식). 프로브 요청을 픽스처로 삼아 어댑터 출력과 대조하는 테스트를 둔다.
+- b) T4(스트리밍)는 medium으로 잰 적이 없다 — 사용자가 `run --candidates C --tasks T4 --claude-effort medium`을 돌리고, 첫 글자 중앙값이 G0+2초(11.0초) 이내인지 판정해 이 기록에 적는다.
+- c) `ANTHROPIC_API_KEY` secret 등록은 사용자가 자기 터미널에서 한다. 배포 직전에 알린다.
+
+### 2026-11-13 T4 스트리밍 — effort medium (22:52, 보충 b)
+
+`run --candidates C --tasks T4 --claude-effort medium` — 3/3 HTTP 200, 재시도 0, stop_reason 전부 `end_turn`.
+
+| 항목 | G0 | C(low) | C@medium |
+|---|---|---|---|
+| 첫 글자(회차별) | 9.0 / 8.6 / 12.0초 | 0.9 / 1.1 / 0.7초 | 1.1 / 1.2 / 1.4초 |
+| **첫 글자 중앙값**(기준 G0+2 = 11.0초 이내) | 9.0초 | 0.9초 통과 | **1.2초 통과** |
+| 전체 중앙값 | 9.5초 | 2.7초 | 3.1초 |
+| 본문 길이(자) | 143 / 146 / 137 | 154 / 185 / 236 | 169 / 201 / 199 |
+
+판정: 관문 5의 T4 부분 **통과**. 채택 설정(분석·스트리밍 분석은 effort medium)으로 T1·T4 모두 관문 5를 넘는다.
+
+### 2026-11-13 2단계 적용 (§4-0·§4-B, 배포 전)
+
+- **서버**
+  - `functions/src/text_model_routes.ts`: 경로 표 `text-primary → claude:claude-sonnet-5-5`, `text-fallback → gemini:gemini-3.5-flash`. 표에 없는 이름(배포된 APK의 `gemini-3.5-flash`·`gemini-3.1-flash-lite`)은 자기 자신(gemini). kind가 image인 요청은 무조건 gemini 자기 자신 — Claude로 가지 않는다. 테스트 9건(주 모델·폴백 제공자 상이, 별칭은 text kind, 3.8-flash 미사용 포함).
+  - `ALLOWED_MODELS`에 별칭 2개 추가, 기존 모델명은 유지. 요청 형태·페이로드·호출량 검사는 요청 모델명·kind 기준으로 지금과 똑같이 돈 뒤에 경로로 분기한다. start 로그에 `model=<요청> route=<provider:model>`, Gemini 응답에 `modelVersion`이 없으면 실제 모델명을 채운다.
+  - `functions/src/claude_adapter.ts`(순수 함수): parts → text·base64 image 블록(순서 유지), systemInstruction → system, 샘플링 값 버림, `thinking: between_tools`, effort는 `thinkingBudget: 0`이면 low 아니면 medium. **max_tokens 정책**(프로브 그대로): Gemini `maxOutputTokens`가 800 이하면 그 값(속성 추출·사이즈표 800 — 프로브 T2에서 잘림 없음), 그 외 `max(maxOutputTokens, 4000)`(분석 3000·주간 플랜 2000 → 4000). 응답은 text 블록만 이어 `candidates[0].content.parts[0].text`, `finishReason`·`usageMetadata`·`modelVersion` 채움. 스트리밍은 text_delta마다 Gemini 형식 청크.
+  - 오류: Claude 2xx 아님(400대 포함)·시한 초과·네트워크·거절(`refusal`)·빈 본문·변환 실패·스트림 error 이벤트를 **전부 `upstreamStatus: 503`**으로 돌려준다(`claude-error` 로그에 원래 상태·사유). 클라이언트 `_mapProxyException` → `GeminiApiException(503)` → 폴백.
+  - `ANTHROPIC_API_KEY`를 `callGeminiText`의 secrets에 추가(사용자 등록 완료, versions/1). "무가공 중계" 주석을 새 사실로 고쳤다.
+  - 테스트: `claude_adapter.test.ts` 21건 — 요청 4건은 `tools/text_probe` 픽스처(`probe.mjs fixtures`, 프로브가 C에 보낸 요청과 같은 함수로 생성, T1·T4 medium·T2·T3 low)와 `deepStrictEqual`로 대조. 응답 픽스처는 프로브 결과에 남은 C의 실제 본문·토큰·stop_reason으로 다시 만든 Messages 응답 모양(원본 JSON은 프로브가 저장하지 않았다).
+- **클라이언트**
+  - `_textModel = 'text-primary'`, `textModelFallback = 'text-fallback'`.
+  - 속성 추출 후 값(color·style·pattern·formality·fit·tags)에 가나·한자가 있으면 `FormatException`(기존 폴백 경로). 라틴 문자·숫자 허용. 테스트 5건.
+- **`candidateModels` 영향(보고)**: 저장값이 `text-primary`/`text-fallback`으로 바뀐다. 읽는 곳은 `RecommendationEntry`(직렬화만), `agent_planner.dart`(쓰기), `integration_test/self_eval_*_probe.dart`(출력만)뿐이고 화면·`tools/` 보고 도구에는 없다. 판정 로직(`judgeCandidate`)은 응답 모델을 `GeminiService.primaryTextModel`과 비교하는데 둘 다 별칭이라 그대로 동작한다. 과거 문서의 실제 모델명과 새 별칭이 섞이지만 이를 해석하는 코드는 없다 — 고친 것 없음.
+- **개인정보·AI 처리 안내(위치만, 문구 안 고침)**: 사용자 사진(전신·옷)이 이제 Anthropic으로도 전송된다. 제공자를 적어야 할 수 있는 곳 — `lib/screens/login_screen.dart:142`(이용약관·개인정보처리방침 동의 문구), `lib/screens/settings_screen.dart:619`(개인정보처리방침 행 — 현재 "준비 중"), `lib/screens/fitting_room_screen.dart:1302`(분석 카드 제목 "Gemini Fashion Advisor" — 분석은 이제 Claude). 앱 안에 제공자를 밝히는 기존 문구는 없다.
+- **검증**: `npx tsc --noEmit` 통과, `npm test` 154건 PASS(새로 30건), `flutter analyze` 0건, `flutter test` 242건 통과(덤프 1건 건너뜀).
