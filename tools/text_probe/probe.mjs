@@ -127,6 +127,14 @@ function buildTasks(prompts) {
     tasks.push({task: "T4", id: `c${i + 1}`, meta: {slots: c.slots}, stream: true,
       parts: [{text: c.prompt}, imagePart(PERSON_IMAGE)], generationConfig: gc.outfitAnalysis, kind: "analysis"});
   });
+  // T5 옷장 후보가 들어간 분석(docs/task_agent_grounding_v1.md §3-4) — 조합 3개 × 2회,
+  // 스트리밍. 후보 목록은 덤프 테스트가 앱과 같은 로직으로 뽑아 둔 것.
+  for (const c of prompts.t5 ?? []) {
+    for (const rep of [1, 2]) {
+      tasks.push({task: "T5", id: `${c.id}_r${rep}`, meta: {combo: c.id, rep, slots: c.slots, candidateCount: c.candidates.length},
+        stream: true, parts: [{text: c.prompt}, imagePart(PERSON_IMAGE)], generationConfig: gc.outfitAnalysis, kind: "analysis"});
+    }
+  }
   return tasks;
 }
 
@@ -352,6 +360,33 @@ function evalT2(text) {
     Array.isArray(obj.tags);
   const values = ATTR_KEYS.flatMap((k) => (Array.isArray(obj[k]) ? obj[k] : [obj[k]])).filter((v) => typeof v === "string");
   return {jsonValid: true, keysOk, japanese: values.some((v) => JAPANESE.test(v)), attrs: obj};
+}
+
+// T5 — 앱 파서와 같은 규칙. 머리 세 줄은 fitting_room_screen.dart의 _parseScore·
+// _parseMoodScore·_parseMood, [추천후보]는 style_recommendations.dart
+// parseRecommendedCandidates와 같다(번호 1..n, "없음" 허용).
+function evalT5(text, candidateCount) {
+  const t = typeof text === "string" ? text : "";
+  const score = /\[점수\]\s*(\d+)/.exec(t);
+  const moodScore = /\[분위기점수\]\s*(\d+)/.exec(t);
+  const mood = /\[분위기\]\s*([^\n]+)/.exec(t);
+  const headOk = !!(score && moodScore && mood && mood[1].trim());
+  const line = t.split("\n").map((l) => l.trim()).find((l) => l.startsWith("[추천후보]")) ?? null;
+  let recOk = null;
+  let picks = [];
+  if (candidateCount > 0) {
+    if (line == null) recOk = false;
+    else {
+      const body = line.slice("[추천후보]".length).trim();
+      if (body.startsWith("없음")) recOk = true;
+      else {
+        const nums = (body.match(/\d+/g) ?? []).map(Number);
+        recOk = nums.length > 0 && nums.every((n) => n >= 1 && n <= candidateCount);
+        picks = [...new Set(nums.filter((n) => n >= 1 && n <= candidateCount))].slice(0, 2);
+      }
+    }
+  }
+  return {headOk, recLine: line, recOk, picks, recLineWhenNoCandidates: candidateCount === 0 && line != null};
 }
 
 function evalT3(text, t3) {
@@ -599,6 +634,7 @@ async function runMeasure(args) {
     if (t.task === "T1") row.score = parseScore(r.text);
     if (t.task === "T2") Object.assign(row, evalT2(r.text));
     if (t.task === "T3") Object.assign(row, evalT3(r.text, prompts.t3));
+    if (t.task === "T5") Object.assign(row, evalT5(r.text, t.meta.candidateCount));
     results.rows = (results.rows ?? []).filter((x) => !(x.cand === ck && x.task === t.task && x.id === t.id));
     results.rows.push(row);
     done++;
@@ -653,6 +689,15 @@ function summarize() {
         datesCovered: t3.map((x) => x.datesCovered), invalidIds: t3.map((x) => x.invalidIds), consecutiveRepeats: t3.map((x) => x.consecutiveRepeats)},
       T4: {n: t4.length, medianFirst: median(t4.map((x) => x.firstSecs)), medianSecs: median(t4.map((x) => x.secs)),
         failed: t4.filter((x) => x.status !== 200).length},
+      T5: (() => {
+        const t5 = r("T5");
+        const withC = t5.filter((x) => x.meta.candidateCount > 0);
+        return {n: t5.length, headOk: t5.filter((x) => x.headOk).length,
+          recN: withC.length, recOk: withC.filter((x) => x.recOk).length,
+          recLineWhenNone: t5.filter((x) => x.recLineWhenNoCandidates).length,
+          medianFirst: median(t5.map((x) => x.firstSecs)), medianSecs: median(t5.map((x) => x.secs)),
+          failed: t5.filter((x) => x.status !== 200).length};
+      })(),
     };
   }
   // 관문 판정(§3-4, 기준선 = 이번 프로브의 G0). 관문 6은 사용자 판단.
@@ -725,6 +770,23 @@ function writeReports() {
       L.push(`| ${c} | ${yn(g[1])} | ${c === "G0" ? "기준" : yn(g[2])} | ${c === "G0" ? "기준" : g[3] === false ? "**통과 기준 재조정 필요**" : yn(g[3])} | ${c === "G0" ? "기준" : yn(g[4])} | ${c === "G0" ? "기준" : yn(g[5])} | 사용자 판단 |`);
     }
   }
+  // T5 — docs/task_agent_grounding_v1.md §3-4 관문(실행 전 고정). 관문 3(후보에 없는
+  // 옷 추천 없음)은 사용자가 index.html에서 판단한다.
+  const t5Cands = cands.filter((c) => sum[c].T5.n > 0);
+  if (t5Cands.length) {
+    const firstLimit = (c) => (candOf(c).provider === "claude" ? 3 : 12);
+    L.push("", "## T5 옷장 후보 분석 (task_agent_grounding_v1 §3-4)", "",
+      "| 후보 | 모델 | 호출 | 1 머리 세 줄 | 2 [추천후보] 파싱·범위 | 후보 0개인데 줄 있음 | 4 첫 글자 중앙값(기준) | 전체 중앙값 | 실패 |",
+      "|---|---|---|---|---|---|---|---|---|");
+    for (const c of t5Cands) {
+      const x = sum[c].T5;
+      const g1 = x.headOk === x.n;
+      const g2 = x.recOk === x.recN;
+      const g4 = x.medianFirst != null && x.medianFirst <= firstLimit(c);
+      L.push(`| ${c} | \`${candLabel(c)}\` | ${x.n} | ${x.headOk}/${x.n} ${g1 ? "통과" : "**미달**"} | ${x.recOk}/${x.recN} ${g2 ? "통과" : "**미달**"} | ${x.recLineWhenNone} | ${round1(x.medianFirst) ?? "-"}초(${firstLimit(c)}초) ${g4 ? "통과" : "**미달**"} | ${round1(x.medianSecs) ?? "-"}초 | ${x.failed} |`);
+    }
+    L.push("", "관문 3(본문이 후보에 없는 옷을 추천하지 않음)은 index.html의 T5 본문으로 사용자가 판단한다.");
+  }
   L.push("", "시간은 호출 왕복 시간(재시도한 호출은 두 번째 호출의 시간). 시한 90초/호출, 제공자별 동시 3건.");
   writeFileSync(join(OUTPUT, "results.md"), L.join("\n") + "\n");
   writeHtml(rows, sum, cands, majority);
@@ -750,6 +812,24 @@ function writeHtml(rows, sum, cands, majority) {
     const any = rows.find((x) => x.task === "T4" && x.id === id);
     body += `<h3>${id}${any ? ` — ${esc((any.meta.slots ?? []).join(" · "))}` : ""}</h3><div class="cols">` +
       cands.map((c) => `<div><h4>${c}</h4>${textCell(rows.find((x) => x.cand === c && x.task === "T4" && x.id === id))}</div>`).join("") + "</div>";
+  }
+  // T5 — 조합마다 후보 목록과 후보별(모델) 2회 본문. [추천후보] 줄을 그대로 보여 준다
+  // (앱 화면에서는 숨기는 줄). 관문 3 판단용.
+  const t5Rows = rows.filter((x) => x.task === "T5");
+  if (t5Rows.length) {
+    let prompts = null;
+    try { prompts = loadPrompts(); } catch { /* 후보 목록 없이 본문만 */ }
+    body += "<h2>T5 옷장 후보가 들어간 분석(관문 3: 후보에 없는 옷을 추천하지 않았는가)</h2>";
+    for (const combo of [...new Set(t5Rows.map((x) => x.meta.combo))].sort()) {
+      const c5 = prompts?.t5?.find((t) => t.id === combo);
+      body += `<h3>${esc(combo)} — ${esc((c5?.slots ?? []).join(" · "))}${c5?.emptyWardrobe ? " (옷장 비움, 후보 0개)" : ""}</h3>`;
+      if (c5?.candidates?.length) body += `<pre>${esc(c5.candidates.map((x) => x.line).join("\n"))}</pre>`;
+      body += `<div class="cols">` + cands.filter((c) => t5Rows.some((x) => x.cand === c)).flatMap((c) => [1, 2].map((rep) => {
+        const r = t5Rows.find((x) => x.cand === c && x.meta.combo === combo && x.meta.rep === rep);
+        const pickText = r && r.picks?.length ? ` · 고른 후보 ${r.picks.join(", ")}번` : "";
+        return `<div><h4>${esc(c)} r${rep}${esc(pickText)}</h4>${textCell(r)}</div>`;
+      })).join("") + "</div>";
+    }
   }
   body += "<h2>T1 본문 일부(쌍 3개, 1회차)</h2>";
   for (const pid of T1_SHOWCASE_PAIRS) {

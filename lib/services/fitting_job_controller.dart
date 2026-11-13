@@ -11,6 +11,7 @@ import '../models/wardrobe_item.dart';
 import 'firestore_service.dart';
 import 'gemini_service.dart';
 import 'storage_service.dart';
+import 'style_recommendations.dart';
 
 // 캐시 키 버전(docs/task_fitting_quality_v2.md §4-1-5) — 모델·프롬프트가
 // 바뀌어도 같은 조합이면 옛 결과를 캐시에서 돌려줘 개선이 안 보인다.
@@ -34,8 +35,14 @@ class FittingJobController extends ChangeNotifier {
   bool isAnalyzing = false;
   bool isGeneratingFitting = false;
 
+  // 화면·이력에 보이는 분석 텍스트 — [추천후보] 줄은 지운 것(visibleAnalysisText).
   String? analysisResult;
   String? analysisError;
+  // docs/task_agent_grounding_v1.md 부분 B — 이번 분석에 넣은 옷장 후보(카드와 같은
+  // 목록)와 모델이 [추천후보]로 고른 후보의 0-based 인덱스. 분석 전·후보 계산
+  // 실패면 null / 빈 리스트 — 카드는 그때 지금 순서대로 보여 준다.
+  List<StyleCandidate>? analysisCandidates;
+  List<int> analysisAiPicks = const [];
 
   Uint8List? fittingImage;
   String? fittingImageUrl; // 캐시에서 가져온 결과 (Storage URL, bytes 아님)
@@ -71,6 +78,8 @@ class FittingJobController extends ChangeNotifier {
     isAnalyzing = true;
     analysisResult = null;
     analysisError = null;
+    analysisCandidates = null;
+    analysisAiPicks = const [];
     notifyListeners();
 
     final debugT0 = DateTime.now();
@@ -84,6 +93,14 @@ class FittingJobController extends ChangeNotifier {
           ? FirestoreService.getRelevantHistorySilently(uid, candidateItemIds: candidateItemIds)
           : Future.value(
               (lines: <String>[], tagMatchCount: 0, itemOverlapCount: 0, isFallback: false));
+
+      // 부분 B — 카드·팝업과 같은 후보 목록을 먼저 계산해 프롬프트에 넣는다(기기 안
+      // 계산, 모델 호출 없음). 실패하면 후보 없이(=변경 전 프롬프트로) 분석한다.
+      final candidatesFuture = loadStyleCandidates(clothingItems, maxItems: analysisCandidateCount)
+          .catchError((Object e) {
+        debugPrint('[STYLE-RECOMMEND] 분석용 후보 계산 실패(후보 없이 진행): $e');
+        return const <StyleCandidate>[];
+      });
 
       final itemsWithAttributes = await _resolveAttributes(clothingItems);
       final debugT1 = DateTime.now();
@@ -99,6 +116,17 @@ class FittingJobController extends ChangeNotifier {
       debugPrint('[HISTORY] 관련 이력 ${relevantHistory.lines.length}건 조회됨'
           '${recentHistoryText != null ? ' — 프롬프트에 전달:\n$recentHistoryText' : ' (없음, 섹션 생략)'}');
 
+      final candidates = await candidatesFuture;
+      analysisCandidates = candidates;
+      final candidateLines =
+          candidates.isEmpty ? null : candidatePromptLines(candidates, clothingItems);
+      // 모델이 낸 원문(raw)은 여기서만 다루고, 화면·이력에는 [추천후보] 줄을 지운
+      // 텍스트만 넘긴다 — 스트리밍 도중 반쯤 온 줄도 숨긴다.
+      void applyRaw(String raw, {bool done = false}) {
+        analysisResult = visibleAnalysisText(raw);
+        if (done) analysisAiPicks = parseRecommendedCandidates(raw, candidates.length);
+      }
+
       try {
         final buffer = StringBuffer();
         DateTime? debugFirstChunkAt;
@@ -109,12 +137,14 @@ class FittingJobController extends ChangeNotifier {
           userProfile: userProfile,
           recentHistoryText: recentHistoryText,
           isRelevanceRanked: isRelevanceRanked,
+          wardrobeCandidateLines: candidateLines,
         )) {
           debugFirstChunkAt ??= DateTime.now();
           buffer.write(chunk);
-          analysisResult = buffer.toString();
+          applyRaw(buffer.toString());
           notifyListeners();
         }
+        applyRaw(buffer.toString(), done: true);
         final debugT2 = DateTime.now();
         debugPrint('[TIMING] 2) 첫 응답까지(순수 Gemini 네트워크): '
             '${(debugFirstChunkAt ?? debugT2).difference(debugT1b).inMilliseconds}ms');
@@ -127,8 +157,10 @@ class FittingJobController extends ChangeNotifier {
         // 기존의 안정적인 전체 호출 + 재시도 경로로 폴백한다.
         debugPrint('[STREAM-FALLBACK] 스트리밍 실패, 원인: $e');
         analysisResult = null;
+        analysisAiPicks = const [];
         notifyListeners();
-        analysisResult = await GeminiService.withTextModelFallback(
+        // 스트리밍 실패 → 비스트리밍·폴백 경로에도 같은 후보를 넘긴다(§3-3).
+        final raw = await GeminiService.withTextModelFallback(
           (model) => GeminiService.analyzeOutfitFromAttributes(
             items: itemsWithAttributes,
             userPhotoId: userPhoto?.id,
@@ -137,8 +169,10 @@ class FittingJobController extends ChangeNotifier {
             recentHistoryText: recentHistoryText,
             isRelevanceRanked: isRelevanceRanked,
             model: model,
+            wardrobeCandidateLines: candidateLines,
           ),
         );
+        applyRaw(raw, done: true);
       }
       _logAnalysisHistorySilently(clothingItems, itemsWithAttributes, analysisResult);
     } catch (e) {

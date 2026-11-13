@@ -12,6 +12,7 @@ import 'package:ai_fashion_assistant/models/clothing_attributes.dart';
 import 'package:ai_fashion_assistant/models/wardrobe_item.dart';
 import 'package:ai_fashion_assistant/services/agent_planner.dart';
 import 'package:ai_fashion_assistant/services/gemini_service.dart';
+import 'package:ai_fashion_assistant/services/style_recommendations.dart';
 import 'package:ai_fashion_assistant/services/weather_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -40,6 +41,14 @@ const _t4Combos = [
   ['top', 'bottom', 'shoes'],
   ['top', 'bottom', 'outer', 'shoes'],
   ['top', 'bottom', 'outer', 'shoes', 'hat', 'bag', 'watch'],
+];
+
+// T5 조합 — 결과를 보기 전에 고정(docs/task_agent_grounding_v1.md §3-4). c3은 c1과 같은
+// 옷이지만 옷장을 비워 후보 0개인 경우를 만든다.
+const _t5Combos = [
+  (id: 'c1', slots: ['top', 'bottom', 'shoes'], emptyWardrobe: false),
+  (id: 'c2', slots: ['top', 'bottom', 'outer', 'shoes'], emptyWardrobe: false),
+  (id: 'c3', slots: ['top', 'bottom', 'shoes'], emptyWardrobe: true),
 ];
 
 void main() {
@@ -131,6 +140,51 @@ void main() {
         },
     ];
 
+    // T5 옷장 후보가 들어간 분석(docs/task_agent_grounding_v1.md §3-4) — 앱과 같은
+    // 로직(matchStyleCandidates)으로 실제 옷장 전체에서 후보를 뽑아 사진용 프롬프트에
+    // 넣는다. c3은 옷장을 비운 입력이라 후보 0개(= 변경 전 프롬프트).
+    WardrobeItem asItem(Map<String, dynamic> w) => WardrobeItem(
+          id: w['id'] as String,
+          imageUrl: '',
+          category: w['category'] as String,
+          subCategory: w['subCategory'] as String?,
+          createdAt: DateTime(2026),
+          attributes: ClothingAttributes.fromJson(w['attributes'] as Map<String, dynamic>),
+        );
+    final wardrobe = [
+      for (final w in (input['wardrobe'] as List? ?? const []).cast<Map<String, dynamic>>()) asItem(w),
+    ];
+    WardrobeItem fittingItem(String slot) =>
+        asItem({...items[fittingSet[slot]!]!, 'id': fittingSet[slot]});
+    final t5 = [
+      for (final c in _t5Combos)
+        () {
+          final selected = [for (final s in c.slots) fittingItem(s)];
+          final candidates = matchStyleCandidates(
+              selected: selected,
+              wardrobe: c.emptyWardrobe ? const [] : wardrobe,
+              maxItems: analysisCandidateCount);
+          final lines = candidatePromptLines(candidates, selected);
+          return {
+            'id': c.id,
+            'slots': c.slots,
+            'emptyWardrobe': c.emptyWardrobe,
+            'candidates': [
+              for (var i = 0; i < candidates.length; i++)
+                {
+                  'id': candidates[i].item.id,
+                  'line': candidatePromptLine(i, candidates[i].item, selected),
+                },
+            ],
+            'prompt': GeminiService.analysisPromptsForGoldenTest(
+              [for (final s in selected) (category: s.category, attributes: s.attributes!)],
+              kind: 'photo',
+              candidateLines: lines.isEmpty ? null : lines,
+            ),
+          };
+        }(),
+    ];
+
     File(_outPath).writeAsStringSync(const JsonEncoder.withIndent('  ').convert({
       'generatedAt': DateTime.now().toIso8601String(),
       'generationConfig': {
@@ -142,6 +196,7 @@ void main() {
       't2': t2,
       't3': t3,
       't4': t4,
+      't5': t5,
     }));
     expect(t1.length, 30);
     expect(t2.length, _t2Count);

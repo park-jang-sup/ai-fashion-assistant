@@ -782,6 +782,10 @@ class GeminiService {
     // 관련 신호 없어 최신순 폴백된 경우 포함)면 기존 "최근 코디 이력" 헤더.
     bool isRelevanceRanked = false,
     String? model,
+    // docs/task_agent_grounding_v1.md 부분 B — [내 옷장 후보] 줄들(style_recommendations
+    // candidatePromptLines). 사진용·프로필용 프롬프트에만 들어간다. null·빈 문자열이면
+    // 프롬프트가 변경 전과 같다. 자기평가(OutfitSelfEvaluator)는 넘기지 않는다.
+    String? wardrobeCandidateLines,
   }) async {
     // 옷 이미지는 더 이상 보내지 않는다 — 등록 시점에 뽑아둔 색상/스타일/
     // 패턴/격식/핏/태그 텍스트만으로 매칭을 평가하므로 입력이 훨씬 가볍다.
@@ -804,10 +808,14 @@ class GeminiService {
 
     final prompt = hasProfile
         ? _buildAttributeAnalysisPromptWithProfile(items, userProfile,
-            recentHistoryText: recentHistoryText, isRelevanceRanked: isRelevanceRanked)
+            recentHistoryText: recentHistoryText,
+            isRelevanceRanked: isRelevanceRanked,
+            candidateLines: wardrobeCandidateLines)
         : (userPhotoUrl != null
             ? _buildAttributeAnalysisPromptWithPhoto(items,
-                recentHistoryText: recentHistoryText, isRelevanceRanked: isRelevanceRanked)
+                recentHistoryText: recentHistoryText,
+                isRelevanceRanked: isRelevanceRanked,
+                candidateLines: wardrobeCandidateLines)
             : _buildAttributeAnalysisPrompt(items,
                 recentHistoryText: recentHistoryText, isRelevanceRanked: isRelevanceRanked));
     _debugLogHistoryInclusion(prompt, recentHistoryText);
@@ -872,6 +880,7 @@ class GeminiService {
     String? recentHistoryText,
     bool isRelevanceRanked = false,
     String? model,
+    String? wardrobeCandidateLines, // analyzeOutfitFromAttributes와 같은 뜻
   }) async* {
     final hasProfile = userProfile != null && userProfile.hasAnyData;
 
@@ -890,10 +899,14 @@ class GeminiService {
 
     final prompt = hasProfile
         ? _buildAttributeAnalysisPromptWithProfile(items, userProfile,
-            recentHistoryText: recentHistoryText, isRelevanceRanked: isRelevanceRanked)
+            recentHistoryText: recentHistoryText,
+            isRelevanceRanked: isRelevanceRanked,
+            candidateLines: wardrobeCandidateLines)
         : (userPhotoUrl != null
             ? _buildAttributeAnalysisPromptWithPhoto(items,
-                recentHistoryText: recentHistoryText, isRelevanceRanked: isRelevanceRanked)
+                recentHistoryText: recentHistoryText,
+                isRelevanceRanked: isRelevanceRanked,
+                candidateLines: wardrobeCandidateLines)
             : _buildAttributeAnalysisPrompt(items,
                 recentHistoryText: recentHistoryText, isRelevanceRanked: isRelevanceRanked));
     _debugLogHistoryInclusion(prompt, recentHistoryText);
@@ -1149,6 +1162,29 @@ $feedbackSection
           List<({String category, ClothingAttributes attributes})> items) =>
       _buildAttributeAnalysisPromptWithPhoto(items);
 
+  // docs/task_agent_grounding_v1.md §3-3 골든 테스트용 — 이력 인자까지 받는 접근자.
+  @visibleForTesting
+  static String analysisPromptsForGoldenTest(
+    List<({String category, ClothingAttributes attributes})> items, {
+    required String kind, // 'photo' | 'profile' | 'selfEval'
+    UserProfile? profile,
+    String? recentHistoryText,
+    bool isRelevanceRanked = false,
+    String? candidateLines,
+  }) =>
+      switch (kind) {
+        'photo' => _buildAttributeAnalysisPromptWithPhoto(items,
+            recentHistoryText: recentHistoryText,
+            isRelevanceRanked: isRelevanceRanked,
+            candidateLines: candidateLines),
+        'profile' => _buildAttributeAnalysisPromptWithProfile(items, profile!,
+            recentHistoryText: recentHistoryText,
+            isRelevanceRanked: isRelevanceRanked,
+            candidateLines: candidateLines),
+        _ => _buildAttributeAnalysisPrompt(items,
+            recentHistoryText: recentHistoryText, isRelevanceRanked: isRelevanceRanked),
+      };
+
   static String _buildAttributeExtractionPrompt(String category) {
     return '''
 아래 옷 사진 한 장을 분석해서 JSON 객체 하나만 출력하세요.
@@ -1195,10 +1231,37 @@ $feedbackSection
     debugPrint('[HISTORY] 삽입된 텍스트:\n$recentHistoryText');
   }
 
+  // ── 옷장 후보 구간(docs/task_agent_grounding_v1.md 부분 B) ──────────
+  // 사진용·프로필용 분석 프롬프트에만 끼운다. candidateLines가 비면 아래
+  // 함수들이 전부 원래 문구(또는 빈 문자열)를 돌려줘 프롬프트가 변경 전과
+  // 한 글자도 다르지 않다 — test/analysis_prompt_golden_test.dart가 고정한다.
+  // 자기평가용 프롬프트(_buildAttributeAnalysisPrompt)에는 넣지 않는다.
+  static bool _hasCandidates(String? lines) => lines != null && lines.isNotEmpty;
+
+  static String _candidateSection(String? lines) => _hasCandidates(lines)
+      ? '\n[내 옷장 후보] (착용자가 실제로 가진 옷입니다)\n$lines\n'
+      : '';
+
+  static String _recommendHeadLine(String? lines) => _hasCandidates(lines)
+      ? '\n[추천후보] (위 후보 중 이 코디에 가장 도움이 되는 것의 번호 1~2개, 쉼표로 구분. 마땅한 것이 없으면 없음)'
+      : '';
+
+  static String _stylingTipInstruction(String? lines) => _hasCandidates(lines)
+      ? '[추천후보]에 적은 옷을 이 코디에 어떻게 더하거나 바꾸면 좋은지 설명해 주세요.\n'
+          '   옷은 색상과 종류로 부르고(예: 브라운 블루종) 번호는 쓰지 마세요. [내 옷장 후보]에 없는 옷은 추천하지 마세요.\n'
+          '   추가 가능 후보를 먼저 고려하고, 교체 후보는 지금 옷보다 분명히 나을 때만 고르세요.\n'
+          '   [추천후보]가 없음이면 지금 조합을 그대로 살리는 연출 팁을 써 주세요.'
+      : '전체 코디를 더욱 완성도 있게 만들 액세서리나 추가 아이템을 1~2가지 제안해 주세요.';
+
+  static String _headLineCountWord(String? lines) => _hasCandidates(lines) ? '네' : '세';
+
+  static String _recommendExampleLine(String? lines) => _hasCandidates(lines) ? '\n[추천후보] 2' : '';
+
   static String _buildAttributeAnalysisPromptWithPhoto(
     List<({String category, ClothingAttributes attributes})> items, {
     String? recentHistoryText,
     bool isRelevanceRanked = false,
+    String? candidateLines,
   }) {
     final itemLines = _itemsToPromptLines(items);
     final historySection =
@@ -1212,23 +1275,23 @@ $feedbackSection
 분석 대상은 아래 텍스트로 설명된 의류들입니다. 실제 이미지는 첨부되지 않았으니 아래 설명만으로 판단해 주세요.
 
 $itemLines
-$historySection
+$historySection${_candidateSection(candidateLines)}
 이 의류들을 첫 번째 사진 착용자가 입었을 때 얼마나 잘 어울릴지, 가상 피팅 관점에서 평가해 주세요.
 
 아래 형식으로 정확히 답변해 주세요.
 
 [점수] (현재 코디의 컬러 조합을 1~100점으로 평가한 숫자만 입력)
 [분위기점수] (이 조합이 이 착용자에게 얼마나 잘 어울리는 분위기를 연출하는지 1~100점)
-[분위기] (아래 목록 중 이 코디와 가장 가까운 분위기를 하나만 정확히 골라 적어 주세요: 캐주얼, 포멀, 스트리트, 미니멀, 러블리, 스포티, 빈티지, 시크)
+[분위기] (아래 목록 중 이 코디와 가장 가까운 분위기를 하나만 정확히 골라 적어 주세요: 캐주얼, 포멀, 스트리트, 미니멀, 러블리, 스포티, 빈티지, 시크)${_recommendHeadLine(candidateLines)}
 
-1. 스타일링 팁: 전체 코디를 더욱 완성도 있게 만들 액세서리나 추가 아이템을 1~2가지 제안해 주세요.
+1. 스타일링 팁: ${_stylingTipInstruction(candidateLines)}
 2. 다른 색상 추천: 현재 선택한 의류와 동일한 스타일이지만 더 높은 컬러 조합 점수를 받을 수 있는 색상 조합을 40자 이내의 한 문장으로 짧게 추천해 주세요.
 
 [출력 형식 규칙 - 반드시 준수하세요]
-응답의 첫 세 줄은 반드시 아래 순서와 형식으로 시작해 주세요. 예시:
+응답의 첫 ${_headLineCountWord(candidateLines)} 줄은 반드시 아래 순서와 형식으로 시작해 주세요. 예시:
 [점수] 78
 [분위기점수] 85
-[분위기] 캐주얼
+[분위기] 캐주얼${_recommendExampleLine(candidateLines)}
 별표(*), 샵(#), 대시(-) 등 어떠한 마크다운 기호도 절대 사용하지 마세요.
 이모지나 특수문자도 사용하지 마세요.
 1. 2. 숫자 번호와 일반 텍스트로만 깔끔하게 답변해 주세요.
@@ -1242,6 +1305,7 @@ $historySection
     UserProfile profile, {
     String? recentHistoryText,
     bool isRelevanceRanked = false,
+    String? candidateLines,
   }) {
     final itemLines = _itemsToPromptLines(items);
     final historySection =
@@ -1254,23 +1318,23 @@ $historySection
 분석 대상은 아래 텍스트로 설명된 의류들입니다.
 
 $itemLines
-$historySection
+$historySection${_candidateSection(candidateLines)}
 위 착용자 정보를 참고해서, 이 의류들이 착용자에게 얼마나 잘 어울릴지 평가해 주세요.
 
 아래 형식으로 정확히 답변해 주세요.
 
 [점수] (현재 코디의 컬러 조합을 1~100점으로 평가한 숫자만 입력)
 [분위기점수] (이 조합이 착용자 정보에 얼마나 잘 어울리는 분위기를 연출하는지 1~100점)
-[분위기] (아래 목록 중 이 코디와 가장 가까운 분위기를 하나만 정확히 골라 적어 주세요: 캐주얼, 포멀, 스트리트, 미니멀, 러블리, 스포티, 빈티지, 시크)
+[분위기] (아래 목록 중 이 코디와 가장 가까운 분위기를 하나만 정확히 골라 적어 주세요: 캐주얼, 포멀, 스트리트, 미니멀, 러블리, 스포티, 빈티지, 시크)${_recommendHeadLine(candidateLines)}
 
-1. 스타일링 팁: 전체 코디를 더욱 완성도 있게 만들 액세서리나 추가 아이템을 1~2가지 제안해 주세요.
+1. 스타일링 팁: ${_stylingTipInstruction(candidateLines)}
 2. 다른 색상 추천: 현재 선택한 의류와 동일한 스타일이지만 더 높은 컬러 조합 점수를 받을 수 있는 색상 조합을 40자 이내의 한 문장으로 짧게 추천해 주세요.
 
 [출력 형식 규칙 - 반드시 준수하세요]
-응답의 첫 세 줄은 반드시 아래 순서와 형식으로 시작해 주세요. 예시:
+응답의 첫 ${_headLineCountWord(candidateLines)} 줄은 반드시 아래 순서와 형식으로 시작해 주세요. 예시:
 [점수] 78
 [분위기점수] 85
-[분위기] 캐주얼
+[분위기] 캐주얼${_recommendExampleLine(candidateLines)}
 별표(*), 샵(#), 대시(-) 등 어떠한 마크다운 기호도 절대 사용하지 마세요.
 이모지나 특수문자도 사용하지 마세요.
 1. 2. 숫자 번호와 일반 텍스트로만 깔끔하게 답변해 주세요.

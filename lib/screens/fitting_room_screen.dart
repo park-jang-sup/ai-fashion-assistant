@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/app_colors.dart';
-import '../constants/outfit_reason.dart';
 import '../constants/style_tips.dart';
 import '../models/scrap_entry.dart';
 import '../models/user_profile.dart';
@@ -13,7 +12,7 @@ import '../services/firestore_service.dart';
 import '../services/fit_predictor.dart';
 import '../services/fitting_job_controller.dart';
 import '../services/fitting_progress.dart';
-import '../services/outfit_matcher.dart';
+import '../services/style_recommendations.dart';
 import '../widgets/full_screen_image_viewer.dart';
 import '../widgets/outfit_board.dart';
 import '../widgets/signed_network_image.dart';
@@ -1544,7 +1543,11 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
                       ),
                     );
                   }),
-                  _StyleRecommendationRow(selectedItems: widget.selectedItems),
+                  _StyleRecommendationRow(
+                    selectedItems: widget.selectedItems,
+                    analysisCandidates: widget.jobController.analysisCandidates,
+                    aiPicks: widget.jobController.analysisAiPicks,
+                  ),
                   if (_isStreamingAnalysis) ...[
                     const SizedBox(height: 10),
                     const Row(
@@ -1601,70 +1604,37 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
 // 팝업 슬라이드 한 장 — 보여줄 아이템과 그 아래 캡션(추천 이유 또는 팁).
 typedef _PopupSlide = ({WardrobeItem item, String caption});
 
-// 지금 선택된 아이템들과 어울리는 "다른 카테고리" 옷장 아이템을 OutfitMatcher로
-// 로컬 매칭한다(Gemini 호출 없음). 카테고리당 상위 2개까지 모아 궁합 점수
-// 내림차순으로 최대 maxItems개 반환 — 로딩 팝업과 분석 결과의 스타일 추천
-// 슬라이드가 이 로직을 공유한다. 매칭 후보가 없으면 빈 리스트.
+// 지금 선택된 아이템들과 어울리는 "다른 카테고리" 옷장 아이템 — 계산은
+// style_recommendations.dart(loadStyleCandidates)로 옮겼다(docs/task_agent_grounding_v1.md
+// 부분 B: 분석 프롬프트와 카드·팝업이 같은 후보 목록을 쓰도록). 뽑는 규칙은 그대로다.
 Future<List<_PopupSlide>> _matchStyleRecommendations(
   Map<String, WardrobeItem?> selectedItems, {
   int maxItems = 5,
 }) async {
-  final selected = selectedItems.values.whereType<WardrobeItem>().toList();
-  final selectedWithAttrs = selected.where((i) => i.attributes != null).toList();
-  if (selectedWithAttrs.isEmpty) return const [];
-
-  final uid = FirebaseAuth.instance.currentUser?.uid;
-  if (uid == null) return const [];
-  final wardrobe = await FirestoreService.wardrobeStream(uid).first;
-  final fittingIds = selected.map((i) => i.id).toSet();
-  const allCategories = ['상의', '하의', '아우터', '신발', '액세서리'];
-
-  final scored = <({WardrobeItem item, WardrobeItem anchor, double score})>[];
-  for (final category in allCategories) {
-    final eligibleAnchors = selectedWithAttrs.where((a) => a.category != category).toList();
-    if (eligibleAnchors.isEmpty) continue;
-
-    final pool = wardrobe
-        .where((i) =>
-            i.category == category && i.attributes != null && !fittingIds.contains(i.id))
-        .toList();
-    if (pool.isEmpty) continue;
-
-    final perCategory = <({WardrobeItem item, WardrobeItem anchor, double score})>[];
-    for (final candidate in pool) {
-      WardrobeItem? bestAnchor;
-      var bestScore = double.negativeInfinity;
-      for (final anchor in eligibleAnchors) {
-        final score = OutfitMatcher.compatibilityScore(anchor.attributes!, candidate.attributes!);
-        if (score > bestScore) {
-          bestScore = score;
-          bestAnchor = anchor;
-        }
-      }
-      if (bestAnchor != null) {
-        perCategory.add((item: candidate, anchor: bestAnchor, score: bestScore));
-      }
-    }
-    perCategory.sort((a, b) => b.score.compareTo(a.score));
-    scored.addAll(perCategory.take(2));
-  }
-
-  scored.sort((a, b) => b.score.compareTo(a.score));
-  if (scored.isEmpty) return const [];
-  return scored
-      .take(maxItems)
-      .map((s) => (item: s.item, caption: buildOutfitReason(anchor: s.anchor, candidate: s.item)))
-      .toList();
+  final candidates = await loadStyleCandidates(
+      selectedItems.values.whereType<WardrobeItem>().toList(),
+      maxItems: maxItems);
+  return [for (final c in candidates) (item: c.item, caption: c.caption)];
 }
 
 // ── 분석 결과 하단 "내 스타일에 맞춰 추천" 가로 슬라이드 ────────
 // AI 코디 분석 결과의 두 점수 배지 아래에 붙어, 지금 선택된 아이템들과
 // 궁합 좋은 다른 옷장 아이템을 가로 스크롤 카드로 보여준다. 선택 조합이
 // 바뀔 때만(id 조합 서명 비교) 다시 계산한다.
+// [docs/task_agent_grounding_v1.md 부분 B] 분석이 쓴 후보 목록(analysisCandidates)이
+// 있으면 그것을 그대로 쓰고, 모델이 [추천후보]로 고른 것(aiPicks)을 맨 앞에 두고
+// "AI 추천" 표시를 붙인다 — 분석 텍스트가 말한 옷과 카드가 같은 옷이 된다.
+// 분석 후보가 없으면(분석 전·계산 실패) 지금처럼 직접 계산한 순서로 보여 준다.
 class _StyleRecommendationRow extends StatefulWidget {
   final Map<String, WardrobeItem?> selectedItems;
+  final List<StyleCandidate>? analysisCandidates;
+  final List<int> aiPicks;
 
-  const _StyleRecommendationRow({required this.selectedItems});
+  const _StyleRecommendationRow({
+    required this.selectedItems,
+    this.analysisCandidates,
+    this.aiPicks = const [],
+  });
 
   @override
   State<_StyleRecommendationRow> createState() => _StyleRecommendationRowState();
@@ -1710,7 +1680,13 @@ class _StyleRecommendationRowState extends State<_StyleRecommendationRow> {
 
   @override
   Widget build(BuildContext context) {
-    final items = _items;
+    final fromAnalysis = widget.analysisCandidates;
+    final List<({_PopupSlide slide, bool aiPick})>? items = fromAnalysis != null
+        ? [
+            for (final o in orderWithAiPicks(fromAnalysis, widget.aiPicks))
+              (slide: (item: o.candidate.item, caption: o.candidate.caption), aiPick: o.aiPick),
+          ]
+        : _items?.map((s) => (slide: s, aiPick: false)).toList();
     if (items == null || items.isEmpty) return const SizedBox.shrink();
 
     return Padding(
@@ -1729,8 +1705,9 @@ class _StyleRecommendationRowState extends State<_StyleRecommendationRow> {
               itemCount: items.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (context, i) {
-                final slide = items[i];
-                return Container(
+                final slide = items[i].slide;
+                final aiPick = items[i].aiPick;
+                final card = Container(
                   width: 118,
                   height: 118,
                   decoration: BoxDecoration(
@@ -1749,6 +1726,28 @@ class _StyleRecommendationRowState extends State<_StyleRecommendationRow> {
                     errorWidget: (_, __, ___) =>
                         const Icon(Icons.image_outlined, color: AppColors.textDisabled),
                   ),
+                );
+                if (!aiPick) return card;
+                return Stack(
+                  children: [
+                    card,
+                    Positioned(
+                      left: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.textPrimary,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text('AI 추천',
+                            style: TextStyle(
+                                color: AppColors.background,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ],
                 );
               },
             ),

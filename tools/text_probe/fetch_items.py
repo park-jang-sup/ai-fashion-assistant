@@ -33,6 +33,9 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent
 ANSWER_KEY = REPO_ROOT / "tools/eval_harness_selfeval/answer_key/pairs_answer_key.json"
 OUT = SCRIPT_DIR / "input/items.json"
+# 옷장 전체를 읽을 사용자(가상 피팅 프로브 0단계 로그의 uid). T5(docs/task_agent_grounding_v1.md
+# §3-4)가 앱과 같은 로직으로 옷장 후보를 뽑는 데 쓴다.
+OWNER_UID = "BDDOIl08EhXnHu6oz6Zro47EtMw1"
 
 # tools/fitting_probe/fetch_inputs.py의 SET4_7과 같은 값(T4 스트리밍 분석용).
 FITTING_SET = {
@@ -95,11 +98,19 @@ def main() -> None:
 
     initialize_app(load_credentials(args.credentials))
     db = firestore.client()
+    # 이전에 받은 값 — 그 사이 문서가 삭제된 아이템은 이 값을 그대로 쓴다(T1 입력이
+    # 이미 고정돼 있어 바뀌면 안 된다). 삭제 사실은 출력으로 남긴다.
+    previous = json.loads(OUT.read_text(encoding="utf-8")).get("items", {}) if OUT.exists() else {}
     items = {}
+    missing_now = []
     for doc_id in all_ids:
         snap = db.collection("wardrobe").document(doc_id).get()
         if not snap.exists:
-            sys.exit(f"wardrobe/{doc_id} 문서가 없습니다.")
+            if doc_id in previous:
+                items[doc_id] = previous[doc_id]
+                missing_now.append(doc_id)
+                continue
+            sys.exit(f"wardrobe/{doc_id} 문서가 없습니다(이전 값도 없음).")
         d = snap.to_dict()
         if not d.get("attributes"):
             sys.exit(f"wardrobe/{doc_id}에 attributes가 없습니다.")
@@ -109,6 +120,21 @@ def main() -> None:
             "subCategory": d.get("subCategory"),
             "attributes": {k: a.get(k) for k in ("color", "style", "pattern", "formality", "fit", "tags")},
         }
+
+    # 옷장 전체(속성 있는 옷) — 앱의 FirestoreService.wardrobeStream과 같은 소유자 조건.
+    wardrobe = []
+    for snap in db.collection("wardrobe").where("ownerUid", "==", OWNER_UID).stream():
+        d = snap.to_dict()
+        a = d.get("attributes")
+        if not a:
+            continue
+        wardrobe.append({
+            "id": snap.id,
+            "category": d.get("category"),
+            "subCategory": d.get("subCategory"),
+            "attributes": {k: a.get(k) for k in ("color", "style", "pattern", "formality", "fit", "tags")},
+        })
+    wardrobe.sort(key=lambda w: w["id"])
 
     t1, total_diffs = [], 0
     for p in key["pairs"]:
@@ -124,7 +150,11 @@ def main() -> None:
         "fittingSet": FITTING_SET,
         "items": items,
         "t1Combos": t1,
+        "wardrobe": wardrobe,
     }, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"옷장 전체(속성 있는 옷) {len(wardrobe)}벌")
+    if missing_now:
+        print(f"Firestore에서 지금은 없는 아이템 {len(missing_now)}개 — 이전 items.json 값 사용: {', '.join(missing_now)}")
     print(f"아이템 {len(items)}개(자기평가 {len(eval_ids)} + 피팅 세트), T1 조합 {len(t1)}개 → {OUT}")
     print(f"8월 요약 줄과 현재 속성이 다른 줄: {total_diffs}개")
     for c in t1:
