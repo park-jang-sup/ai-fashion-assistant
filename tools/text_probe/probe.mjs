@@ -12,6 +12,7 @@
 //   node probe.mjs schema   # §3-2 스키마 확정 호출(약 20회)
 //   node probe.mjs run      # §3-3 측정(후보 3개 합계 약 258회, schema.json 필요)
 //   node probe.mjs run --candidates G0,G1 --tasks T1   # 부분 재실행(같은 칸은 덮어씀)
+//   node probe.mjs run --candidates C --tasks T1 --claude-effort medium   # §3-4 사전 허용 추가 실행("C@medium"으로 따로 저장)
 //   node probe.mjs report   # results.json → results.md·index.html 재생성
 
 import {readFileSync, writeFileSync, existsSync, mkdirSync} from "node:fs";
@@ -35,6 +36,16 @@ const CANDIDATES = {
   C: {provider: "claude", model: "claude-sonnet-5-5", note: "Claude Sonnet 5.5"},
 };
 const GEMINI_FALLBACK_CANDIDATES = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
+
+// §3-4가 사전 허용한 C 추가 실행(effort 한 단계 상향 등)은 "C@<effort>" 키로 따로
+// 저장한다 — 원래 C 결과를 덮어쓰지 않는다. 모델·제공자는 C와 같다.
+function candOf(key) {
+  const [base, effort] = key.split("@");
+  const c = CANDIDATES[base];
+  return effort ? {...c, note: `${c.note} · effort ${effort}`, effort} : c;
+}
+const candRank = (k) => Object.keys(CANDIDATES).indexOf(k.split("@")[0]) * 10 + (k.includes("@") ? 1 : 0);
+const candLabel = (k) => `${candOf(k).model}${candOf(k).effort ? ` (effort ${candOf(k).effort})` : ""}`;
 
 // §3-3 T1·T4 본문 비교에 보일 쌍 — 결과를 보기 전에 고정.
 const T1_SHOWCASE_PAIRS = ["p001", "p007", "p013"];
@@ -267,10 +278,11 @@ async function callClaudeRaw(body, version) {
 
 // ── 공통 실행 ─────────────────────────────────────────────────────
 async function callOnce(candKey, task, schema) {
-  const cand = CANDIDATES[candKey];
+  const cand = candOf(candKey);
   try {
     if (cand.provider === "gemini") return await callGemini(cand.model, task, geminiConfig(cand, task, schema));
-    return await callClaudeRaw(claudeBody(cand.model, task, schema.claude), schema.claude.version);
+    const cfg = cand.effort ? {...schema.claude, effort: cand.effort} : schema.claude;
+    return await callClaudeRaw(claudeBody(cand.model, task, cfg), schema.claude.version);
   } catch (e) {
     return {status: 0, secs: null, error: e?.name === "TimeoutError" ? `시한 초과(${CALL_TIMEOUT_MS / 1000}초)` : `${e?.name}: ${e?.message}`};
   }
@@ -554,9 +566,11 @@ async function runMeasure(args) {
   };
   let candKeys = pick("--candidates", Object.keys(CANDIDATES));
   const taskKeys = pick("--tasks", ["T1", "T2", "T3", "T4"]);
+  const ei = args.indexOf("--claude-effort");
+  if (ei >= 0) candKeys = candKeys.map((k) => (k === "C" ? `C@${args[ei + 1]}` : k));
   const skipped = [];
-  if (candKeys.includes("C") && (!CLAUDE_KEY || !schema.claude)) {
-    candKeys = candKeys.filter((k) => k !== "C");
+  if (candKeys.some((k) => k.startsWith("C")) && (!CLAUDE_KEY || !schema.claude)) {
+    candKeys = candKeys.filter((k) => !k.startsWith("C"));
     skipped.push(!CLAUDE_KEY ? "C: ANTHROPIC_API_KEY 없음" : "C: 스키마 확정 실패");
   }
   if (candKeys.includes("G1") && schemaRaw.gemini?.[CANDIDATES.G1.model]?.appConfigOk === false &&
@@ -572,7 +586,7 @@ async function runMeasure(args) {
   mkdirSync(RAW, {recursive: true});
 
   const byProvider = {gemini: [], claude: []};
-  for (const ck of candKeys) for (const t of tasks) byProvider[CANDIDATES[ck].provider].push({ck, t});
+  for (const ck of candKeys) for (const t of tasks) byProvider[candOf(ck).provider].push({ck, t});
   log(`[run] 후보 ${candKeys.join(",")} · 과제 ${taskKeys.join(",")} · 호출 ${byProvider.gemini.length + byProvider.claude.length}회 예정${skipped.length ? " · 건너뜀: " + skipped.join("; ") : ""}`);
   let done = 0;
   const total = byProvider.gemini.length + byProvider.claude.length;
@@ -615,8 +629,7 @@ function summarize() {
   for (const p of key.pairs) for (const side of ["left", "right"]) august[`${p.pairId}_${side}`] = [p[side].score];
   const augustAgree = agreementScore(majority, august);
 
-  const order = Object.keys(CANDIDATES);
-  const cands = [...new Set(rows.map((r) => r.cand))].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  const cands = [...new Set(rows.map((r) => r.cand))].sort((a, b) => candRank(a) - candRank(b));
   const sum = {};
   for (const c of cands) {
     const r = (task) => rows.filter((x) => x.cand === c && x.task === task);
@@ -699,7 +712,7 @@ function writeReports() {
       "|---|---|---|---|---|---|---|---|---|---|---|---|---|");
     for (const c of cands) {
       const x = sum[c];
-      L.push(`| ${c} | \`${CANDIDATES[c].model}\` | ${x.T1.parsed}/${x.T1.n} | ${x.T1.agree.sum}/${x.T1.agree.n} | ${pct(x.T1.over70)} | ${round1(x.T1.meanDiff) ?? "-"} | ${round1(x.T1.medianSecs) ?? "-"} | ${x.T2.jsonValid}/${x.T2.n} | ${x.T2.keysOk}/${x.T2.n} | ${x.T2.japanese} | ${x.T3.appPass}/${x.T3.n} | ${round1(x.T4.medianFirst) ?? "-"} | ${round1(x.T4.medianSecs) ?? "-"} |`);
+      L.push(`| ${c} | \`${candLabel(c)}\` | ${x.T1.parsed}/${x.T1.n} | ${x.T1.agree.sum}/${x.T1.agree.n} | ${pct(x.T1.over70)} | ${round1(x.T1.meanDiff) ?? "-"} | ${round1(x.T1.medianSecs) ?? "-"} | ${x.T2.jsonValid}/${x.T2.n} | ${x.T2.keysOk}/${x.T2.n} | ${x.T2.japanese} | ${x.T3.appPass}/${x.T3.n} | ${round1(x.T4.medianFirst) ?? "-"} | ${round1(x.T4.medianSecs) ?? "-"} |`);
     }
     L.push("", `사람 다수결 대상 쌍 ${Object.keys(majority).length}개(다수 없음 제외, 주의 확인 쌍 포함 — task_selfeval_validity_v1 §9 정의). 참고: 정답지에 저장된 **8월 점수로 계산한 일치 ${augustAgree.sum}/${augustAgree.n}**.`);
     L.push("", "T3 참고 지표(회차별): " + cands.map((c) => `${c} 날짜 ${JSON.stringify(sum[c].T3.datesCovered)}/7 · 없는 id ${JSON.stringify(sum[c].T3.invalidIds)} · 상·하의 연속 ${JSON.stringify(sum[c].T3.consecutiveRepeats)}`).join(" / "));
@@ -728,7 +741,7 @@ function writeHtml(rows, sum, cands, majority) {
   let body = "<h2>과제별 요약</h2><table><tr><th>후보</th><th>T1 파싱</th><th>사람 일치</th><th>70+ 비율</th><th>2회 차</th><th>T1 중앙값</th><th>T2 JSON</th><th>T2 가나·한자</th><th>T3</th><th>T4 첫 글자</th></tr>";
   for (const c of cands) {
     const x = sum[c];
-    body += `<tr><td>${c} <small>${esc(CANDIDATES[c].model)}</small></td><td>${x.T1.parsed}/${x.T1.n}</td><td>${x.T1.agree.sum}/${x.T1.agree.n}</td><td>${pct(x.T1.over70)}</td><td>${round1(x.T1.meanDiff) ?? "-"}</td><td>${round1(x.T1.medianSecs) ?? "-"}초</td><td>${x.T2.jsonValid}/${x.T2.n}</td><td>${x.T2.japanese}</td><td>${x.T3.appPass}/${x.T3.n}</td><td>${round1(x.T4.medianFirst) ?? "-"}초</td></tr>`;
+    body += `<tr><td>${c} <small>${esc(candLabel(c))}</small></td><td>${x.T1.parsed}/${x.T1.n}</td><td>${x.T1.agree.sum}/${x.T1.agree.n}</td><td>${pct(x.T1.over70)}</td><td>${round1(x.T1.meanDiff) ?? "-"}</td><td>${round1(x.T1.medianSecs) ?? "-"}초</td><td>${x.T2.jsonValid}/${x.T2.n}</td><td>${x.T2.japanese}</td><td>${x.T3.appPass}/${x.T3.n}</td><td>${round1(x.T4.medianFirst) ?? "-"}초</td></tr>`;
   }
   body += "</table><h2>T1 점수 분포(1~100, 10점 구간)</h2><div class=\"hists\">" +
     cands.map((c) => `<div><h3>${c}</h3>${hist(c)}</div>`).join("") + "</div>";
