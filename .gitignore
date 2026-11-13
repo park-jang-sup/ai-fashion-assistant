@@ -122,3 +122,8 @@ functions_bg_removal/u2netp.onnx
 # 입력과 모델 출력 이미지라 커밋 대상이 아니다(v2 §5).
 tools/fitting_probe/input/
 tools/fitting_probe/output/
+
+# 속성 일본어 정정(tools/fix_japanese_attributes) — 계획·롤백 manifest에
+# 실제 문서 id와 옷장 속성값이 담긴 실행 산출물이라 커밋하지 않는다.
+tools/fix_japanese_attributes/plans/
+tools/fix_japanese_attributes/manifests/
