@@ -117,3 +117,8 @@ tools/bg_removal_spike/cloud_run_spike/venv/
 functions_bg_removal/venv/
 functions_bg_removal/__pycache__/
 functions_bg_removal/u2netp.onnx
+
+# 피팅 프로브(docs/task_fitting_quality_v2.md §3) — 실제 옷장·전신 사진
+# 입력과 모델 출력 이미지라 커밋 대상이 아니다(v2 §5).
+tools/fitting_probe/input/
+tools/fitting_probe/output/
