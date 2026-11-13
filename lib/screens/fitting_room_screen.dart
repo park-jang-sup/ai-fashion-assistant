@@ -1299,7 +1299,7 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
                                   color: AppColors.textPrimary,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800)),
-                          Text('Gemini Fashion Advisor',
+                          Text('AI Fashion Advisor',
                               style: TextStyle(
                                   color: AppColors.textMuted, fontSize: 11)),
                         ],
