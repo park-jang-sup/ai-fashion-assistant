@@ -38,6 +38,7 @@ node probe.mjs schema            # §3-2 스키마 확정 호출만(약 4~6회)
 node probe.mjs matrix            # §3-3 매트릭스(약 46회, 호출 사이 2초)
 node probe.mjs all               # 둘 다(기본값)
 node probe.mjs matrix --variants A,B --cases K4   # 부분 재실행 — 같은 칸은 덮어쓰고 나머지는 유지
+node probe.mjs repeat B:K7:3 B2:K7:3   # 지정 칸만 반복(output/repeat/, 기존 결과 보존, 라운드로빈)
 node probe.mjs html              # 크롭 좌표(probe.mjs 상단 CROPS)만 고친 뒤 페이지 재생성
 ```
 
@@ -54,3 +55,8 @@ node probe.mjs html              # 크롭 좌표(probe.mjs 상단 CROPS)만 고�
 - `schema.json`, `results.json` — 원자료. `results.md` — 표.
 - `index.html` — 비교 페이지(케이스별 전체 프레임 + 얼굴~어깨·모자 CSS 크롭,
   좌표·배율 표기). 브라우저로 직접 연다.
+
+`B2`(Rules 마지막 줄만 다른 B)는 재현성 확인용으로 만들었으나 근거가 정정되어
+실행하지 않았다(docs/task_fitting_quality_v2.md 실행 기록). 앱의 프롬프트는
+변형 B 문자열이고, `test/fitting_prompt_test.dart`가 이 파일의 B 문자열과
+앱 문자열이 같은지 대조한다 — B 문자열을 바꾸면 그 테스트가 깨진다.

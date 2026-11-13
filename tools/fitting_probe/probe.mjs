@@ -9,6 +9,7 @@
 //   node probe.mjs schema            # §3-2 스키마 확정 호출만
 //   node probe.mjs matrix            # §3-3 매트릭스(schema.json 필요)
 //   node probe.mjs matrix --variants A,B --cases K1,K4   # 부분 재실행(결과 병합)
+//   node probe.mjs repeat B:K7:3 B2:K7:3   # 지정 칸만 반복(회차별 파일, 기존 결과 보존)
 //   node probe.mjs html              # results.json → index.html 재생성
 //   node probe.mjs all               # schema → matrix → html (기본값)
 
@@ -52,6 +53,9 @@ const VARIANTS = {
   C: {model: NEW_MODEL, mode: "oneshot", prompt: "new", thinking: "medium"},
   D: {model: NEW_MODEL, mode: "sequential", prompt: "new", thinking: "minimal"},
   E: {model: NEW_MODEL, mode: "core+acc", prompt: "new", thinking: "minimal", cases: ["K5", "K7"]},
+  // 재현성 확인용(실행 기록 "재현성 확인 계획") — B와 전부 같고 Rules 마지막
+  // 줄만 다르다. matrix 기본 순회에는 넣지 않는다(repeat 또는 --variants로만).
+  B2: {model: NEW_MODEL, mode: "oneshot", prompt: "new", thinking: "minimal", lastRule: "b2", repeatOnly: true},
 };
 
 // 세 변형에서 공통으로 쓰는 크롭 박스(정규화 좌표, 원본 프레임 기준).
@@ -61,6 +65,8 @@ const VARIANTS = {
 const CROPS = {
   face: {name: "얼굴~어깨", x0: 0.28, x1: 0.64, y0: 0.0, y1: 0.2},
   hat: {name: "모자", x0: 0.3, x1: 0.62, y0: 0.0, y1: 0.118},
+  // 반복 실행 섹션 전용 — "넣지 않은 아이템 추가"(손목·가방 부위)를 보기 위한 몸통 크롭.
+  torso: {name: "몸통·손목", x0: 0.18, x1: 0.78, y0: 0.22, y1: 0.62},
 };
 
 const API_KEY = process.env.GEMINI_API_KEY ?? "";
@@ -158,13 +164,19 @@ ${clothingList}
 `;
 }
 
-const NEW_RULES = `Rules:
+// B의 Rules는 NEW_RULES_HEAD + LAST_RULE.b 로 조립해도 이전과 글자 하나 다르지
+// 않다(줄바꿈 하나로 이어 붙임). B2는 마지막 줄만 LAST_RULE.b2로 바꾼다.
+const NEW_RULES_HEAD = `Rules:
 - Keep the person's face, hair, skin tone, body shape, pose, camera framing and background exactly as in IMAGE 1.
 - Replace only the clothing in each item's category. Leave everything else the person wears unchanged.
 - Reproduce each item exactly: same color, pattern, print/logo, fabric texture, length and silhouette. Never redraw, restyle or invent a logo or detail.
 - Use only the item itself from each item image — ignore its background, hanger, mannequin or any other person.
-- Items must sit naturally on the body: a hat fits snugly on the head with hair visible below it, a bag is held or worn on the shoulder, a watch is on the wrist. Realistic drape, contact shadows and lighting consistent with IMAGE 1.
-- Every listed item must be worn. Show the full body. Output exactly one photorealistic image with no added text or extra items.`;
+- Items must sit naturally on the body: a hat fits snugly on the head with hair visible below it, a bag is held or worn on the shoulder, a watch is on the wrist. Realistic drape, contact shadows and lighting consistent with IMAGE 1.`;
+const LAST_RULE = {
+  b: "- Every listed item must be worn. Show the full body. Output exactly one photorealistic image with no added text or extra items.",
+  b2: "- Every listed item must be worn. Do not add any item that is not in the list above — no extra jewelry, glasses or accessories. Show the full body. Output exactly one photorealistic image with no added text.",
+};
+const newRules = (lastRule = "b") => `${NEW_RULES_HEAD}\n${LAST_RULE[lastRule]}`;
 
 const inline = (buf, mime) => ({inlineData: {mimeType: mime, data: buf.toString("base64")}});
 
@@ -178,7 +190,7 @@ function legacyParts(baseBuf, slot, files) {
 }
 
 // 신규(§3-4): 텍스트 라벨을 각 이미지 바로 앞에 끼운다. mimeType은 매직 넘버로.
-function newParts(baseBuf, slots, files, labels) {
+function newParts(baseBuf, slots, files, labels, lastRule = "b") {
   const parts = [
     {text: "You are a virtual try-on engine. Edit IMAGE 1 so the person wears the items shown in the following images."},
     {text: "IMAGE 1 — the PERSON. This is the base image to edit."},
@@ -188,7 +200,7 @@ function newParts(baseBuf, slots, files, labels) {
     parts.push({text: `IMAGE ${i + 2} — ITEM (${SLOTS[slot].label}): ${labels[slot]}`});
     parts.push(inline(files[slot].buf, files[slot].mime));
   });
-  parts.push({text: NEW_RULES});
+  parts.push({text: newRules(lastRule)});
   return parts;
 }
 
@@ -359,7 +371,7 @@ function genConfig(v, schema) {
 // 한 번의 "케이스 실행" = 앱에서 피팅 버튼 한 번. 단계 목록을 받아 앞 단계
 // 출력을 다음 단계 베이스로 넘긴다. 앱과 같은 부분 성공 규칙: 첫 단계 실패는
 // 전체 실패, 이후 실패는 그때까지의 결과 + 누락 카테고리.
-async function runCase(vKey, kKey, files, labels, schema) {
+async function runCase(vKey, kKey, files, labels, schema, {outName = `${vKey}_${kKey}`, saveSteps = true} = {}) {
   const v = VARIANTS[vKey];
   const slots = CASES[kKey];
   const stages = v.mode === "sequential" ? slots.map((s) => [s])
@@ -371,7 +383,7 @@ async function runCase(vKey, kKey, files, labels, schema) {
   const steps = [];
   const missing = [];
   for (let i = 0; i < stages.length; i++) {
-    const parts = v.prompt === "legacy" ? legacyParts(current, stages[i][0], files) : newParts(current, stages[i], files, labels);
+    const parts = v.prompt === "legacy" ? legacyParts(current, stages[i][0], files) : newParts(current, stages[i], files, labels, v.lastRule);
     log(`[${vKey}/${kKey}] 단계 ${i + 1}/${stages.length} ${stages[i].join("+")}`);
     const r = await call(v.model, {contents: [{parts}], generationConfig: gc});
     steps.push({slots: stages[i], status: r.status, secs: +r.secs.toFixed(1), retried: r.retried, error: r.error,
@@ -382,14 +394,14 @@ async function runCase(vKey, kKey, files, labels, schema) {
       break;
     }
     current = r.image.buf;
-    if (stages.length > 1) writeFileSync(join(STEPS, `${vKey}_${kKey}_s${i + 1}.${extFor(sniffMime(current))}`), current);
+    if (saveSteps && stages.length > 1) writeFileSync(join(STEPS, `${vKey}_${kKey}_s${i + 1}.${extFor(sniffMime(current))}`), current);
     if (i < stages.length - 1) await sleep(GAP_MS);
   }
   const ok = steps.length > 0 && !steps[0].error;
   let out = null;
   if (ok) {
     const mime = sniffMime(current);
-    out = {file: `${vKey}_${kKey}.${extFor(mime)}`, mime, dims: imageSize(current), bytes: current.length};
+    out = {file: `${outName}.${extFor(mime)}`, mime, dims: imageSize(current), bytes: current.length};
     writeFileSync(join(OUTPUT, out.file), current);
   }
   return {variant: vKey, case: kKey, model: v.model, mode: v.mode, thinking: v.thinking, generationConfig: gc,
@@ -414,7 +426,7 @@ async function runMatrix(args) {
     const i = args.indexOf(flag);
     return i >= 0 ? args[i + 1].split(",") : all;
   };
-  const vKeys = pick("--variants", Object.keys(VARIANTS));
+  const vKeys = pick("--variants", Object.keys(VARIANTS).filter((k) => !VARIANTS[k].repeatOnly));
   const kKeys = pick("--cases", Object.keys(CASES));
   const results = loadResults();
   results.inputs = Object.fromEntries(INPUT_FILES.map((n) => [n, {mime: files[n].mime, dims: files[n].dims, bytes: files[n].bytes}]));
@@ -436,6 +448,49 @@ async function runMatrix(args) {
       writeResultsMd();
       writeHtml();
       log(`[${vk}/${k}] 완료 ok=${run.ok} 총 ${run.totalSecs}s 호출 ${run.calls}${run.missing.length ? " 누락=" + run.missing.join(",") : ""}`);
+    }
+  }
+}
+
+// ── repeat: 지정 칸만 반복 실행(재현성 확인) ─────────────────────────
+// node probe.mjs repeat B:K7:3 B:K4:2 B2:K7:3 B2:K4:2
+// 회차는 칸마다 기존 최대 회차 다음 번호부터 매긴다(output/repeat/{변형}_{케이스}_r{n}) —
+// 기존 결과(본 매트릭스·이전 반복)는 덮어쓰지 않는다. 칸들을 라운드로빈으로
+// 돌려(1회차 전 칸 → 2회차 전 칸 …) 시간대 변동이 한 변형에 몰리지 않게 한다.
+async function runRepeat(args) {
+  const schemaPath = join(OUTPUT, "schema.json");
+  if (!existsSync(schemaPath)) { console.error("schema.json이 없습니다 — 먼저 `node probe.mjs schema`."); process.exit(2); }
+  const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
+  const specs = args.map((a) => {
+    const [v, k, n] = a.split(":");
+    const times = Number(n);
+    if (!VARIANTS[v] || !CASES[k] || !Number.isInteger(times) || times < 1 ||
+        (VARIANTS[v].cases && !VARIANTS[v].cases.includes(k))) {
+      console.error(`잘못된 지정: ${a} — 형식 변형:케이스:횟수 (예: B:K7:3)`);
+      process.exit(2);
+    }
+    return {v, k, times};
+  });
+  if (!specs.length) { console.error("반복할 칸이 없습니다. 예: node probe.mjs repeat B:K7:3 B2:K7:3"); process.exit(2); }
+  const {files, labels} = loadInputs();
+  const results = loadResults();
+  results.repeats ??= [];
+  const maxRound = Math.max(...specs.map((x) => x.times));
+  let first = true;
+  for (let round = 0; round < maxRound; round++) {
+    for (const {v, k, times} of specs) {
+      if (round >= times) continue;
+      if (!first) await sleep(GAP_MS);
+      first = false;
+      const rep = 1 + Math.max(0, ...results.repeats.filter((x) => x.variant === v && x.case === k).map((x) => x.rep));
+      const run = await runCase(v, k, files, labels, schema, {outName: `repeat/${v}_${k}_r${rep}`, saveSteps: false});
+      run.rep = rep;
+      run.order = (results.repeatCounter = (results.repeatCounter ?? 0) + 1);
+      results.repeats.push(run);
+      writeFileSync(join(OUTPUT, "results.json"), JSON.stringify(results, null, 2));
+      writeResultsMd();
+      writeHtml();
+      log(`[repeat ${v}/${k} r${rep}] 완료 ok=${run.ok} 총 ${run.totalSecs}s${run.missing.length ? " 누락=" + run.missing.join(",") : ""}`);
     }
   }
 }
@@ -477,6 +532,17 @@ function writeResultsMd() {
       `${Math.max(...r.steps.map((x) => x.requestBytes))} | ${r.steps.map((x) => x.thoughtsTokens ?? "-").join(" / ")} | ` +
       `${r.missing.join(",") || "-"} | ${r.steps.map((x) => x.error).filter(Boolean).join(" ; ").replace(/\|/g, "\\|") || "-"} |`);
   }
+  if (res.repeats?.length) {
+    L.push("", "## 반복 실행 (재현성 확인)", "",
+      "| 순서 | 변형 | 케이스 | 회차 | 총 소요 초 | HTTP 상태 | 재시도 | 출력 해상도 | 출력 바이트 | 파일 | 누락 | 오류 |",
+      "|---|---|---|---|---|---|---|---|---|---|---|---|");
+    const reps = [...res.repeats].sort((a, b) => a.case.localeCompare(b.case) || a.variant.localeCompare(b.variant) || a.rep - b.rep);
+    for (const r of reps) {
+      L.push(`| ${r.order} | ${r.variant} | ${r.case} | r${r.rep} | ${r.totalSecs} | ${r.steps.map((x) => x.attemptStatuses.join("→")).join(" / ")} | ` +
+        `${r.steps.filter((x) => x.retried).length} | ${r.out ? sizeText(r.out.dims) + " " + r.out.mime.replace("image/", "") : "-"} | ${r.out?.bytes ?? "-"} | ` +
+        `${r.out?.file ?? "-"} | ${r.missing.join(",") || "-"} | ${r.steps.map((x) => x.error).filter(Boolean).join(" ; ").replace(/\|/g, "\\|") || "-"} |`);
+    }
+  }
   L.push("", "시간은 호출 왕복 시간 합(재시도 포함, 호출 사이 2초 간격 제외). 시한 180초/호출.");
   writeFileSync(join(OUTPUT, "results.md"), L.join("\n") + "\n");
 }
@@ -504,7 +570,7 @@ function writeHtml() {
   const res = loadResults();
   const FULL_H = 360;
   const CROP_H = 220;
-  const vKeys = Object.keys(VARIANTS);
+  const vKeys = Object.keys(VARIANTS).filter((k) => !VARIANTS[k].repeatOnly);
   const byKey = Object.fromEntries(res.runs.map((r) => [`${r.variant}_${r.case}`, r]));
   const vDesc = (k) => {
     const v = VARIANTS[k];
@@ -532,6 +598,27 @@ function writeHtml() {
       (slots.includes("hat") ? `<tr><th>${CROPS.hat.name}<br><small>x=[${CROPS.hat.x0},${CROPS.hat.x1}]<br>y=[${CROPS.hat.y0},${CROPS.hat.y1}]</small></th>${cropRow(CROPS.hat)}</tr>` : "") +
       `</table></section>`;
   }
+  if (res.repeats?.length) {
+    body += `<h1>반복 실행 (재현성 확인)</h1><p>변형별 한 줄, 회차 순. "넣지 않은 아이템 추가"는 몸통·손목 크롭에서 본다. B2는 Rules 마지막 줄만 B와 다르다.</p>`;
+    const repCases = [...new Set(res.repeats.map((r) => r.case))].sort();
+    for (const k of repCases) {
+      let rows = "";
+      const repVariants = [...new Set(res.repeats.filter((r) => r.case === k).map((r) => r.variant))].sort();
+      for (const vk of repVariants) {
+        const runs = res.repeats.filter((r) => r.case === k && r.variant === vk).sort((a, b) => a.rep - b.rep);
+        const cell = (render) => runs.map((r) => r.out ? `<td>${render(r)}</td>` :
+          `<td class="na">r${r.rep} 실패<br><small>${esc(r.steps.map((x) => x.error).filter(Boolean).join("; ").slice(0, 200))}</small></td>`).join("");
+        const full = cell((r) => `<div class="meta">r${r.rep}</div><a href="${esc(r.out.file)}" target="_blank"><img src="${esc(r.out.file)}" style="height:${FULL_H}px"></a>` +
+          `<div class="meta"><b>${r.totalSecs}초</b>${r.missing.length ? ` · <span class="bad">누락 ${esc(r.missing.join(","))}</span>` : ""}</div>`);
+        const crop = (box) => cell((r) => cropDiv(r.out.file, r.out.dims, box, CROP_H));
+        rows += `<tr><th>${esc(vk)} 전체</th>${full}</tr>` +
+          `<tr><th>${CROPS.torso.name}<br><small>x=[${CROPS.torso.x0},${CROPS.torso.x1}]<br>y=[${CROPS.torso.y0},${CROPS.torso.y1}]</small></th>${crop(CROPS.torso)}</tr>` +
+          `<tr><th>${CROPS.face.name}</th>${crop(CROPS.face)}</tr>` +
+          (CASES[k].includes("hat") ? `<tr><th>${CROPS.hat.name}</th>${crop(CROPS.hat)}</tr>` : "");
+      }
+      body += `<section><h2>반복 ${k} — ${CASES[k].join(" · ")}</h2><table>${rows}</table></section>`;
+    }
+  }
   const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>피팅 프로브 비교</title><style>
 :root{--bg:#fff;--fg:#1a1a1a;--mute:#666;--line:#ddd;--bad:#c0392b}
@@ -550,6 +637,7 @@ ${body}</body></html>`;
 // ── main ──────────────────────────────────────────────────────────
 const [cmd = "all", ...args] = process.argv.slice(2);
 mkdirSync(STEPS, {recursive: true});
+mkdirSync(join(OUTPUT, "repeat"), {recursive: true});
 if (cmd === "html") { writeResultsMd(); writeHtml(); log(`→ ${join(OUTPUT, "index.html")}`); process.exit(0); }
 if (!API_KEY) { console.error("GEMINI_API_KEY 환경변수가 없습니다."); process.exit(2); }
 if (cmd === "schema" || cmd === "all") {
@@ -558,6 +646,7 @@ if (cmd === "schema" || cmd === "all") {
   if (!s.endpointOk) { console.error("generateContent가 새 모델에서 동작하지 않음 — §3-2에 따라 여기서 멈춘다."); process.exit(3); }
 }
 if (cmd === "matrix" || cmd === "all") await runMatrix(args);
+if (cmd === "repeat") await runRepeat(args);
 writeResultsMd();
 writeHtml();
 log(`→ ${join(OUTPUT, "results.md")}\n→ ${join(OUTPUT, "index.html")}`);
