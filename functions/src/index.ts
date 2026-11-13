@@ -50,7 +50,18 @@ const ALLOWED_MODELS = [
   // 서버는 requestBody를 가공 없이 그대로 중계하므로 화이트리스트에만
   // 추가하면 된다 - 별도 처리 분기가 필요 없다.
   "gemini-3.1-flash-image",
+  // docs/task_fitting_quality_v2.md - 가상 피팅을 새 이미지 모델 + 한 번에
+  // 방식으로 교체. 위 gemini-3.1-flash-image는 지우지 않는다 - 이미 배포된
+  // APK(심사위원 보유분 포함)가 순차 단계마다 그 모델명을 보낸다.
+  // payload_limit.ts의 IMAGE_MODELS에도 같이 넣어야 한다(빠뜨리면 text로
+  // 분류돼 첫 호출부터 조용히 거부된다 - v1 5단계 경고).
+  "gemini-nano-banana-2.1",
 ];
+
+// generateFittingImage가 쓰는 이미지 모델 - 엔드포인트 URL에 하드코딩돼
+// 있던 것을 상수로 모았다(task_fitting_quality_v2 §4-1). 클라이언트
+// GeminiService._imageModel과 같은 커밋에서 함께 바꾼다.
+const FITTING_IMAGE_MODEL = "gemini-nano-banana-2.1";
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -761,7 +772,7 @@ export const generateFittingImage = onCall(
     try {
       const key = geminiApiKey.value();
       const endpoint =
-        `${GEMINI_BASE_URL}/models/gemini-3.1-flash-image:generateContent?key=${key}`;
+        `${GEMINI_BASE_URL}/models/${FITTING_IMAGE_MODEL}:generateContent?key=${key}`;
       const upstream = await fetchUpstream(endpoint, requestBodyJson, reqId, startedAt);
 
       let text: string;

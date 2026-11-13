@@ -25,13 +25,17 @@ const bool serverFittingCacheEnabled =
 // (handoff_2026-08-07.md §4 "정정 3") 우리가 고칠 수 없어 채택한 회피책.
 // [기본값 전환 2026-08-10] 검증 통과(실기기 로그로 N벌=N회 호출 확인,
 // 단계별 재시도가 실제 업스트림 오류로 실전 검증됨) 후 기본 켜짐으로
-// 전환 — SERVER_FITTING_CACHE와 달리 **이 플래그는 더 이상 "켜지 않으면
-// 안전한 옛 경로"가 아니다**. false로 되돌리면 한 번에 방식(회귀 구간에
-// 그대로 노출)으로 돌아간다 — 이건 롤백이 아니라 회귀로의 복귀다.
-// 킬 스위치는 순차 코드 자체에 결함이 발견됐을 때만 쓴다.
-//   flutter run --dart-define=SEQUENTIAL_FITTING=false  # 회귀 구간 재노출(비상용, 롤백 아님)
+// 전환했었다.
+// [기본값 재전환 2026-11-13, docs/task_fitting_quality_v2.md] 위 회귀는
+// 구 이미지 모델(gemini-3.1-flash-image)의 것이었다. 새 모델
+// (gemini-nano-banana-2.1)로 바꾼 프로브에서 한 번에 방식은 옷 1~7벌 모두
+// 약 10~13초·누락 0건이었고, 순차는 옷 수만큼 느려지며(7벌 84초) 단계마다
+// 재생성을 거쳐 얼굴·배경이 열화했다(같은 모델·프롬프트로 비교). 그래서
+// 기본값을 false(한 번에)로 되돌린다 — 이제 false가 정상 경로이고 순차는
+// 비교·비상용이다. 순차 코드는 지우지 않는다.
+//   flutter run --dart-define=SEQUENTIAL_FITTING=true  # 순차 합성으로 복귀(비교·비상용)
 const bool sequentialFittingEnabled =
-    bool.fromEnvironment('SEQUENTIAL_FITTING', defaultValue: true);
+    bool.fromEnvironment('SEQUENTIAL_FITTING', defaultValue: false);
 
 // 순차 합성 시 옷을 입히는 고정 순서(task_sequential_fitting_v1.md §b -
 // 큰 면적을 먼저 확정하고 작은 것을 얹는 쪽이 재해석 여지가 적다는 판단,
@@ -121,11 +125,12 @@ class GeminiService {
     required String model,
     required Map<String, dynamic> requestBody,
     String? category,
+    Duration timeout = const Duration(seconds: 60),
   }) async {
     try {
       final result = await _functions
           .httpsCallable('callGeminiText',
-              options: HttpsCallableOptions(timeout: const Duration(seconds: 60)))
+              options: HttpsCallableOptions(timeout: timeout))
           .call({
         'model': model,
         'requestBody': requestBody,
@@ -282,8 +287,27 @@ class GeminiService {
   // 비교해볼 수 있도록 나머지는 주석으로 남겨둔다.
   // 동일 조건(사람 사진 1장 + 옷 1장) 비교 결과 Nano Banana 2가 평균
   // 약 1.9배 빠르고(12.7초 vs 23.7초) 품질도 대등해 기본값으로 채택.
+  // [교체 2026-11-13] docs/task_fitting_quality_v2.md 프로브(변형 B)로 확정.
+  // 서버 ALLOWED_MODELS·FITTING_IMAGE_MODEL·payload_limit.ts IMAGE_MODELS와
+  // 같은 커밋에서 바꾼다. 구 모델은 서버 화이트리스트에 남아 있다(배포된 APK용).
   // static const _imageModel = 'gemini-3-pro-image'; // Nano Banana Pro
-  static const _imageModel = 'gemini-3.1-flash-image'; // Nano Banana 2
+  // static const _imageModel = 'gemini-3.1-flash-image'; // Nano Banana 2
+  static const _imageModel = 'gemini-nano-banana-2.1'; // Nano Banana 2.1
+
+  // 이미지 합성 요청의 generationConfig — 프로브 §3-2에서 실제 호출로
+  // 필드명을 확정했다(§4 보충 1). thinking 기본값이 minimal이 아니므로
+  // 반드시 명시한다(미지정 시 thinking 토큰 358 관측). aspectRatio는
+  // 지정하지 않는다(프로브 B와 같은 조건).
+  @visibleForTesting
+  static const Map<String, dynamic> fittingGenerationConfig = {
+    'responseModalities': ['IMAGE'],
+    'thinkingConfig': {'thinkingLevel': 'minimal'},
+    'imageConfig': {'imageSize': '1K'},
+  };
+
+  // 이미지 호출의 클라이언트 시한(§4-2-8) — 텍스트 호출의 60초는 그대로 둔다.
+  // _callFittingProxy와 같은 150초(서버 업스트림 상한 300초 안).
+  static const _imageCallTimeout = Duration(seconds: 150);
 
   // 커넥션을 재사용해 매 요청마다의 TLS 핸드셰이크 비용을 줄인다.
   static final http.Client _client = http.Client();
@@ -322,8 +346,29 @@ class GeminiService {
     required List<String> clothingItemIds,
     required List<String> clothingImageUrls,
     required List<String> clothingNames,
+    required List<String> clothingLabels,
+    required List<String> clothingDescriptions,
     FittingProgressCallback? onProgress,
   }) async {
+    // 피팅 시도 1회 = fitting 1콜(§4-2-6). 순차·한 번에 두 경로 모두 여기서
+    // 딱 한 번 소비한다 — 재시도는 이 아래(단계/호출 단위)에서만 걸리므로
+    // 재시도해도 두 번 세지 않는다. resource-exhausted(진짜 상한 초과,
+    // RateLimitExceededException)만 그대로 막는다 — 재시도 대상도 아니다
+    // (결정론적 실패). **그 외 모든 실패(콜드스타트 지연·네트워크 오류·
+    // 서버 일시 오류 등)는 로그만 남기고 피팅을 계속 진행한다** — 계측
+    // 실패로 카운트가 누락되는 것보다 피팅 자체가 막히는 게 더 나쁘다.
+    // 상한의 목적은 남용 차단이지 정상 사용 차단이 아니다(fail-open, 서버
+    // checkAndRecordRateLimit이 이미 트랜잭션 실패 시 이렇게 동작한다 —
+    // 같은 원칙).
+    try {
+      await _beginFittingAttempt();
+    } on RateLimitExceededException {
+      rethrow;
+    } catch (e) {
+      debugPrint('[GeminiService] beginFittingAttempt 실패(무시, fail-open): $e');
+    }
+
+    final order = fittingRenderOrder(clothingNames);
     if (sequentialFittingEnabled) {
       return _generateFittingImageSequential(
         userPhotoId: userPhotoId,
@@ -331,84 +376,34 @@ class GeminiService {
         clothingItemIds: clothingItemIds,
         clothingImageUrls: clothingImageUrls,
         clothingNames: clothingNames,
+        clothingLabels: clothingLabels,
+        clothingDescriptions: clothingDescriptions,
+        order: order,
         onProgress: onProgress,
       );
     }
-    final bytes = await _generateFittingImageOneShot(
-      userPhotoId: userPhotoId,
-      userPhotoUrl: userPhotoUrl,
-      clothingItemIds: clothingItemIds,
-      clothingImageUrls: clothingImageUrls,
-      clothingNames: clothingNames,
-    );
+    // 재시도는 이 한 겹뿐이다(§4-2-7) — 호출부(FittingJobController)는 더
+    // 감싸지 않는다. 다운로드까지 포함해 다시 시도하는 것은 예전
+    // _withRetry(호출부)와 같은 범위다.
+    final bytes = await _stepWithRetry(() => _generateFittingImageOneShot(
+          userPhotoId: userPhotoId,
+          userPhotoUrl: userPhotoUrl,
+          clothingItemIds: clothingItemIds,
+          clothingImageUrls: clothingImageUrls,
+          clothingLabels: clothingLabels,
+          clothingDescriptions: clothingDescriptions,
+          order: order,
+        ));
     return FittingGenerationResult(imageBytes: bytes);
   }
 
-  // 기존 한 번에 호출 — sequentialFittingEnabled 도입 전과 한 글자도 안
-  // 바뀐 내부 로직(이름만 바뀜, generateFittingImage였던 것을 여기로 이동).
-  static Future<Uint8List> _generateFittingImageOneShot({
-    required String userPhotoId,
-    required String userPhotoUrl,
-    required List<String> clothingItemIds,
-    required List<String> clothingImageUrls,
-    required List<String> clothingNames,
-  }) async {
-    // 이미지들을 순차 다운로드하면 N개 x 다운로드시간만큼 대기하게 되므로
-    // Future.wait로 병렬 실행해 가장 느린 한 건의 시간만큼만 기다리게 한다.
-    final downloaded = await Future.wait([
-      _downloadViaResolverOrFallback(id: userPhotoId, fallbackUrl: userPhotoUrl),
-      for (var i = 0; i < clothingItemIds.length; i++)
-        _downloadViaResolverOrFallback(
-          id: clothingItemIds[i],
-          fallbackUrl: clothingImageUrls[i],
-        ),
-    ]);
-    final userPhotoBytes = downloaded.first;
-    final clothingImageBytes = downloaded.skip(1).toList();
-
-    final parts = <Map<String, dynamic>>[
-      {'text': _buildFittingPrompt(clothingNames)},
-      {'inlineData': {'mimeType': 'image/jpeg', 'data': base64Encode(userPhotoBytes)}},
-      ...clothingImageBytes.map((bytes) => {
-        'inlineData': {'mimeType': 'image/jpeg', 'data': base64Encode(bytes)}
-      }),
-    ];
-
-    final requestBody = {
-      'contents': [{'parts': parts}],
-      'generationConfig': {'responseModalities': ['IMAGE', 'TEXT']},
-    };
-
-    // serverFittingCacheEnabled가 꺼져 있으면(기본값) 기존 경로 그대로 —
-    // 이 분기 자체가 기존 동작을 한 비트도 안 바꾼다는 걸 보장하는
-    // 지점이다(docs/task_fitting_server_cache_v1.md §3.2/§6).
-    final responseBody = serverFittingCacheEnabled
-        ? await _callFittingProxy(
-            userPhotoId: userPhotoId,
-            clothingItemIds: clothingItemIds,
-            requestBody: requestBody,
-          )
-        : await _callProxyText(model: _imageModel, requestBody: requestBody);
-    return _extractImageFromResponse(responseBody);
-  }
-
-  // 옷을 한 벌씩 순차로 입힌다 — 매 호출이 "옷 1벌 추가"가 되어 업스트림
-  // 회귀 구간(옷 총 개수 2 이상, handoff_2026-08-07.md §4 "정정 3")을
-  // 거의 안 거치게 한다(docs/task_sequential_fitting_v1.md 실험 1).
-  // 중간 결과는 메모리에서만 다음 호출의 입력으로 넘긴다 — Storage에
-  // 올리지 않는다(§a, 고아 파일 방지).
-  static Future<FittingGenerationResult> _generateFittingImageSequential({
-    required String userPhotoId,
-    required String userPhotoUrl,
-    required List<String> clothingItemIds,
-    required List<String> clothingImageUrls,
-    required List<String> clothingNames,
-    FittingProgressCallback? onProgress,
-  }) async {
-    // fittingOrder 기준으로 정렬한 인덱스 순서 — 목록에 없는 카테고리는
-    // fittingOrder.length로 취급해 끝으로 밀리되, 서로간 상대 순서는
-    // 원래 입력 순서를 유지한다(List.sort가 아니라 인덱스 비교라 안정적).
-    final order = List<int>.generate(clothingItemIds.length, (i) => i)
+  // 아이템을 보내는 순서 — fittingOrder 기준으로 정렬한 인덱스 순서. 목록에
+  // 없는 카테고리는 fittingOrder.length로 취급해 끝으로 밀리되, 서로간 상대
+  // 순서는 원래 입력 순서를 유지한다(List.sort가 아니라 인덱스 비교라
+  // 안정적). 한 번에 방식도 같은 순서로 보낸다(§4 보충 3 — 프로브와 같게).
+  @visibleForTesting
+  static List<int> fittingRenderOrder(List<String> clothingNames) {
+    return List<int>.generate(clothingNames.length, (i) => i)
       ..sort((a, b) {
         final rankA = fittingOrder.indexOf(clothingNames[a]);
         final rankB = fittingOrder.indexOf(clothingNames[b]);
@@ -417,23 +412,80 @@ class GeminiService {
         if (normA != normB) return normA.compareTo(normB);
         return a.compareTo(b);
       });
+  }
 
-    // 루프 시작 전 피팅 단위 상한을 1회 소비한다(§d). resource-exhausted
-    // (진짜 상한 초과, RateLimitExceededException)만 그대로 막는다 —
-    // 순차 호출을 몇 개 날린 뒤 중간에 걸리는 것보다 낫고, 재시도
-    // 대상도 아니다(결정론적 실패). **그 외 모든 실패(콜드스타트
-    // 지연·네트워크 오류·서버 일시 오류 등)는 로그만 남기고 피팅을
-    // 계속 진행한다** — 계측 실패로 카운트가 누락되는 것보다 피팅
-    // 자체가 막히는 게 더 나쁘다. 상한의 목적은 남용 차단이지 정상
-    // 사용 차단이 아니다(fail-open, 서버 checkAndRecordRateLimit이
-    // 이미 트랜잭션 실패 시 이렇게 동작한다 — 같은 원칙).
-    try {
-      await _beginFittingAttempt();
-    } on RateLimitExceededException {
-      rethrow;
-    } catch (e) {
-      debugPrint('[GeminiService] beginFittingAttempt 실패(무시, fail-open): $e');
-    }
+  // 한 번에 호출 — 전신 + 옷 전부를 한 요청에 넣는다(docs/task_fitting_quality_v2.md
+  // 변형 B). 순차 합성이 피하려던 업스트림 회귀는 구 모델의 것이었다.
+  static Future<Uint8List> _generateFittingImageOneShot({
+    required String userPhotoId,
+    required String userPhotoUrl,
+    required List<String> clothingItemIds,
+    required List<String> clothingImageUrls,
+    required List<String> clothingLabels,
+    required List<String> clothingDescriptions,
+    required List<int> order,
+  }) async {
+    // 이미지들을 순차 다운로드하면 N개 x 다운로드시간만큼 대기하게 되므로
+    // Future.wait로 병렬 실행해 가장 느린 한 건의 시간만큼만 기다리게 한다.
+    final downloaded = await Future.wait([
+      _downloadViaResolverOrFallback(id: userPhotoId, fallbackUrl: userPhotoUrl),
+      for (final i in order)
+        _downloadViaResolverOrFallback(
+          id: clothingItemIds[i],
+          fallbackUrl: clothingImageUrls[i],
+        ),
+    ]);
+
+    final parts = buildFittingParts(
+      personBytes: downloaded.first,
+      items: [
+        for (var j = 0; j < order.length; j++)
+          (
+            bytes: downloaded[j + 1],
+            label: clothingLabels[order[j]],
+            description: clothingDescriptions[order[j]],
+          ),
+      ],
+    );
+    final requestBody = {
+      'contents': [{'parts': parts}],
+      'generationConfig': fittingGenerationConfig,
+    };
+
+    // serverFittingCacheEnabled가 꺼져 있으면(기본값) callGeminiText로
+    // 중계한다(docs/task_fitting_server_cache_v1.md §3.2/§6). category는
+    // 서버 로그에서 방식과 규모를 구분하는 계측용 형제 키(§4-1-6).
+    final responseBody = serverFittingCacheEnabled
+        ? await _callFittingProxy(
+            userPhotoId: userPhotoId,
+            clothingItemIds: clothingItemIds,
+            requestBody: requestBody,
+          )
+        : await _callProxyText(
+            model: _imageModel,
+            requestBody: requestBody,
+            category: 'oneshot:${order.length}',
+            timeout: _imageCallTimeout,
+          );
+    return _extractImageFromResponse(responseBody);
+  }
+
+  // 옷을 한 벌씩 순차로 입힌다 — 매 호출이 "옷 1벌 추가"가 된다
+  // (docs/task_sequential_fitting_v1.md). [2026-11-13] 기본 경로가 아니다
+  // (sequentialFittingEnabled 주석 참고) — 비교·비상용으로 남긴다.
+  // 중간 결과는 메모리에서만 다음 호출의 입력으로 넘긴다 — Storage에
+  // 올리지 않는다(§a, 고아 파일 방지).
+  static Future<FittingGenerationResult> _generateFittingImageSequential({
+    required String userPhotoId,
+    required String userPhotoUrl,
+    required List<String> clothingItemIds,
+    required List<String> clothingImageUrls,
+    required List<String> clothingNames,
+    required List<String> clothingLabels,
+    required List<String> clothingDescriptions,
+    required List<int> order,
+    FittingProgressCallback? onProgress,
+  }) async {
 
     var currentBytes =
         await _downloadViaResolverOrFallback(id: userPhotoId, fallbackUrl: userPhotoUrl);
@@ -448,14 +500,15 @@ class GeminiService {
         fallbackUrl: clothingImageUrls[idx],
       );
 
-      final parts = <Map<String, dynamic>>[
-        {'text': _buildFittingPrompt([category])},
-        {'inlineData': {'mimeType': 'image/jpeg', 'data': base64Encode(currentBytes)}},
-        {'inlineData': {'mimeType': 'image/jpeg', 'data': base64Encode(itemBytes)}},
-      ];
+      // 한 번에 방식과 같은 틀에 이번 단계 아이템만 넣는다(프로브 변형 D와
+      // 같은 구성) — 이전 단계 출력이 "IMAGE 1 — the PERSON" 자리에 들어간다.
+      final parts = buildFittingParts(
+        personBytes: currentBytes,
+        items: [(bytes: itemBytes, label: clothingLabels[idx], description: clothingDescriptions[idx])],
+      );
       final requestBody = {
         'contents': [{'parts': parts}],
-        'generationConfig': {'responseModalities': ['IMAGE', 'TEXT']},
+        'generationConfig': fittingGenerationConfig,
       };
 
       // 마지막 단계만(그리고 플래그가 켜져 있을 때만) 서버 캐시 경로를
@@ -475,7 +528,10 @@ class GeminiService {
                 ))
             : await _stepWithRetry(
                 () => _callProxyText(
-                    model: _imageModel, requestBody: requestBody, category: category));
+                    model: _imageModel,
+                    requestBody: requestBody,
+                    category: category,
+                    timeout: _imageCallTimeout));
         currentBytes = _extractImageFromResponse(responseBody);
       } catch (e) {
         // 1단계(첫 옷)부터 실패하면 보여줄 게 아무것도 없어 전체 실패로
@@ -491,10 +547,13 @@ class GeminiService {
     return FittingGenerationResult(imageBytes: currentBytes, missingCategories: missing);
   }
 
-  // 순차 루프의 단계 하나에 적용하는 재시도 — fitting_job_controller.dart의
-  // _withRetry와 같은 판정(타임아웃/재시도 가능한 오류만 1회, invalid-argument는
-  // 즉시 rethrow)이지만 적용 단위가 전체 루프가 아니라 단계 하나다(§e -
-  // 이미 성공한 단계의 호출 비용·시간을 버리지 않기 위해).
+  // 피팅 재시도 — 순차는 단계 하나, 한 번에는 호출 하나에 건다(§e - 이미
+  // 성공한 단계의 호출 비용·시간을 버리지 않기 위해). 타임아웃/재시도 가능한
+  // 오류만 1회, invalid-argument(페이로드 상한 초과 등 결정론적 실패)는 즉시
+  // rethrow — 같은 요청을 다시 보내도 똑같이 거부되고 함수만 반복 두드린다.
+  // [2026-11-13] 호출부(fitting_job_controller.dart)의 같은 판정 _withRetry는
+  // 없앴다 — 재시도가 두 겹으로 곱해지지 않게 이 한 겹으로 모았다
+  // (docs/task_fitting_quality_v2.md §4-2-7).
   static Future<T> _stepWithRetry<T>(Future<T> Function() action) async {
     try {
       return await action();
@@ -883,7 +942,10 @@ $feedbackSection
       throw Exception('Gemini 응답에 이미지가 포함되지 않았습니다.');
     }
     for (final part in parts) {
-      final inlineData = (part as Map)['inlineData'] as Map?;
+      // thought: true 파트는 추론 중의 중간 산출물이다 — 최종 이미지가 아니므로
+      // 건너뛴다(프로브 probe.mjs의 응답 파싱과 같은 규칙).
+      if ((part as Map)['thought'] == true) continue;
+      final inlineData = part['inlineData'] as Map?;
       if (inlineData != null) {
         final imageData = inlineData['data'] as String?;
         if (imageData != null && imageData.isNotEmpty) {
@@ -894,21 +956,100 @@ $feedbackSection
     throw Exception('합성 이미지를 생성하지 못했습니다. 다른 옷이나 사진으로 다시 시도해주세요.');
   }
 
-  static String _buildFittingPrompt(List<String> clothingNames) {
-    final clothingList = clothingNames.map((n) => '- $n').join('\n');
-    return '''
-첫 번째 사진의 사람에게 이후 사진에 있는 옷을 입혀서 자연스러운 합성 이미지를 만들어주세요.
+  // ── 가상 피팅 프롬프트 (docs/task_fitting_quality_v2.md §3-4·§4 보충 2) ──
+  // tools/fitting_probe/probe.mjs의 변형 B가 실제로 보낸 문자열을 글자 그대로
+  // 옮겼다 — 검증된 것은 이 문자열이다. 고치려면 프로브로 다시 검증한다.
+  // test/fitting_prompt_test.dart가 문자열·parts 구성을 고정한다.
+  @visibleForTesting
+  static const fittingIntroText =
+      'You are a virtual try-on engine. Edit IMAGE 1 so the person wears the items shown in the following images.';
+  @visibleForTesting
+  static const fittingPersonLabelText = 'IMAGE 1 — the PERSON. This is the base image to edit.';
+  @visibleForTesting
+  static const fittingRulesText = 'Rules:\n'
+      "- Keep the person's face, hair, skin tone, body shape, pose, camera framing and background exactly as in IMAGE 1.\n"
+      "- Replace only the clothing in each item's category. Leave everything else the person wears unchanged.\n"
+      '- Reproduce each item exactly: same color, pattern, print/logo, fabric texture, length and silhouette. Never redraw, restyle or invent a logo or detail.\n'
+      '- Use only the item itself from each item image — ignore its background, hanger, mannequin or any other person.\n'
+      '- Items must sit naturally on the body: a hat fits snugly on the head with hair visible below it, a bag is held or worn on the shoulder, a watch is on the wrist. Realistic drape, contact shadows and lighting consistent with IMAGE 1.\n'
+      '- Every listed item must be worn. Show the full body. Output exactly one photorealistic image with no added text or extra items.';
 
-착용할 옷:
-$clothingList
+  // 괄호 안 라벨 — 프로브 SLOTS의 label과 같다. 액세서리는 subCategory로
+  // 고른다(모자/가방/시계). 팔찌는 프로브에 없던 슬롯이라 시계와 같은 꼴로
+  // 새로 정했다(검증 안 됨 — §4 보충 5의 8슬롯 실기기 확인 대상).
+  static const _fittingSlotLabels = {
+    '상의': '상의 / top',
+    '하의': '하의 / bottom',
+    '아우터': '아우터 / outerwear',
+    '신발': '신발 / shoes',
+    '모자': '모자 / hat, worn on the head',
+    '가방': '가방 / bag',
+    '시계': '시계 / watch, worn on the wrist',
+    '팔찌': '팔찌 / bracelet, worn on the wrist',
+  };
 
-생성 규칙:
-- 첫 번째 사진 속 사람의 얼굴, 체형, 피부톤, 헤어스타일을 그대로 유지해주세요
-- 제공된 옷 이미지의 옷을 그 사람에게 자연스럽게 입혀주세요
-- 전신이 보이도록 해주세요
-- 자연스러운 포즈와 배경을 유지해주세요
-- 실제로 그 옷을 입은 것처럼 사실적으로 표현해주세요
-''';
+  // "IMAGE n — ITEM (라벨): 설명"의 라벨. 미분류 액세서리나 모르는 카테고리는
+  // 카테고리 이름 그대로 쓴다.
+  static String fittingItemLabel({required String category, String? subCategory}) {
+    if (category == '액세서리' && subCategory != null) {
+      return _fittingSlotLabels[subCategory] ?? subCategory;
+    }
+    return _fittingSlotLabels[category] ?? category;
+  }
+
+  // "IMAGE n — ITEM (라벨): 설명"의 설명 — 프로브 labels.json과 같은 형식
+  // (§4 보충 4, tools/fitting_probe/fetch_inputs.py): subCategory와 속성
+  // 요약(ClothingAttributes.toPromptLine)을 ", "로 잇고, 둘 다 없으면
+  // 카테고리 이름만.
+  static String fittingItemDescription({
+    required String category,
+    String? subCategory,
+    String? attributesLine,
+  }) {
+    final parts = [
+      if (subCategory != null && subCategory.isNotEmpty) subCategory,
+      if (attributesLine != null && attributesLine.isNotEmpty) attributesLine,
+    ];
+    return parts.isEmpty ? category : parts.join(', ');
+  }
+
+  // 바이트 앞부분(매직 넘버)으로 이미지 형식을 판별한다(§4-2-4). 모르는
+  // 형식은 기존 기본값(image/jpeg)으로 둔다.
+  @visibleForTesting
+  static String sniffImageMimeType(Uint8List bytes) {
+    if (bytes.length >= 4 &&
+        bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47) {
+      return 'image/png';
+    }
+    if (bytes.length >= 12 &&
+        bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46 &&
+        bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50) {
+      return 'image/webp';
+    }
+    return 'image/jpeg';
+  }
+
+  // 이미지마다 바로 앞에 텍스트 라벨을 끼운다 — [지시, 전신 라벨, 전신,
+  // (옷 라벨, 옷) × N, 규칙]. 8슬롯 전부면 parts 20·inlineData 9로 서버
+  // request_shape 상한(20/18) 안이다(functions/src/request_shape.test.ts).
+  @visibleForTesting
+  static List<Map<String, dynamic>> buildFittingParts({
+    required Uint8List personBytes,
+    required List<({Uint8List bytes, String label, String description})> items,
+  }) {
+    Map<String, dynamic> inline(Uint8List bytes) => {
+          'inlineData': {'mimeType': sniffImageMimeType(bytes), 'data': base64Encode(bytes)}
+        };
+    return [
+      {'text': fittingIntroText},
+      {'text': fittingPersonLabelText},
+      inline(personBytes),
+      for (var i = 0; i < items.length; i++) ...[
+        {'text': 'IMAGE ${i + 2} — ITEM (${items[i].label}): ${items[i].description}'},
+        inline(items[i].bytes),
+      ],
+      {'text': fittingRulesText},
+    ];
   }
 
   static String _buildAttributeExtractionPrompt(String category) {

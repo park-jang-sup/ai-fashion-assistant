@@ -18,12 +18,16 @@ function run(name: string, fn: () => void): void {
 }
 
 // 고정 벡터 — Dart 쪽 계산: sortedClothingIds = ['a','b'] (이미 정렬됨
-// 유지 확인용), raw = 'TEST_U:a,b', sha256(utf8(raw)) 소문자 hex.
-// sha256은 표준 알고리즘이라 Python hashlib.sha256('TEST_U:a,b'.encode())
-// .hexdigest()로 교차검증한 값과 동일해야 한다(구현체 무관).
-const FIXTURE_EXPECTED = "8f6b3aa991bcbc456d8e0b7e0e85b5cb96fb3c92fb42f15cef0f6e667911e847";
+// 유지 확인용), raw = 'v2:TEST_U:a,b', sha256(utf8(raw)) 소문자 hex.
+// sha256은 표준 알고리즘이라 Python hashlib.sha256('v2:TEST_U:a,b'.encode())
+// .hexdigest()로 교차검증한 값과 동일해야 한다(구현체 무관, 2026-11-13
+// Node·Python 양쪽으로 계산해 일치 확인). Dart 쪽은
+// test/fitting_cache_key_test.dart가 같은 값을 고정한다.
+// [v2 2026-11-13] 버전 접두사 도입 전 값은
+// 8f6b3aa991bcbc456d8e0b7e0e85b5cb96fb3c92fb42f15cef0f6e667911e847('TEST_U:a,b').
+const FIXTURE_EXPECTED = "e0bd598b6ef801709da291c36f31d1a3216fc42dc22eaee0b4fdad2768560202";
 
-run("buildFittingCacheKey — 고정 벡터(userPhotoId=TEST_U, ['a','b']) — Dart/Python 교차검증값과 일치", () => {
+run("buildFittingCacheKey — 고정 벡터(v2, userPhotoId=TEST_U, ['a','b']) — Dart/Python 교차검증값과 일치", () => {
   assert.strictEqual(buildFittingCacheKey("TEST_U", ["a", "b"]), FIXTURE_EXPECTED);
 });
 
@@ -41,6 +45,11 @@ run("buildFittingCacheKey — 옷 1장(리스트 길이 1)도 동일 규칙", ()
   const key = buildFittingCacheKey("U1", ["only"]);
   assert.strictEqual(key.length, 64);
   assert.match(key, /^[0-9a-f]{64}$/);
+});
+
+run("buildFittingCacheKey — 버전 접두사 없는 옛 키와 다르다(옛 캐시 결과를 돌려주지 않음)", () => {
+  assert.notStrictEqual(buildFittingCacheKey("TEST_U", ["a", "b"]),
+    "8f6b3aa991bcbc456d8e0b7e0e85b5cb96fb3c92fb42f15cef0f6e667911e847");
 });
 
 run("buildFittingCacheKey — 서로 다른 조합은 서로 다른 키", () => {

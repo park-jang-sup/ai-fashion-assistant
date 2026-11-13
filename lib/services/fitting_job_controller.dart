@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -10,9 +9,23 @@ import '../models/outfit_history_entry.dart';
 import '../models/user_profile.dart';
 import '../models/wardrobe_item.dart';
 import 'firestore_service.dart';
-import 'gemini_api_exception.dart';
 import 'gemini_service.dart';
 import 'storage_service.dart';
+
+// 캐시 키 버전(docs/task_fitting_quality_v2.md §4-1-5) — 모델·프롬프트가
+// 바뀌어도 같은 조합이면 옛 결과를 캐시에서 돌려줘 개선이 안 보인다.
+// functions/src/fitting_cache_key.ts의 FITTING_CACHE_KEY_VERSION과 같아야
+// 한다(서버가 같은 식으로 재계산한다). 고정 벡터: test/fitting_cache_key_test.dart.
+const fittingCacheKeyVersion = 'v2';
+
+// 버전 + 사용자 사진 ID + 정렬된 옷 ID들을 합쳐 SHA-256 해시로 만든다.
+// 옷 선택 순서가 달라도(하의→상의 vs 상의→하의) 같은 조합이면 같은 키가 나오도록
+// 정렬을 거친다.
+String fittingCacheKeyFor(String userPhotoId, List<String> clothingItemIds) {
+  final sortedClothingIds = [...clothingItemIds]..sort();
+  final raw = '$fittingCacheKeyVersion:$userPhotoId:${sortedClothingIds.join(',')}';
+  return sha256.convert(utf8.encode(raw)).toString();
+}
 
 // 화면(State)이 아니라 AppShell 레벨에서 보관되는 컨트롤러.
 // 탭을 이동하거나 위젯이 dispose되어도 진행 중인 Future와 그 결과는
@@ -204,37 +217,6 @@ class FittingJobController extends ChangeNotifier {
     }));
   }
 
-  // 응답 생성이 일시적으로 느려 타임아웃났거나, Gemini가 일시적으로
-  // 과부하(503)·요청 급증(429) 상태인 경우 곧바로 실패시키지 않고
-  // 한 번 더 시도해본다. 두 번째도 같은 상황이면 그대로 실패로 처리한다.
-  //
-  // 프록시 페이로드 크기 상한 초과(functions/src/payload_limit.ts,
-  // handoff_2026-08-07.md §6 (4))는 결정론적 실패다 - 같은 요청을 다시
-  // 보내도 크기가 그대로라 똑같이 거부된다. 재시도하면 상한을 넣은
-  // 목적(정상 사용자의 호출량 할당을 지키는 것)과 반대로 함수만 반복
-  // 두드리게 된다.
-  // 확인(2026-08-08): 이 상한 초과는 GeminiService._mapProxyException이
-  // invalid-argument를 TimeoutException/GeminiApiException으로
-  // 재구성하지 않고 원본 FirebaseFunctionsException 그대로 돌려주므로,
-  // 아래 on절 어디에도 안 걸려 지금도 재시도되지 않는다(이미 그랬다 -
-  // 이번에 새로 막은 게 아니라 코드 추적으로 확인만 했다). 다만 이건
-  // "우연히 타입이 안 맞아서" 성립하는 암묵적 보장이라, _mapProxyException이
-  // 나중에 FirebaseFunctionsException을 다른 타입으로 감싸도록 바뀌면
-  // 조용히 깨질 수 있다 - 아래 on절로 명시해 그 보장을 코드에 고정한다.
-  static Future<T> _withRetry<T>(Future<T> Function() action) async {
-    try {
-      return await action();
-    } on TimeoutException {
-      return await action();
-    } on GeminiApiException catch (e) {
-      if (!e.isRetryable) rethrow;
-      return await action();
-    } on FirebaseFunctionsException catch (e) {
-      if (e.code == 'invalid-argument') rethrow; // 결정론적 실패 - 재시도 안 함
-      rethrow; // 그 외 코드는 기존 동작 그대로(변경 없음) - 여기 걸려도 항상 rethrow
-    }
-  }
-
   Future<void> generateFitting({
     required WardrobeItem userPhoto,
     required List<WardrobeItem> clothingItems,
@@ -256,7 +238,7 @@ class FittingJobController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final cacheKey = _buildFittingCacheKey(userPhoto, clothingItems);
+      final cacheKey = fittingCacheKeyFor(userPhoto.id, clothingItems.map((i) => i.id).toList());
 
       if (!forceRegenerate) {
         final cachedUrl = await _getCachedFittingImageUrlSilently(cacheKey);
@@ -269,34 +251,35 @@ class FittingJobController extends ChangeNotifier {
         }
       }
 
-      // 순차 합성(sequentialFittingEnabled)은 단계별 재시도를
-      // GeminiService 내부에서 이미 처리한다(task_sequential_fitting_v1.md
-      // §e) - 여기서 또 _withRetry로 감싸면 실패한 루프 전체를 처음부터
-      // 다시 돌게 되어 이미 성공한 단계까지 버려진다. 한 번에 방식(기존)만
-      // _withRetry로 감싼다.
-      final result = sequentialFittingEnabled
-          ? await GeminiService.generateFittingImage(
-              userPhotoId: userPhoto.id,
-              userPhotoUrl: userPhoto.imageUrl,
-              clothingItemIds: clothingItems.map((i) => i.id).toList(),
-              clothingImageUrls: clothingItems.map((i) => i.imageUrl).toList(),
-              clothingNames: clothingItems.map((i) => i.category).toList(),
-              onProgress: (step, total, category) {
-                fittingProgressStep = step;
-                fittingProgressTotal = total;
-                fittingProgressCategory = category;
-                notifyListeners();
-              },
-            )
-          : await _withRetry(
-              () => GeminiService.generateFittingImage(
-                userPhotoId: userPhoto.id,
-                userPhotoUrl: userPhoto.imageUrl,
-                clothingItemIds: clothingItems.map((i) => i.id).toList(),
-                clothingImageUrls: clothingItems.map((i) => i.imageUrl).toList(),
-                clothingNames: clothingItems.map((i) => i.category).toList(),
-              ),
-            );
+      // 재시도는 GeminiService 안에서 경로별로 정확히 한 겹만 건다
+      // (docs/task_fitting_quality_v2.md §4-2-7) — 순차는 단계 단위, 한 번에는
+      // 호출 단위. 여기서 또 감싸면 재시도가 곱해지고 피팅 시도 계수
+      // (beginFittingAttempt)도 두 번 소비된다. 그래서 두 경로 모두 그대로 부른다.
+      // 라벨·설명은 프로브 labels.json과 같은 형식(§4 보충 4).
+      final result = await GeminiService.generateFittingImage(
+        userPhotoId: userPhoto.id,
+        userPhotoUrl: userPhoto.imageUrl,
+        clothingItemIds: clothingItems.map((i) => i.id).toList(),
+        clothingImageUrls: clothingItems.map((i) => i.imageUrl).toList(),
+        clothingNames: clothingItems.map((i) => i.category).toList(),
+        clothingLabels: clothingItems
+            .map((i) => GeminiService.fittingItemLabel(
+                category: i.category, subCategory: i.subCategory))
+            .toList(),
+        clothingDescriptions: clothingItems
+            .map((i) => GeminiService.fittingItemDescription(
+                  category: i.category,
+                  subCategory: i.subCategory,
+                  attributesLine: i.attributes?.toPromptLine(),
+                ))
+            .toList(),
+        onProgress: (step, total, category) {
+          fittingProgressStep = step;
+          fittingProgressTotal = total;
+          fittingProgressCategory = category;
+          notifyListeners();
+        },
+      );
       fittingImage = result.imageBytes;
       fittingMissingCategories = result.missingCategories;
 
@@ -319,17 +302,6 @@ class FittingJobController extends ChangeNotifier {
     }
   }
 
-  // 사용자 사진 ID + 정렬된 옷 ID들을 합쳐 SHA-256 해시로 만든다.
-  // 옷 선택 순서가 달라도(하의→상의 vs 상의→하의) 같은 조합이면 같은 키가 나오도록
-  // 정렬을 거친다.
-  static String _buildFittingCacheKey(
-    WardrobeItem userPhoto,
-    List<WardrobeItem> clothingItems,
-  ) {
-    final sortedClothingIds = clothingItems.map((i) => i.id).toList()..sort();
-    final raw = '${userPhoto.id}:${sortedClothingIds.join(',')}';
-    return sha256.convert(utf8.encode(raw)).toString();
-  }
 
   // 인스턴스 메서드다(static 아님) — 업로드가 끝나야만 알 수 있는 URL을
   // fittingImageUrl에 반영하고 리스너에게 알려야 스크랩 등 URL이 필요한

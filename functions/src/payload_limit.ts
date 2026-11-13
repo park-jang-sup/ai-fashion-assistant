@@ -76,8 +76,13 @@ export type PayloadKind = "text" | "image";
 // 이 함수를 호출하기 전에 이미 ALLOWED_MODELS로 걸러내므로 실제로는
 // 도달하지 않지만, 이 함수 자체는 미지의 model에 대해 더 낮은(4MB)
 // 상한 쪽으로 방어적으로 떨어진다.
+// docs/task_fitting_quality_v2.md §4-1 - 구 이미지 모델(이미 배포된 APK가
+// 계속 보낸다)과 새 이미지 모델 둘 다 image로 분류한다. index.ts의
+// ALLOWED_MODELS에 이미지 모델을 추가할 때 여기도 같이 추가해야 한다.
+const IMAGE_MODELS = ["gemini-3.1-flash-image", "gemini-nano-banana-2.1"];
+
 export function kindForModel(model: string): PayloadKind {
-  return model === "gemini-3.1-flash-image" ? "image" : "text";
+  return IMAGE_MODELS.includes(model) ? "image" : "text";
 }
 
 export interface PayloadLimitConfig {

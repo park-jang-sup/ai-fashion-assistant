@@ -521,6 +521,45 @@ run("실제 상한 — 한 번에 방식 피팅 최댓값(코디보드 8슬롯, 
   assert.strictEqual(decision.allowed, true, `violations: ${decision.violations.join(",")}`);
 });
 
+// docs/task_fitting_quality_v2.md §4 보충 5 - 라벨을 끼운 한 번에 방식
+// (GeminiService.buildFittingParts, 프로브 변형 B와 같은 구성):
+// [지시 text, 전신 라벨 text, 전신 이미지, (옷 라벨 text, 옷 이미지) × N,
+// 규칙 text]. generationConfig는 확정 값(보충 1).
+function labeledOneShotFittingFixture(clothingCount: number): unknown {
+  return {
+    contents: [{
+      parts: [
+        {text: "You are a virtual try-on engine. Edit IMAGE 1 so the person wears the items shown in the following images."},
+        {text: "IMAGE 1 — the PERSON. This is the base image to edit."},
+        {inlineData: {mimeType: "image/jpeg", data: "AAAA"}},
+        ...Array.from({length: clothingCount}, (_, i) => [
+          {text: `IMAGE ${i + 2} — ITEM (상의 / top): 색상 블랙`},
+          {inlineData: {mimeType: "image/jpeg", data: "AAAA"}},
+        ]).flat(),
+        {text: "Rules:\n- Keep the person's face ..."},
+      ],
+    }],
+    generationConfig: {
+      responseModalities: ["IMAGE"],
+      thinkingConfig: {thinkingLevel: "minimal"},
+      imageConfig: {imageSize: "1K"},
+    },
+  };
+}
+
+run("실제 상한 — 라벨 끼운 한 번에 방식, 코디보드 8슬롯 전부(parts=20/inline=9)는 통과한다", () => {
+  const decision = evaluateRequestShape(labeledOneShotFittingFixture(8), "image", REQUEST_SHAPE_CONFIG);
+  assert.strictEqual(decision.metrics.maxPartsInAnyContent, 20);
+  assert.strictEqual(decision.metrics.inlineDataCount, 9);
+  assert.strictEqual(decision.allowed, true, `violations: ${decision.violations.join(",")}`);
+});
+
+run("실제 상한 — 라벨 끼운 한 번에 방식은 슬롯이 9개가 되면 parts 상한에 걸린다(여유 0 고정)", () => {
+  const decision = evaluateRequestShape(labeledOneShotFittingFixture(9), "image", REQUEST_SHAPE_CONFIG);
+  assert.strictEqual(decision.allowed, false);
+  assert.ok(decision.violations.includes("parts_too_many"));
+});
+
 run("실제 상한 — maxContents 경계값(==3) 허용, 초과(==4) 거부", () => {
   const atLimit = {contents: [{parts: [{text: "x"}]}, {parts: [{text: "x"}]}, {parts: [{text: "x"}]}]};
   const overLimit = {

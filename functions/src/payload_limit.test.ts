@@ -20,6 +20,10 @@ run("kindForModel — 이미지 모델이면 image", () => {
   assert.strictEqual(kindForModel("gemini-3.1-flash-image"), "image");
 });
 
+run("kindForModel — 새 이미지 모델(nano-banana-2.1)도 image — 빠뜨리면 text 상한(4MB)에 걸린다", () => {
+  assert.strictEqual(kindForModel("gemini-nano-banana-2.1"), "image");
+});
+
 run("kindForModel — 텍스트 모델(3.5-flash)이면 text", () => {
   assert.strictEqual(kindForModel("gemini-3.5-flash"), "text");
 });
