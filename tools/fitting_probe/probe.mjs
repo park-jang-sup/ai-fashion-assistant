@@ -10,6 +10,7 @@
 //   node probe.mjs matrix            # §3-3 매트릭스(schema.json 필요)
 //   node probe.mjs matrix --variants A,B --cases K1,K4   # 부분 재실행(결과 병합)
 //   node probe.mjs repeat B:K7:3 B2:K7:3   # 지정 칸만 반복(회차별 파일, 기존 결과 보존)
+//   node probe.mjs inspect --items top,bottom,shoes   # 변형 B 요청 1회, 응답 parts 구조만 출력
 //   node probe.mjs html              # results.json → index.html 재생성
 //   node probe.mjs all               # schema → matrix → html (기본값)
 
@@ -495,6 +496,85 @@ async function runRepeat(args) {
   }
 }
 
+// ── inspect: 응답 구조 진단(내용은 출력하지 않음) ─────────────────────
+// node probe.mjs inspect --items top,bottom,shoes,hat,bag,watch
+// 변형 B와 같은 요청(프롬프트·generationConfig·입력)을 1회(재시도 없음) 보내고,
+// candidates[0].content.parts 각각의 구조만 표로 찍는다 — 키 목록, thought 여부,
+// inlineData mimeType·data 길이, thoughtSignature 길이, text 길이. 응답 전체
+// 바이트·소요 시간·usageMetadata도 찍는다. 요약을 output/inspect/에 JSON으로 남긴다.
+// 아이템은 앱과 같은 순서(SLOTS 순서 = fittingOrder)로 정렬해 보낸다.
+async function runInspect(args) {
+  const schemaPath = join(OUTPUT, "schema.json");
+  if (!existsSync(schemaPath)) { console.error("schema.json이 없습니다 — 먼저 `node probe.mjs schema`."); process.exit(2); }
+  const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
+  const i = args.indexOf("--items");
+  const items = i >= 0 && args[i + 1] ? args[i + 1].split(",").map((x) => x.trim()).filter(Boolean) : [];
+  const bad = items.filter((x) => !SLOTS[x]);
+  if (!items.length || bad.length || new Set(items).size !== items.length) {
+    console.error(`--items 가 필요합니다(중복 없이, 사용 가능: ${Object.keys(SLOTS).join(",")})${bad.length ? " — 모르는 값: " + bad.join(",") : ""}`);
+    process.exit(2);
+  }
+  const ordered = Object.keys(SLOTS).filter((k) => items.includes(k));
+  const {files, labels} = loadInputs();
+  const body = {contents: [{parts: newParts(files.person.buf, ordered, files, labels)}], generationConfig: genConfig(VARIANTS.B, schema)};
+  const payload = JSON.stringify(body);
+  log(`[inspect] items=${ordered.join(",")} requestBytes=${payload.length}`);
+  const t0 = performance.now();
+  let status = 0;
+  let text = "";
+  try {
+    const res = await fetch(`${BASE_URL}/models/${NEW_MODEL}:generateContent`, {
+      method: "POST",
+      headers: {"content-type": "application/json", "x-goog-api-key": API_KEY},
+      body: payload,
+      signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+    });
+    status = res.status;
+    text = await res.text();
+  } catch (e) {
+    console.error(mask(`호출 실패: ${e?.name}: ${e?.message}`));
+    process.exit(1);
+  }
+  const secs = (performance.now() - t0) / 1000;
+  const responseBytes = Buffer.byteLength(text, "utf8");
+  let json = null;
+  try { json = JSON.parse(text); } catch { /* 아래에서 보고 */ }
+  console.log(`\nHTTP ${status} · ${secs.toFixed(1)}초 · 응답 전체 ${responseBytes} B`);
+  if (!json) { console.error("응답이 JSON이 아님"); process.exit(1); }
+  if (status !== 200) { console.error(mask(`오류: ${json.error?.message ?? "?"}`)); process.exit(1); }
+
+  const cand = json.candidates?.[0] ?? {};
+  const parts = cand.content?.parts ?? [];
+  const rows = parts.map((p, idx) => {
+    const d = p.inlineData ?? p.inline_data;
+    const sig = p.thoughtSignature ?? p.thought_signature;
+    return {
+      idx, keys: Object.keys(p).join(","), thought: p.thought === true,
+      mime: d ? (d.mimeType ?? d.mime_type) : "", dataLen: d?.data ? d.data.length : 0,
+      sigLen: typeof sig === "string" ? sig.length : 0, textLen: typeof p.text === "string" ? p.text.length : 0,
+    };
+  });
+  console.log("\n| # | 키 | thought | inlineData mimeType | data 길이 | thoughtSignature 길이 | text 길이 |");
+  console.log("|---|---|---|---|---|---|---|");
+  for (const r of rows) console.log(`| ${r.idx} | ${r.keys} | ${r.thought} | ${r.mime || "-"} | ${r.dataLen} | ${r.sigLen} | ${r.textLen} |`);
+  const sum = (f) => rows.reduce((t, r) => t + f(r), 0);
+  const finalData = sum((r) => (r.thought ? 0 : r.dataLen));
+  const thoughtData = sum((r) => (r.thought ? r.dataLen : 0));
+  const sigs = sum((r) => r.sigLen);
+  const texts = sum((r) => r.textLen);
+  const rest = responseBytes - finalData - thoughtData - sigs - texts;
+  console.log(`\n바이트 분해: 최종 이미지 data ${finalData} · thought 이미지 data ${thoughtData} · thoughtSignature ${sigs} · text ${texts} · 그 외(JSON 구조·메타) ${rest}`);
+  console.log(`candidate 키: ${Object.keys(cand).join(",")} · finishReason: ${cand.finishReason ?? "-"} · 응답 최상위 키: ${Object.keys(json).join(",")}`);
+  console.log(`usageMetadata: ${JSON.stringify(json.usageMetadata ?? null)}`);
+
+  mkdirSync(join(OUTPUT, "inspect"), {recursive: true});
+  const out = join(OUTPUT, "inspect", `inspect_${ordered.length}_${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
+  writeFileSync(out, JSON.stringify({at: new Date().toISOString(), items: ordered, requestBytes: payload.length, status,
+    secs: +secs.toFixed(1), responseBytes, parts: rows, breakdown: {finalData, thoughtData, sigs, texts, rest},
+    candidateKeys: Object.keys(cand), finishReason: cand.finishReason ?? null, usageMetadata: json.usageMetadata ?? null}, null, 2));
+  log(`→ ${out}`);
+}
+
 // ── results.md ────────────────────────────────────────────────────
 function writeResultsMd() {
   const schemaPath = join(OUTPUT, "schema.json");
@@ -647,6 +727,7 @@ if (cmd === "schema" || cmd === "all") {
 }
 if (cmd === "matrix" || cmd === "all") await runMatrix(args);
 if (cmd === "repeat") await runRepeat(args);
+if (cmd === "inspect") { await runInspect(args); process.exit(0); }
 writeResultsMd();
 writeHtml();
 log(`→ ${join(OUTPUT, "results.md")}\n→ ${join(OUTPUT, "index.html")}`);
