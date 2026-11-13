@@ -3,6 +3,8 @@ import '../models/clothing_attributes.dart';
 import '../models/wardrobe_item.dart';
 import 'color_taxonomy.dart';
 import 'embedding_service.dart';
+import 'weather_fit.dart';
+import 'weather_service.dart';
 
 // 새로 등록된 옷과 기존 옷장만으로 어울리는 조합 후보들을 고른다.
 // FitPredictor와 동일하게 Gemini 호출 없이 순수 로컬 계산만 수행한다.
@@ -138,6 +140,19 @@ class TpoMatchPolicy {
   // 보려면 이 축만 단독으로 켠 프리셋(fillOnly)이 필요하다(§3-1).
   final bool fillOptionalFromRelaxed;
 
+  // 그날 예보가 특이할 때(비·더위·추위 — weather_fit.dart) 피하는 게 좋은 옷에
+  // 매길 감점(docs/task_agent_grounding_v1.md §4-1). recencyPenalty와 같은
+  // 방식으로 **정렬에만** 쓰고 격식 적합 자격(keep)에는 쓰지 않는다 — 자격은
+  // 격식이, 순서는 최근도·날씨가 정한다. findForTpo에 예보를 넘기지 않으면(기본)
+  // 적용되지 않아 결과가 현행과 완전히 같다.
+  //
+  // 기본 0.3의 근거: 격식 적합도 점수의 인접 값 간격 최솟값 0.5보다 작아, 날씨
+  // 하나만으로는 격식 한 단계 차이를 뒤집지 않는다. **평가 도구로 검증한 값이
+  // 아니다**(실행 기록 참고). 최근도 감점(0.4)과 같은 옷에 겹치면 합 0.7로
+  // 격식 한 단계를 넘을 수 있다 — 그 경우는 "최근에 입었고 날씨에도 안 맞는 옷"
+  // 이라 뒤로 미는 것이 의도에 맞다고 보고 별도 상한을 두지 않았다.
+  final double weatherPenalty;
+
   const TpoMatchPolicy({
     this.gateNeutralBonus = true,
     this.requiredCategories = const {'상의', '하의'},
@@ -149,6 +164,7 @@ class TpoMatchPolicy {
     this.recencyPenalty = 0.4,
     this.useEmbeddingRecovery = false,
     this.fillOptionalFromRelaxed = true,
+    this.weatherPenalty = 0.3,
   });
 
   // 후보 폭을 넓히거나 조합 단위 채점을 켜면 기존 "기본+한 칸 교체+미니"
@@ -474,6 +490,9 @@ class OutfitMatcher {
     // 최근에 추천/착용된 아이템 id. policy.recencyPenalty와 함께 동작하며,
     // 둘 중 하나라도 비어 있으면(기본값) 정렬 결과가 현행과 완전히 같다.
     Set<String> recentItemIds = const {},
+    // 그날 예보(docs/task_agent_grounding_v1.md §4-1). null이거나 특이 조건이
+    // 없으면 정렬 결과가 현행과 완전히 같다(test/outfit_matcher_weather_test.dart).
+    DailyWeather? weather,
   }) {
     final targetRank = _formalityRank[formalityHint] ?? 0;
 
@@ -501,10 +520,17 @@ class OutfitMatcher {
     // 내려간 아이템이 탈락하면 최근에 뭘 입었느냐가 폴백 판정을 바꿔버린다.
     // 자격은 격식이, 순서는 최근도가 정한다.
     final applyRecency = policy.recencyPenalty > 0 && recentItemIds.isNotEmpty;
-    double rankScore(({WardrobeItem item, double score}) c) =>
-        applyRecency && recentItemIds.contains(c.item.id)
-            ? c.score - policy.recencyPenalty
-            : c.score;
+    final weatherFlags = weatherFlagsFor(weather);
+    final applyWeather = policy.weatherPenalty > 0 && weatherFlags.isNotEmpty;
+    double rankScore(({WardrobeItem item, double score}) c) {
+      var s = applyRecency && recentItemIds.contains(c.item.id)
+          ? c.score - policy.recencyPenalty
+          : c.score;
+      if (applyWeather && isWeatherPenaltyTarget(c.item, weatherFlags)) {
+        s -= policy.weatherPenalty;
+      }
+      return s;
+    }
 
     // 회수 축(§3-1) — recentItemIds 각각의 WardrobeItem을 조회할 인덱스.
     // wardrobe를 id마다 O(n) 스캔하지 않도록 한 번만 만든다. 축이 꺼져 있거나

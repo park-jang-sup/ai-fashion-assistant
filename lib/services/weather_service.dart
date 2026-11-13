@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 // weather_code(WMO) → 한국어 상태 + 아이콘 + 비/눈 여부. 에이전트(주간
 // 플랜/선제 추천)와 홈 화면이 공통으로 쓴다.
@@ -68,8 +70,11 @@ class DailyWeather {
 class WeatherSnapshot {
   final CurrentWeather current;
   final List<DailyWeather> daily; // 오늘 포함 7일, 날짜 오름차순
+  // 설정 화면의 "예보 가정(테스트용)"으로 만든 가짜 예보인지 — 이 예보로 만든
+  // 추천 문구·활동 내역에 그 사실을 남긴다(docs/task_agent_grounding_v1.md §4-4).
+  final bool isAssumed;
 
-  const WeatherSnapshot({required this.current, required this.daily});
+  const WeatherSnapshot({required this.current, required this.daily, this.isAssumed = false});
 
   factory WeatherSnapshot.fromOpenMeteo(Map<String, dynamic> json) {
     final current = json['current'] as Map<String, dynamic>;
@@ -145,6 +150,13 @@ class WeatherService {
   // 실패(네트워크 오류/타임아웃/파싱 실패)하면 null — 호출부는 하드코딩된
   // 값으로 폴백하지 말고 위젯을 숨기거나 "불러오지 못했다"고 정직하게 표시한다.
   static Future<WeatherSnapshot?> fetch({double? latitude, double? longitude}) async {
+    // 예보 가정(테스트용)이 켜져 있으면 조회 대신 가정한 값을 쓴다 — 시연·검증용.
+    // 매번 파일을 읽는다(설정 화면과 백그라운드 아이솔레이트가 같은 값을 보게).
+    final assumption = await loadAssumption();
+    if (assumption != ForecastAssumption.none) {
+      lastFetchOk = true;
+      return assumedSnapshot(assumption, DateTime.now());
+    }
     final lat = latitude ?? _defaultLatitude;
     final lon = longitude ?? _defaultLongitude;
 
@@ -194,4 +206,63 @@ class WeatherService {
 
   // 강수확률 이 값 이상이면 "비 예보"로 취급(에이전트 제약/카드 문구 공통 기준).
   static const rainProbabilityThreshold = 50;
+
+  // ── 예보 가정(테스트용) — docs/task_agent_grounding_v1.md §4-4 ──────
+  // 날씨는 마음대로 바꿀 수 없으므로 설정 화면 진단 영역에서 없음/비/더운 날/
+  // 추운 날을 고르게 한다. 기기에만 저장한다(fcm_service.dart와 같은 이유로
+  // shared_preferences 대신 path_provider 파일, 임시파일+rename). 기본값은 없음.
+  // 읽기 실패는 "없음"으로 — 가정이 실수로 켜진 채 남는 쪽보다 안전하다.
+  static const _assumptionFileName = 'forecast_assumption.txt';
+
+  static Future<File> _assumptionFile() async {
+    final dir = await getApplicationSupportDirectory();
+    return File('${dir.path}/$_assumptionFileName');
+  }
+
+  static Future<ForecastAssumption> loadAssumption() async {
+    try {
+      final file = await _assumptionFile();
+      if (!await file.exists()) return ForecastAssumption.none;
+      final name = (await file.readAsString()).trim();
+      return ForecastAssumption.values.firstWhere((a) => a.name == name,
+          orElse: () => ForecastAssumption.none);
+    } catch (e) {
+      return ForecastAssumption.none;
+    }
+  }
+
+  static Future<void> saveAssumption(ForecastAssumption a) async {
+    final file = await _assumptionFile();
+    final tmp = File('${file.path}.tmp');
+    await tmp.writeAsString(a.name);
+    await tmp.rename(file.path);
+    _cache = null; // 가정을 끄면 다음 조회가 실제 예보를 다시 받게
+  }
+
+  // 가정한 7일 예보 — 조건이 확실히 걸리는 값(비: 강수 80%, 더위: 최고 31°C,
+  // 추위: 최저 −3°C)을 매일 같게 둔다.
+  @visibleForTesting
+  static WeatherSnapshot assumedSnapshot(ForecastAssumption a, DateTime now) {
+    final (maxT, minT, rain, code) = switch (a) {
+      ForecastAssumption.rain => (17.0, 11.0, 80, 63),
+      ForecastAssumption.hot => (31.0, 24.0, 10, 0),
+      ForecastAssumption.cold => (3.0, -3.0, 10, 3),
+      ForecastAssumption.none => (20.0, 12.0, 0, 0),
+    };
+    final today = DateTime(now.year, now.month, now.day);
+    return WeatherSnapshot(
+      current: CurrentWeather(tempC: (maxT + minT) / 2, weatherCode: code),
+      daily: [
+        for (var i = 0; i < 7; i++)
+          DailyWeather(
+              date: today.add(Duration(days: i)),
+              maxTempC: maxT,
+              minTempC: minT,
+              precipitationProbability: rain),
+      ],
+      isAssumed: true,
+    );
+  }
 }
+
+enum ForecastAssumption { none, rain, hot, cold }

@@ -11,6 +11,7 @@ import '../models/user_profile.dart';
 import '../services/background_agent.dart';
 import '../services/fcm_service.dart';
 import '../services/firestore_service.dart';
+import '../services/weather_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/notification_service.dart';
 import 'agent_log_screen.dart';
@@ -40,11 +41,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // 진입 시 한 번 읽고, 수동 새로고침으로만 갱신한다.
   ({String path, bool exists, int value, String? lastError})? _localCounterDiag;
 
+  // 예보 가정(테스트용) — docs/task_agent_grounding_v1.md §4-4. 기기에만 저장.
+  ForecastAssumption _forecastAssumption = ForecastAssumption.none;
+
   @override
   void initState() {
     super.initState();
     _loadProfile();
     _refreshLocalCounterDiagnostics();
+    WeatherService.loadAssumption().then((a) {
+      if (mounted) setState(() => _forecastAssumption = a);
+    });
+  }
+
+  Future<void> _setForecastAssumption(ForecastAssumption a) async {
+    try {
+      await WeatherService.saveAssumption(a);
+      if (mounted) setState(() => _forecastAssumption = a);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('예보 가정을 저장하지 못했어요: $e'),
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  static const _assumptionLabels = {
+    ForecastAssumption.none: '없음',
+    ForecastAssumption.rain: '비',
+    ForecastAssumption.hot: '더운 날',
+    ForecastAssumption.cold: '추운 날',
+  };
+
+  Widget _buildForecastAssumptionRow() {
+    return _SettingsRow(
+      label: '예보 가정(테스트용)',
+      sub: _forecastAssumption == ForecastAssumption.none
+          ? '실제 예보를 씁니다'
+          : '실제 예보 대신 가정한 예보로 추천합니다 — 추천 문구에 "(테스트용 가정 예보)"가 붙습니다',
+      trailing: DropdownButton<ForecastAssumption>(
+        value: _forecastAssumption,
+        underline: const SizedBox.shrink(),
+        items: [
+          for (final a in ForecastAssumption.values)
+            DropdownMenuItem(value: a, child: Text(_assumptionLabels[a]!)),
+        ],
+        onChanged: (a) {
+          if (a != null) _setForecastAssumption(a);
+        },
+      ),
+    );
   }
 
   Future<void> _refreshLocalCounterDiagnostics() async {
@@ -599,6 +646,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
+                  _buildForecastAssumptionRow(),
                   _buildLocalCounterDiagnostics(),
                   _buildBackgroundStatus(uid),
                   _SettingsRow(label: '즉시 실행 (테스트)', onTap: _triggerBackgroundNow),

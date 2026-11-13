@@ -15,6 +15,7 @@ import 'gemini_api_exception.dart';
 import 'gemini_service.dart';
 import 'outfit_matcher.dart';
 import 'outfit_self_evaluator.dart';
+import 'weather_fit.dart';
 import 'weather_service.dart';
 
 // 주간 플랜 실패 분류(docs/task_weekly_plan_scale_v1.md 4단계) — 재시도가
@@ -348,33 +349,15 @@ class AgentPlanner {
       ),
     ));
 
-    // 날씨를 관찰 도구로 사용 — 이 일정 날짜의 예보가 특이하면(비/극한 기온)
-    // 카드 문구에 반영할 근거로 남긴다. 조회 실패(null)면 조용히 건너뛴다.
-    final dayWeather =
-        (await WeatherService.fetch(latitude: latitude, longitude: longitude))?.forDate(plan.date);
-    String? weatherNote;
-    if (dayWeather != null) {
-      if (dayWeather.precipitationProbability >= WeatherService.rainProbabilityThreshold) {
-        weatherNote = '비 예보가 있어 어두운 톤으로 준비했어요';
-      } else if (dayWeather.maxTempC >= 28) {
-        weatherNote = '더운 날씨 예보라 가볍게 준비했어요';
-      } else if (dayWeather.minTempC <= 5) {
-        weatherNote = '쌀쌀한 날씨 예보라 보온에 신경 썼어요';
-      }
-      if (weatherNote != null) {
-        unawaited(FirestoreService.addAgentLogSilently(
-          uid,
-          AgentLogEntry(
-            id: '',
-            eventType: AgentLogEntry.typeWeatherChecked,
-            message: '${_relativeLabel(plan.date)} 예보를 확인했습니다 — '
-                '강수확률 ${dayWeather.precipitationProbability}%, '
-                '최고 ${dayWeather.maxTempC.round()}°C/최저 ${dayWeather.minTempC.round()}°C',
-            relatedDocId: plan.id,
-          ),
-        ));
-      }
-    }
+    // 날씨를 실제 선택에 반영한다(docs/task_agent_grounding_v1.md 부분 C) — 이 일정
+    // 날짜의 예보가 특이하면(비/더위/추위, weather_fit.dart) findForTpo에 넘겨 피하는
+    // 게 좋은 옷을 정렬에서 뒤로 민다. 예전엔 예보로 카드 문구("비 예보가 있어 어두운
+    // 톤으로 준비했어요" 등 고정 세 개)만 만들고 선택에는 넣지 않았다 — 그 문구는
+    // 없앴고, 문구는 아래에서 실제로 한 일만 말한다. 조회 실패(null)면 날씨 없이.
+    final weatherSnapshot = await WeatherService.fetch(latitude: latitude, longitude: longitude);
+    final dayWeather = weatherSnapshot?.forDate(plan.date);
+    final forecastAssumed = weatherSnapshot?.isAssumed ?? false;
+    final weatherFlags = weatherFlagsFor(dayWeather);
 
     // 최근 추천 이력을 조회해 동점 타이브레이커 재료로 넘긴다. 조회가
     // 실패하면 빈 집합이 되고, 그러면 findForTpo는 현행과 동일하게 동작한다
@@ -388,7 +371,18 @@ class AgentPlanner {
       formalityHint: tag.formalityHint,
       policy: _matchPolicy,
       recentItemIds: recentItemIds,
+      weather: weatherFlags.isEmpty ? null : dayWeather,
     );
+    // 예보가 특이한 날만 날씨 없이 한 번 더 돌려 비교한다(기기 안 계산, 모델 호출 없음) —
+    // "날씨 때문에 실제로 바뀐 것"만 문구·활동 내역에 말하기 위해서다.
+    final baselineMatch = weatherFlags.isEmpty
+        ? null
+        : OutfitMatcher.findForTpo(
+            wardrobe: wardrobe,
+            formalityHint: tag.formalityHint,
+            policy: _matchPolicy,
+            recentItemIds: recentItemIds,
+          );
     // 레벨 4: 조합 자체가 불가 — 조용히 넘기지 않고 무엇이 부족한지 로그로 남긴다.
     if (match.candidates.isEmpty) {
       unawaited(FirestoreService.addAgentLogSilently(
@@ -482,6 +476,36 @@ class AgentPlanner {
       },
     );
     if (outcome == null) return false;
+
+    // 날씨 문구·활동 내역(§4-3) — 최종 채택 조합(자기평가가 고른 것) 기준으로 맞춘다.
+    String? weatherNote;
+    if (weatherFlags.isNotEmpty && dayWeather != null) {
+      final weatherTop = match.candidates.first.items;
+      final baselineTop = (baselineMatch?.candidates.isNotEmpty ?? false)
+          ? baselineMatch!.candidates.first.items
+          : weatherTop;
+      weatherNote = buildWeatherNote(
+        flags: weatherFlags,
+        baselineTop: baselineTop,
+        weatherTop: weatherTop,
+        finalItems: outcome.bestMatch.items,
+        isAssumed: forecastAssumed,
+      );
+      final changed = weatherChangedTopCombo(baselineTop, weatherTop);
+      unawaited(FirestoreService.addAgentLogSilently(
+        uid,
+        AgentLogEntry(
+          id: '',
+          eventType: AgentLogEntry.typeWeatherChecked,
+          message: '${_relativeLabel(plan.date)} 예보를 확인했습니다 — '
+              '강수확률 ${dayWeather.precipitationProbability}%, '
+              '최고 ${dayWeather.maxTempC.round()}°C/최저 ${dayWeather.minTempC.round()}°C · '
+              '날씨 반영: 조합 변경 ${changed ? '있음' : '없음'}'
+              '${forecastAssumed ? ' (테스트용 가정 예보)' : ''}',
+          relatedDocId: plan.id,
+        ),
+      ));
+    }
 
     // 매처가 차선을 줬거나(격식 부적합) Gemini 점수도 낮으면 fallback으로 표기.
     final isFallback =
