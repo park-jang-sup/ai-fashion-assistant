@@ -588,6 +588,40 @@ class GeminiService {
   }
 
   // ── 옷 사진 1장 → 속성 추출 (등록 시점 백그라운드 / 분석 시점 폴백) ──
+  // 텍스트 호출의 generationConfig는 상수로 둔다 — tools/text_probe가 덤프
+  // 테스트(test/text_probe_dump_test.dart)로 이 값을 그대로 받아 앱과 같은
+  // 설정으로 후보 모델을 비교한다(docs/task_text_model_v1.md §3).
+  @visibleForTesting
+  static const Map<String, dynamic> attributeExtractionGenerationConfig = {
+    'temperature': 0.2,
+    // thinkingBudget:0으로 추론 단계를 없앴는데도 tags 배열까지 채운
+    // 실측 응답이 500 경계에서 닫는 '}' 직전에 잘리는 사례가 확인돼
+    // 800으로 여유를 늘렸다.
+    'maxOutputTokens': 800,
+    'responseMimeType': 'application/json',
+    'thinkingConfig': {'thinkingBudget': 0},
+  };
+
+  // analyzeOutfitFromAttributes·analyzeOutfitFromAttributesStream 공통.
+  // maxOutputTokens는 thinking(추론) 토큰과 같은 예산을 공유한다.
+  // 스타일링 조언은 어느 정도 추론이 품질에 도움이 되므로 thinking은
+  // 끄지 않되, 실제 답변이 잘리지 않도록 예산을 넉넉히 둔다.
+  @visibleForTesting
+  static const Map<String, dynamic> outfitAnalysisGenerationConfig = {
+    'temperature': 0.7,
+    'maxOutputTokens': 3000,
+  };
+
+  @visibleForTesting
+  static const Map<String, dynamic> weeklyPlanGenerationConfig = {
+    // 계획은 창의성보다 제약 준수가 중요하므로 온도를 낮춘다.
+    'temperature': 0.4,
+    'maxOutputTokens': 2000,
+    'responseMimeType': 'application/json',
+    // 다른 JSON 호출과 동일하게 thinking 예산을 꺼서 출력이 잘리지 않게 한다.
+    'thinkingConfig': {'thinkingBudget': 0},
+  };
+
   static Future<ClothingAttributes> extractAttributes({
     required String itemId,
     required String imageUrl,
@@ -602,15 +636,7 @@ class GeminiService {
 
     final requestBody = {
       'contents': [{'parts': parts}],
-      'generationConfig': {
-        'temperature': 0.2,
-        // thinkingBudget:0으로 추론 단계를 없앴는데도 tags 배열까지 채운
-        // 실측 응답이 500 경계에서 닫는 '}' 직전에 잘리는 사례가 확인돼
-        // 800으로 여유를 늘렸다.
-        'maxOutputTokens': 800,
-        'responseMimeType': 'application/json',
-        'thinkingConfig': {'thinkingBudget': 0},
-      },
+      'generationConfig': attributeExtractionGenerationConfig,
     };
 
     final responseBody =
@@ -776,12 +802,9 @@ class GeminiService {
       ...imageParts,
     ];
 
-    // maxOutputTokens는 thinking(추론) 토큰과 같은 예산을 공유한다.
-    // 스타일링 조언은 어느 정도 추론이 품질에 도움이 되므로 thinking은
-    // 끄지 않되, 실제 답변이 잘리지 않도록 예산을 넉넉히 둔다.
     final requestBody = {
       'contents': [{'parts': parts}],
-      'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 3000},
+      'generationConfig': outfitAnalysisGenerationConfig,
     };
 
     final responseBody =
@@ -804,42 +827,17 @@ class GeminiService {
     String? recentFeedbackText, // 최근 불일치 피드백(취향 반영용, 있을 때만)
     String? model,
   }) async {
-    final feedbackSection = (recentFeedbackText == null || recentFeedbackText.isEmpty)
-        ? ''
-        : '\n[취향 피드백 - 반영하세요]\n$recentFeedbackText\n';
-    final prompt = '''
-당신은 전문 패션 스타일리스트입니다. 아래 옷장 아이템만 사용해 요청된 날짜별 코디를 계획하세요.
-
-[옷장 아이템] (반드시 이 id만 사용, 목록에 없는 id는 절대 만들지 마세요)
-$wardrobeCatalog
-
-[계획할 날짜]
-$scheduleLines
-$feedbackSection
-[제약 조건 - 반드시 지키세요]
-- 각 날짜에 상의 1개 + 하의 1개를 기본으로 배정하고, 필요하면 아우터/신발을 더하세요.
-- 같은 상의 또는 같은 하의를 이틀 연속 배치하지 마세요(중복 회피).
-- 격식이 높은 조합(포멀/세미포멀 아이템)은 출근·데이트·모임처럼 격식이 필요한 날에 우선 배분하세요.
-- 어떤 날짜에 그 격식에 딱 맞는 아이템이 옷장에 없더라도 그 날을 건너뛰지 말고, 가장 가까운 차선 조합을 배정한 뒤 reason에 "딱 맞는 조합이 없어 가장 가까운 조합"임을 밝히세요.
-- itemIds는 위 옷장에 실제로 존재하는 id만 사용하세요.
-
-[출력 형식 - 반드시 지키세요]
-순수 JSON 배열만 출력하세요. 설명 문구·마크다운·코드블록을 절대 붙이지 마세요. 응답의 첫 문자는 '[' 여야 합니다.
-각 원소는 {"date":"YYYY-MM-DD","itemIds":["id1","id2"],"reason":"한 줄 이유(한국어)"} 형식입니다.
-''';
+    final prompt = buildWeeklyPlanPrompt(
+      scheduleLines: scheduleLines,
+      wardrobeCatalog: wardrobeCatalog,
+      recentFeedbackText: recentFeedbackText,
+    );
 
     final requestBody = {
       'contents': [
         {'parts': [{'text': prompt}]}
       ],
-      'generationConfig': {
-        // 계획은 창의성보다 제약 준수가 중요하므로 온도를 낮춘다.
-        'temperature': 0.4,
-        'maxOutputTokens': 2000,
-        'responseMimeType': 'application/json',
-        // 다른 JSON 호출과 동일하게 thinking 예산을 꺼서 출력이 잘리지 않게 한다.
-        'thinkingConfig': {'thinkingBudget': 0},
-      },
+      'generationConfig': weeklyPlanGenerationConfig,
     };
 
     final responseBody =
@@ -892,7 +890,7 @@ $feedbackSection
 
     final requestBody = {
       'contents': [{'parts': parts}],
-      'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 3000},
+      'generationConfig': outfitAnalysisGenerationConfig,
     };
 
     yield* _callProxyTextStream(model: model ?? _textModel, requestBody: requestBody);
@@ -1071,12 +1069,60 @@ $feedbackSection
     ];
   }
 
+  // 주간 플랜 프롬프트 — planWeeklyOutfits에서 문자열 그대로 꺼낸 순수 함수
+  // (tools/text_probe 덤프용, 동작 변경 없음).
+  @visibleForTesting
+  static String buildWeeklyPlanPrompt({
+    required String scheduleLines,
+    required String wardrobeCatalog,
+    String? recentFeedbackText,
+  }) {
+    final feedbackSection = (recentFeedbackText == null || recentFeedbackText.isEmpty)
+        ? ''
+        : '\n[취향 피드백 - 반영하세요]\n$recentFeedbackText\n';
+    return '''
+당신은 전문 패션 스타일리스트입니다. 아래 옷장 아이템만 사용해 요청된 날짜별 코디를 계획하세요.
+
+[옷장 아이템] (반드시 이 id만 사용, 목록에 없는 id는 절대 만들지 마세요)
+$wardrobeCatalog
+
+[계획할 날짜]
+$scheduleLines
+$feedbackSection
+[제약 조건 - 반드시 지키세요]
+- 각 날짜에 상의 1개 + 하의 1개를 기본으로 배정하고, 필요하면 아우터/신발을 더하세요.
+- 같은 상의 또는 같은 하의를 이틀 연속 배치하지 마세요(중복 회피).
+- 격식이 높은 조합(포멀/세미포멀 아이템)은 출근·데이트·모임처럼 격식이 필요한 날에 우선 배분하세요.
+- 어떤 날짜에 그 격식에 딱 맞는 아이템이 옷장에 없더라도 그 날을 건너뛰지 말고, 가장 가까운 차선 조합을 배정한 뒤 reason에 "딱 맞는 조합이 없어 가장 가까운 조합"임을 밝히세요.
+- itemIds는 위 옷장에 실제로 존재하는 id만 사용하세요.
+
+[출력 형식 - 반드시 지키세요]
+순수 JSON 배열만 출력하세요. 설명 문구·마크다운·코드블록을 절대 붙이지 마세요. 응답의 첫 문자는 '[' 여야 합니다.
+각 원소는 {"date":"YYYY-MM-DD","itemIds":["id1","id2"],"reason":"한 줄 이유(한국어)"} 형식입니다.
+''';
+  }
+
+  // tools/text_probe 덤프용 접근자(docs/task_text_model_v1.md §3-1) — private
+  // 빌더를 그대로 부른다. 동작 변경 없음.
+  @visibleForTesting
+  static String attributeExtractionPromptForTest(String category) =>
+      _buildAttributeExtractionPrompt(category);
+  @visibleForTesting
+  static String attributeAnalysisPromptForTest(
+          List<({String category, ClothingAttributes attributes})> items) =>
+      _buildAttributeAnalysisPrompt(items);
+  @visibleForTesting
+  static String attributeAnalysisPromptWithPhotoForTest(
+          List<({String category, ClothingAttributes attributes})> items) =>
+      _buildAttributeAnalysisPromptWithPhoto(items);
+
   static String _buildAttributeExtractionPrompt(String category) {
     return '''
 아래 옷 사진 한 장을 분석해서 JSON 객체 하나만 출력하세요.
 응답은 반드시 '{' 문자로 즉시 시작해야 합니다. "Here is the JSON" 같은 설명 문구,
 마크다운, 코드블록을 절대 앞에 붙이지 마세요. 순수 JSON 객체만 출력하세요.
 이 옷의 카테고리는 "$category"입니다.
+모든 값은 한국어로만 쓰세요. 일본어(히라가나·가타카나)나 한자는 쓰지 마세요.
 
 형식:
 {"color": "주요 색상 (한 단어, 예: 네이비)", "style": "스타일 (한 단어, 예: 캐주얼/포멀/스트릿/미니멀/스포티)", "pattern": "패턴 (한 단어, 예: 무지/스트라이프/체크/도트/그래픽)", "formality": "격식 정도 (한 단어, 예: 캐주얼/세미포멀/포멀)", "fit": "핏 (한 단어, 예: 슬림/레귤러/오버사이즈)", "tags": ["소재나 계절 등 추가 특징 키워드 2~4개"]}

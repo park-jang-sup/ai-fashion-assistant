@@ -775,15 +775,16 @@ class AgentPlanner {
       final key = _dateKey(d);
       final tpo = plannedByDate[key] ?? '일상';
       tpoByDate[key] = tpo;
-      final formality = TpoTags.byLabel(tpo).formalityHint;
-      final weatherNote = weather == null ? '' : _weatherConstraintNote(weather.forDate(d));
-      scheduleLines
-          .add('${i + 1}. $key (${_weekdayKo(d)}) — $tpo — 요구 격식: $formality$weatherNote');
+      scheduleLines.add(weeklyScheduleLine(
+        index: i,
+        date: d,
+        tpo: tpo,
+        weather: weather?.forDate(d),
+        hasForecast: weather != null,
+      ));
     }
 
-    final catalog = usable
-        .map((i) => '- id=${i.id} | ${i.category} | ${i.attributes!.toPromptLine()}')
-        .join('\n');
+    final catalog = usable.map(weeklyCatalogLine).join('\n');
 
     // 레벨 3: 관련도 기반 과거 추천 이력을 주간 플랜 프롬프트에도 주입한다.
     // 하루짜리 후보 조합이 없어 tpoTag/candidateItemIds 없이 호출 — 이 경우
@@ -911,6 +912,28 @@ class AgentPlanner {
     ));
     return result;
   }
+
+  // 주간 플랜 프롬프트의 스케줄 한 줄 / 옷장 카탈로그 한 줄 — generateWeeklyPlan
+  // 안에 인라인으로 있던 문자열을 그대로 꺼냈다(동작 변경 없음). tools/text_probe의
+  // 덤프 테스트가 앱과 같은 입력을 만들려고 쓴다(docs/task_text_model_v1.md §3-1).
+  // hasForecast가 false면(예보 조회 실패) 날씨 제약 문구를 붙이지 않는다.
+  @visibleForTesting
+  static String weeklyScheduleLine({
+    required int index,
+    required DateTime date,
+    required String tpo,
+    DailyWeather? weather,
+    bool hasForecast = true,
+  }) {
+    final key = _dateKey(date);
+    final formality = TpoTags.byLabel(tpo).formalityHint;
+    final weatherNote = hasForecast ? _weatherConstraintNote(weather) : '';
+    return '${index + 1}. $key (${_weekdayKo(date)}) — $tpo — 요구 격식: $formality$weatherNote';
+  }
+
+  @visibleForTesting
+  static String weeklyCatalogLine(WardrobeItem item) =>
+      '- id=${item.id} | ${item.category} | ${item.attributes!.toPromptLine()}';
 
   // JSON 배열 파싱 — _parseJsonObject(GeminiService)의 배열판. 코드블록 펜스를
   // 벗기고 첫 '['~마지막 ']' 구간만 안전하게 디코드한다.
