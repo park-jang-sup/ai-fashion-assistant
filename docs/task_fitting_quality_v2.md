@@ -326,3 +326,34 @@ A는 **앱의 현재 요청을 그대로 재현**한다 — 프롬프트의 옷 
 - 클라이언트: `clientPrepMs` = 진입부 `beginFittingAttempt` 소요 + 이번 시도의 다운로드·인코딩 소요(재시도 시 실패한 호출 시간이 섞이지 않게 시도마다 잰다). 순차 경로는 보내지 않는다.
 - 구 APK 영향: 구 APK(커밋 `0613cf6` 시점) `_extractImageFromResponse`는 `candidates[0].content.parts`를 돌며 **첫 `inlineData.data`만** 읽고 다른 키는 보지 않는다 — 서명 키 제거는 영향이 없다. 구 APK도 이미지 모델 호출이 `callGeminiText`를 타므로 같이 축소된다(구 APK 로그의 1단계 `responseBytes` 2,224,487도 이미지보다 커서 같은 혜택이 예상된다 — 미확인). 한계: 응답 parts가 **전부** `thought: true`인 경우 축소 후 parts가 비어 클라이언트가 "이미지 없음" 오류를 낸다(축소 전이었다면 추론 중간 이미지를 그대로 보여줬을 것). inspect 4회에서 thought part는 0건이었다.
 - 검증: `npx tsc --noEmit` 통과, `npm test` 124건 PASS, `flutter analyze` 이슈 0, `flutter test` 237건 통과.
+
+### 2026-11-13 §7 배포·검증
+
+- **배포**: `firebase deploy --only functions --project ai-fashion-assistant-personal`(커밋 `8155d4e`) — 9개 함수 갱신 성공, `bg_removal_on_upload` 변경 없음으로 건너뜀. 경고는 지난번과 같은 2건(firebase-functions 버전 권고, DEP0190)뿐이다.
+- **기존 클라이언트의 축소 응답 처리**: 그때 폰에 설치돼 있던 APK(변형 B, 커밋 `2ee4304`, `clientPrepMs` 없음)로 21:19 피팅 1회 — `oneshot:2`, `elapsedMs` 10,455, `responseBytes` 2,483,465 → **`returnedBytes` 586,054(−76%)**. 기준으로 잡았던 "1MB대"보다 작은 것은 2벌이라 결과 이미지 자체가 작아서다(서명만 빠지고 이미지만 남은 크기). 같은 시각 피팅 history 문서가 `fittingCacheKey`와 함께 생성됐다 — 클라이언트가 축소 응답에서 이미지를 꺼내 캐시 업로드까지 마쳤다는 뜻이다.
+- **8월 시점 구 APK 재설치 확인은 생략**(사용자 결정). 대신 코드로 확인했다: 구 APK(커밋 `0613cf6`)의 `_extractImageFromResponse`는 첫 `inlineData.data`만 읽고 다른 키를 보지 않으므로 서명 키 제거에 영향받지 않는다.
+- **새 APK**: `flutter build apk --release`(커밋 `8155d4e`, 136.9MB) → `adb install -r`.
+- **8칸 전부(아우터·상의·하의·신발·모자·가방·시계·팔찌) 실기기 1회(21:24)** — §4 보충 5의 관측:
+
+  | 항목 | 값 |
+  |---|---|
+  | category | **`oneshot:8`** |
+  | requestBytes | 588,031 (parts 20·inline 9 — `request_shape` 상한 경계에서 통과, 거부 없음) |
+  | clientPrepMs | **419** (`beginFittingAttempt` 21:24:49.07 → 호출 시작 21:24:49.76) |
+  | 서버 elapsedMs | **15,370** |
+  | responseBytes → returnedBytes | 5,121,019 → **616,439 (−88%)** |
+  | 사용자 체감 | 약 18초 |
+
+  체감 18초 ≈ 준비 0.4초 + 모델 15.4초 + 응답 수신·표시 약 2초. 20:59 실행의 앞쪽 18.4초 같은 지연은 이번에는 없었다(그때 원인은 여전히 미확정 — 이제 `clientPrepMs`로 다음에 가릴 수 있다).
+
+### 마무리 요약
+
+| 항목 | 이전(구 모델·순차) | 이후(변형 B) |
+|---|---|---|
+| 4벌 | 프로브 40.2초 · v1 앱 약 46~67초 | 앱 서버 10.8초 |
+| 7~8벌 | 프로브 70.2초(7) · v1 앱 8단계 약 120초 | 앱 서버 15.4초(8칸) · 21.6~43.0초(6~7, 변동) |
+| 이미지 호출 수 | 옷 수만큼 | 1회 |
+| 폰이 받는 응답 | 단계당 약 2.2MB × N | 약 0.6MB(서명 제거 후) |
+| 품질 | 단계 수와 함께 얼굴·배경 열화 | 사용자 육안으로 A보다 훨씬 좋음 |
+
+남은 것(범위 밖, 고치지 않음): App Check 토큰이 구·새 APK 모두 `hasApp=false`(enforcement 꺼져 있어 통과), `firebase-functions` 버전 권고, 6~7벌 모델 시간의 회차 간 변동(21.6~43.0초, 직접 호출로도 11.3~22.0초).
