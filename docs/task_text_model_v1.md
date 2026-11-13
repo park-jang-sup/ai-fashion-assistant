@@ -303,3 +303,51 @@ Claude가 인증·형식 문제로 한 번도 성공하지 못하면 멈추고 �
 - **`candidateModels` 영향(보고)**: 저장값이 `text-primary`/`text-fallback`으로 바뀐다. 읽는 곳은 `RecommendationEntry`(직렬화만), `agent_planner.dart`(쓰기), `integration_test/self_eval_*_probe.dart`(출력만)뿐이고 화면·`tools/` 보고 도구에는 없다. 판정 로직(`judgeCandidate`)은 응답 모델을 `GeminiService.primaryTextModel`과 비교하는데 둘 다 별칭이라 그대로 동작한다. 과거 문서의 실제 모델명과 새 별칭이 섞이지만 이를 해석하는 코드는 없다 — 고친 것 없음.
 - **개인정보·AI 처리 안내(위치만, 문구 안 고침)**: 사용자 사진(전신·옷)이 이제 Anthropic으로도 전송된다. 제공자를 적어야 할 수 있는 곳 — `lib/screens/login_screen.dart:142`(이용약관·개인정보처리방침 동의 문구), `lib/screens/settings_screen.dart:619`(개인정보처리방침 행 — 현재 "준비 중"), `lib/screens/fitting_room_screen.dart:1302`(분석 카드 제목 "Gemini Fashion Advisor" — 분석은 이제 Claude). 앱 안에 제공자를 밝히는 기존 문구는 없다.
 - **검증**: `npx tsc --noEmit` 통과, `npm test` 154건 PASS(새로 30건), `flutter analyze` 0건, `flutter test` 242건 통과(덤프 1건 건너뜀).
+
+### 2026-11-13 배포·실기기 검증 (§4-3 1~4)
+
+- **배포**(커밋 `e9d845c`): 9개 함수 갱신 성공, 경고는 기존 2건뿐. CLI가 함수 실행 계정에 `ANTHROPIC_API_KEY` secret 읽기 권한(`secretmanager.secretAccessor`)을 자동 부여했다(secret 연결 시 정상 동작).
+- **구 APK(별칭 이전 빌드) 코디 분석 1회**(23:10): `model=gemini-3.5-flash route=gemini:gemini-3.5-flash`, 성공, 12.6초 — 배포된 APK는 그대로 동작.
+- 새 APK 빌드 전 문구 수정 2건(별도 커밋): 분석 카드 제목 → "AI Fashion Advisor"(`62dfeaa`), 사용자에게 보이는 "Gemini" 문구 3곳 → "AI"(`5ea8a10`, 의존하는 테스트·판정 코드 없음).
+- **새 APK**(커밋 `5ea8a10`, `flutter build apk --release`, `adb install -r`) 실기기 4종 — 서버 로그 + 에이전트 활동 기록(읽기 전용) 대조:
+
+  | 시각(KST) | 기능 | 요청 모델 | route | 결과 | elapsedMs | claude-error |
+  |---|---|---|---|---|---|---|
+  | 23:23:59 | 옷 1벌 등록 — 속성 추출(이미지 132KB, low) | `text-primary` | `claude:claude-sonnet-5-5` | 성공 | 1,651 | 없음 |
+  | 23:24:01 | 등록이 띄운 추천 — 자기평가 후보 1(84점 통과·채택) | `text-primary` | `claude:claude-sonnet-5-5` | 성공 | 7,371 | 없음 |
+  | 23:24:26 | 코디 분석(스트리밍, 68점) | `text-primary` | `claude:claude-sonnet-5-5` | 성공 | 3,044 | 없음 |
+  | 23:25:04 | 주간 플랜 1회차 | `text-primary` | `claude:claude-sonnet-5-5` | 성공 | 9,588 | 없음 |
+  | 23:25:49 | 주간 플랜 2회차 | `text-primary` | `claude:claude-sonnet-5-5` | 성공 | 10,884 | 없음 |
+
+  `text-fallback` 요청 0건, `claude-error` 0건 — 다섯 호출 모두 Claude 경로에서 성공(폴백에 가려진 실패 없음). 등록한 옷의 속성은 전부 한국어(`핏 레귤러`, 태그 `니트·골지·가을겨울·어깨단추`). 추천 문서의 `candidateModels`는 `['text-primary']`. 추천(자기평가) 호출은 옷 등록이 자동으로 띄운 파이프라인의 것이고, 별도의 추천 호출은 로그에 없다. 주간 플랜은 두 번 호출됐다.
+
+### 2026-11-13 리허설 (§4-3 5) — (가) 생략, (나) 폴백, (다) 복구
+
+리허설용 변경(경로 표 `text-primary` 한 줄)은 커밋하지 않았다. 바뀐 함수가 `callGeminiText` 하나라 두 번 모두 `--only functions:callGeminiText`로 배포했다(경고는 firebase-functions 버전 권고 1건).
+
+**(나) 폴백 — `text-primary → claude:claude-rehearsal-nonexistent`로 배포**
+
+| 시각(KST) | 기능 | 호출 순서 | Claude 실패(원래 상태·사유) | 폴백 | 소요 |
+|---|---|---|---|---|---|
+| 23:33:44 | 코디 분석 | 스트리밍 `text-primary` → 비스트리밍 `text-primary` → `text-fallback` | 404 `model: claude-rehearsal-nonexistent` ×2 → 503 | `gemini:gemini-3.5-flash` 성공 | 1,000 + 342 + 12,222ms(시작~완료 13.8초) |
+| 23:35:42 | 옷 등록 — 속성 추출 | `text-primary` → `text-fallback` | 404 → 503 | gemini 성공 | 489 + 2,476ms |
+| 23:35:49 | 확인 못 함(28KB, 사용자 기억 없음) | `text-primary` → `text-fallback` | 404 → 503 | gemini 성공 | 583 + 2,185ms |
+| 23:35:52 | 자기평가 후보 1 | `text-primary` → `text-fallback` | 404 → 503 | gemini 성공 | 345 + 11,470ms |
+| 23:36:04 | 자기평가 후보 2 | `text-primary` → `text-fallback` | 404 → 503 | gemini 성공 | 392 + 17,014ms |
+
+- Claude 실패 6건 모두 `claude-error` 로그에 원래 상태 404·사유가 남고 클라이언트에는 503으로 갔다. 클라이언트는 매번 `text-fallback`으로 넘어가 성공했다. 실패 응답은 0.3~1.0초.
+- 코디 분석은 등록된 순서대로 스트리밍 실패 → [STREAM-FALLBACK] 비스트리밍 → 폴백으로 갔고 결과(78점)가 정상 저장됐다.
+- 폴백(Gemini)으로 추출한 속성도 전부 한국어(`레귤러`, 태그 `니트·봄가을·로고·라운드넥`).
+- 자기평가는 폴백 모델 응답이라 설계대로 "판정 불가(대체 모델 응답)" — 후보 1(83점)·2(85점) 모두 유보, 후보 3은 평가 횟수 상한으로 호출되지 않아 이번 등록으로는 추천이 생기지 않았다. 주 모델 장애가 길어지면 추천이 만들어지지 않는다는 뜻이다(기존 판정 규칙 그대로, 범위 밖 — 기록만).
+- 23:35:49의 28KB 호출은 요청 크기(이미지 1장 축소본 수준)와 호출 위치로 보아 사이즈표 자동 입력(`extractSizeFromChart`)으로 추정되지만, 사용자 기억이 없고 활동 기록에도 남지 않아 확정하지 못했다.
+
+**(다) 복구 — `git checkout`으로 경로 표를 커밋된 값(`claude:claude-sonnet-5-5`)으로 되돌려 배포**
+
+- 23:43:05 코디 분석(스트리밍): `model=text-primary route=claude:claude-sonnet-5-5`, 성공, 3,188ms. `claude-error` 0건, `text-fallback` 0건.
+- 작업 트리: `git status`·`git diff`에 `functions/src/text_model_routes.ts` 변경 없음(이 실행 기록 문서만 수정, 미추적 `prototype/`은 이 트랙과 무관). 리허설 흔적 없음.
+
+### 마무리
+
+- 텍스트 모델: 주 `text-primary → claude:claude-sonnet-5-5`(between_tools, JSON 호출 effort low·분석 medium), 폴백 `text-fallback → gemini:gemini-3.5-flash`. 배포된 구 APK는 실제 모델명으로 Gemini를 그대로 쓴다.
+- 실기기에서 Claude 경로 4종(속성 추출·자기평가·스트리밍 분석·주간 플랜) 성공, 폴백 리허설·복구 확인. 모델 전환은 경로 표 한 줄 + `callGeminiText` 배포로 APK 없이 된다(리허설 (나)·(다)로 확인).
+- 남은 것(범위 밖, 손대지 않음): 개인정보처리방침·로그인 동의 문구에 AI 제공자(Anthropic) 안내 없음(위치는 위 기록), firebase-functions 버전 권고.
