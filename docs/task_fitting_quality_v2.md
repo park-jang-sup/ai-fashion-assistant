@@ -299,3 +299,30 @@ A는 **앱의 현재 요청을 그대로 재현**한다 — 프롬프트의 옷 
 - **캐시 키 v2**: 같은 조합 재요청이 서버 호출 없이 즉시 표시됨(캐시 히트) — 새 APK가 쓴 v2 키로 조회가 맞는다.
 - **관측(미해결, 범위 밖)**: ① `responseBytes`가 아이템 수에 따라 2.0MB → 5.5MB로 커진다. 프로브 B 출력 이미지는 0.7~0.8MB(base64 약 1MB)였으므로 응답에 이미지 외 내용(예: thought signature 등)이 더 실려 오는 것으로 추정한다 — 클라이언트 다운로드량에 영향. 확인하지 않았다. ② App Check: 구·새 APK 모두 `hasApp=false`("Decoding App Check token failed", enforcement 꺼져 있어 통과). 이번 변경 이전(구 APK)부터 같은 상태라 이 트랙의 결과가 아니다 — §5에 따라 손대지 않았다.
 - **추가 실행(20:59, 아우터 포함·시계 제외)**: 서버 `category=oneshot:7`(아이템 7 — 8슬롯 중 시계만 비움), `requestBytes` 456,218, **서버 `elapsedMs` 42,973**, `responseBytes` 5,537,617, 사용자 측정 클라이언트 **63.55초**. 시각 분해(서버 로그): `beginFittingAttempt` 20:59:40.4 → 이미지 모델 호출 시작 20:59:58.9(**18.4초**) → 완료 21:00:41.8(43.0초) → 화면 표시까지 약 2초. 앞선 세 실행은 `beginFittingAttempt` → 호출 시작 간격이 약 0.5초였다. 이 간격은 클라이언트의 이미지 다운로드 + 요청 업로드 구간이고, 같은 시각 `getSignedImageUrls` 호출은 없었다(URL은 클라이언트 캐시) — 서버 로그만으로는 18초의 원인(네트워크·다운로드)을 가릴 수 없다. 모델 구간 43.0초도 20:53의 같은 아이템 수(7) 실행 23.1초의 약 2배다 — 업스트림 변동으로 보이나 1회 관측이다. **8슬롯 전부(parts 20) 요청은 여전히 실기기에서 관측되지 않았다.** 이 실행으로 UTC 11시 창 fitting 6/6.
+
+## §7 후속 — 응답 축소와 준비 구간 계측 (2026-11-13 사용자 지시)
+
+### 근거 (프로브 inspect 실측, `tools/fitting_probe/output/inspect/`)
+
+| 구성 | 직접 호출 초 | 응답 전체 | 최종 이미지 data | thoughtSignature | thought 이미지 |
+|---|---|---|---|---|---|
+| K4(상의·하의·아우터·신발) | 11.3 | 4,749,785 | 975,516 | 3,773,408 | 0 |
+| K7(K4 + 모자·가방·시계) | 13.9 | 5,912,785 | 945,260 | 4,966,448 | 0 |
+| 아우터 없음 6(상의·하의·신발·모자·가방·시계) | 22.0 | 5,516,641 | 952,028 | 4,563,536 | 0 |
+| 시계 없음 6(상의·하의·아우터·신발·모자·가방) | 18.1 | 6,764,260 | 1,065,440 | 5,697,744 | 0 |
+
+- 응답의 80~85%가 `thoughtSignature`다. 단일 턴 요청이라 서명을 쓰지 않는다.
+- 직접 호출 시간 11.3~22.0초 — 앱의 21~23초(`oneshot:6`·`oneshot:7`)는 모델 자체의 변동 범위 안이다. 아우터 없는 6개 구성은 직접 호출로도 22.0초로 앱(21.6초)과 같다.
+
+### 지시
+
+1. **서버: 이미지 응답에서 thoughtSignature 제거.** 대상은 `callGeminiText`에서 kind가 image인 비스트리밍 응답과 `generateFittingImage`가 클라이언트로 돌려주는 응답. `candidates[*].content.parts[*]`에서 `thoughtSignature` 키를 지우고 `thought: true`인 part는 뺀다. 그 외 필드는 그대로. 순수 함수로 분리해 단위 테스트하고, 예상 형태가 아니면 그대로 돌려주며 예외를 던지지 않는다. 로그의 `responseBytes`는 업스트림 원본 크기 그대로, 축소 후 크기는 `returnedBytes`로 추가한다. 텍스트 응답·스트리밍 경로는 건드리지 않는다. Storage 저장 이미지는 축소 전후로 같아야 한다.
+2. **클라이언트: 준비 구간 계측.** 한 번에 경로에서 `generateFittingImage` 진입부터 callable 호출 직전까지(이미지 내려받기 + 인코딩)를 `clientPrepMs`로 보낸다(category와 같은 형제 키, requestBody 불변). 서버는 start 로그에 남기고, 없거나 숫자가 아니면 무시한다.
+3. tsc·npm test·flutter analyze·flutter test 통과. 커밋은 inspect 1개, [1]+[2] 1개. 배포·APK 빌드는 사용자 승인 뒤. 승인 뒤 확인: 피팅 1회에서 `returnedBytes`가 1MB대인지, `clientPrepMs`가 로그에 찍히는지, 구 APK 피팅 1회가 여전히 되는지.
+
+### 실행 기록
+
+- 서버: `functions/src/strip_thought_signature.ts`(순수 함수, 입력 불변·총체적) + 테스트 11건. `callGeminiText`는 `kind === "image"`일 때만 적용하고 `returnedBytes`를 done 로그에 추가, "무가공 중계" 주석에 예외와 근거를 적었다. `generateFittingImage`는 Storage 캐시 이미지를 **원본 응답에서 먼저 꺼낸 뒤**(기존 순서 그대로) 축소본을 돌려준다 — 함수가 입력을 변형하지 않으므로 저장 이미지는 축소 전과 같다. 두 함수의 start 로그에 `clientPrepMs`(유한한 0 이상 숫자만, 반올림).
+- 클라이언트: `clientPrepMs` = 진입부 `beginFittingAttempt` 소요 + 이번 시도의 다운로드·인코딩 소요(재시도 시 실패한 호출 시간이 섞이지 않게 시도마다 잰다). 순차 경로는 보내지 않는다.
+- 구 APK 영향: 구 APK(커밋 `0613cf6` 시점) `_extractImageFromResponse`는 `candidates[0].content.parts`를 돌며 **첫 `inlineData.data`만** 읽고 다른 키는 보지 않는다 — 서명 키 제거는 영향이 없다. 구 APK도 이미지 모델 호출이 `callGeminiText`를 타므로 같이 축소된다(구 APK 로그의 1단계 `responseBytes` 2,224,487도 이미지보다 커서 같은 혜택이 예상된다 — 미확인). 한계: 응답 parts가 **전부** `thought: true`인 경우 축소 후 parts가 비어 클라이언트가 "이미지 없음" 오류를 낸다(축소 전이었다면 추론 중간 이미지를 그대로 보여줬을 것). inspect 4회에서 thought part는 0건이었다.
+- 검증: `npx tsc --noEmit` 통과, `npm test` 124건 PASS, `flutter analyze` 이슈 0, `flutter test` 237건 통과.

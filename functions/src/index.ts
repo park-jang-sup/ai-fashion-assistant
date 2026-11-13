@@ -22,6 +22,7 @@ import {
 import {buildFittingCacheKey} from "./fitting_cache_key";
 import {verifyFittingOwnership} from "./fitting_ownership_policy";
 import {evaluateRequestShape, REQUEST_SHAPE_CONFIG, RequestShapeDecision} from "./request_shape";
+import {stripThoughtSignatures} from "./strip_thought_signature";
 
 // firebase-admin 14.x부터 admin.firestore()/admin.messaging() 같은
 // 네임스페이스 호환 API가 최상위 export에서 빠졌다 - getFirestore()/
@@ -275,8 +276,23 @@ async function checkAndRecordRateLimit(uid: string, kind: RateLimitKind): Promis
   }
 }
 
+// §7 [2] 클라이언트 준비 구간 계측값(clientPrepMs)을 로그 꼬리로 만든다 -
+// 유한한 0 이상 숫자만 받고, 그 외(없음·문자열·음수·NaN)는 빈 문자열.
+function clientPrepMsSuffix(value: unknown): string {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ?
+    ` clientPrepMs=${Math.round(value)}` : "";
+}
+
 // 텍스트 계열 Gemini 호출을 그대로 중계하는 단순 프록시. 클라이언트가 만든
 // requestBody를 가공 없이 그대로 넘기고, 응답도 원본 JSON을 그대로 돌려준다.
+// [예외 2026-11-13, docs/task_fitting_quality_v2.md §7 [1]] 이미지 모델
+// (kindForModel === "image") 비스트리밍 응답만은 thoughtSignature 키와
+// thought: true part를 떼고 돌려준다(strip_thought_signature.ts). 프로브
+// inspect 실측에서 응답의 80~85%(3.8~5.7MB)가 서명이었고 최종 이미지는 약
+// 1MB, thought 이미지는 0이었다 — 서명은 다음 턴에 되돌려 보낼 때만 쓰는데
+// 가상 피팅은 단일 턴이라 폰이 내려받을 이유가 없다. inlineData 등 나머지는
+// 그대로라 클라이언트 파싱(_extractImageFromResponse)은 안 바뀐다. 텍스트
+// 응답과 스트리밍 경로는 여전히 원본 그대로다.
 // 여기서 텍스트를 뽑아버리면 클라이언트의 _extractTextFromResponse류 파싱이
 // 서버·클라이언트 두 벌이 되어, withTextModelFallback을 서버로 옮기지 않기로
 // 한 이유(모델 폴백 판정에 필요한 FormatException은 호출부마다 다른 JSON
@@ -325,10 +341,11 @@ export const callGeminiText = onCall(
         `hasApp=${request.app != null}`
     );
 
-    const {model, requestBody, category} = (request.data ?? {}) as {
+    const {model, requestBody, category, clientPrepMs} = (request.data ?? {}) as {
       model?: unknown;
       requestBody?: unknown;
       category?: unknown;
+      clientPrepMs?: unknown;
     };
     if (typeof model !== "string" || !ALLOWED_MODELS.includes(model)) {
       throw new HttpsError("invalid-argument", `허용되지 않은 모델: ${String(model)}`);
@@ -343,6 +360,10 @@ export const callGeminiText = onCall(
     // 그대로, 아래는 로그에 남길 문자열 하나를 뽑아두는 것뿐이다.
     const categoryLabel = typeof category === "string" ? category : undefined;
     const categorySuffix = categoryLabel !== undefined ? ` category=${categoryLabel}` : "";
+    // §7 [2] - 클라이언트 준비 구간(이미지 내려받기 + 인코딩) 계측. category와
+    // 같은 형제 키라 requestBody·모델 입력에 닿지 않는다. 구 APK는 보내지
+    // 않으므로 없거나 숫자가 아니면 조용히 생략한다.
+    const prepSuffix = clientPrepMsSuffix(clientPrepMs);
 
     const requestBodyJson = JSON.stringify(requestBody);
     // A-2 이미지 경로 페이로드 실측용 - 핸드오프의 "3.5MB 안팎" 추산을
@@ -353,7 +374,7 @@ export const callGeminiText = onCall(
     const requestBytes = Buffer.byteLength(requestBodyJson, "utf8");
     console.log(
       `[callGeminiText] start reqId=${reqId} uid=${request.auth.uid} ` +
-        `model=${model} requestBytes=${requestBytes}${categorySuffix}`
+        `model=${model} requestBytes=${requestBytes}${categorySuffix}${prepSuffix}`
     );
 
     // 호출량 상한과 같은 model→kind 파생을 쓴다(payload_limit.ts
@@ -462,12 +483,17 @@ export const callGeminiText = onCall(
         }
         try {
           const parsed = JSON.parse(text);
+          // 이미지 응답만 서명을 뗀다(위 함수 주석의 예외). responseBytes는
+          // 업스트림 원본 크기 그대로, 돌려준 크기는 returnedBytes로 따로 남긴다.
+          const returned = kind === "image" ? stripThoughtSignatures(parsed) : parsed;
+          const returnedSuffix = kind === "image" ?
+            ` returnedBytes=${Buffer.byteLength(JSON.stringify(returned), "utf8")}` : "";
           console.log(
             `[callGeminiText] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
               `outcome=success upstreamStatus=${upstream.status} ` +
-              `responseBytes=${Buffer.byteLength(text, "utf8")}${categorySuffix}`
+              `responseBytes=${Buffer.byteLength(text, "utf8")}${returnedSuffix}${categorySuffix}`
           );
-          return parsed;
+          return returned;
         } catch (err) {
           // 200인데 본문이 유효 JSON이 아닌 경우 - Gemini는 성공으로 응답했지만
           // 파싱 불가한 바디를 준 것이므로, 직접 호출 시절 _parseJsonObject가
@@ -680,10 +706,11 @@ export const generateFittingImage = onCall(
     // callGeminiText 위 주석 참고.
     console.log(`[appCheck] fn=generateFittingImage uid=${uid} reqId=${reqId} hasApp=${request.app != null}`);
 
-    const {userPhotoId, clothingItemIds, requestBody} = (request.data ?? {}) as {
+    const {userPhotoId, clothingItemIds, requestBody, clientPrepMs} = (request.data ?? {}) as {
       userPhotoId?: unknown;
       clothingItemIds?: unknown;
       requestBody?: unknown;
+      clientPrepMs?: unknown;
     };
     if (typeof userPhotoId !== "string" || userPhotoId === "") {
       throw new HttpsError("invalid-argument", "userPhotoId가 필요합니다.");
@@ -702,7 +729,7 @@ export const generateFittingImage = onCall(
 
     console.log(
       `[generateFittingImage] start reqId=${reqId} uid=${uid} ` +
-        `userPhotoId=${userPhotoId} clothingCount=${clothingIds.length}`
+        `userPhotoId=${userPhotoId} clothingCount=${clothingIds.length}${clientPrepMsSuffix(clientPrepMs)}`
     );
 
     // 소유권 검증(§1.4, signed_url_policy.ts와 같은 원칙) - 캐시 키
@@ -825,12 +852,17 @@ export const generateFittingImage = onCall(
         }
       }
 
+      // 클라이언트로는 서명을 뗀 응답을 돌려준다(callGeminiText 주석의 예외와
+      // 같은 근거). Storage 캐시 이미지는 위에서 원본(parsed)으로 이미 꺼냈고
+      // stripThoughtSignatures는 입력을 변형하지 않으므로 저장 이미지는 그대로다.
+      const returned = stripThoughtSignatures(parsed);
       console.log(
         `[generateFittingImage] done reqId=${reqId} elapsedMs=${Date.now() - startedAt} ` +
           `outcome=success upstreamStatus=${upstream.status} ` +
-          `responseBytes=${Buffer.byteLength(text, "utf8")} cached=${cached}`
+          `responseBytes=${Buffer.byteLength(text, "utf8")} ` +
+          `returnedBytes=${Buffer.byteLength(JSON.stringify(returned), "utf8")} cached=${cached}`
       );
-      return parsed;
+      return returned;
     } catch (err) {
       const code = err instanceof HttpsError ? err.code : "unknown";
       const message = err instanceof Error ? err.message : String(err);

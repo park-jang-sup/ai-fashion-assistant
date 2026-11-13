@@ -125,6 +125,7 @@ class GeminiService {
     required String model,
     required Map<String, dynamic> requestBody,
     String? category,
+    int? clientPrepMs,
     Duration timeout = const Duration(seconds: 60),
   }) async {
     try {
@@ -135,6 +136,9 @@ class GeminiService {
         'model': model,
         'requestBody': requestBody,
         if (category != null) 'category': category,
+        // docs/task_fitting_quality_v2.md §7 [2] - category와 같은 계측 전용
+        // 형제 키(서버 start 로그에만 남는다).
+        if (clientPrepMs != null) 'clientPrepMs': clientPrepMs,
       });
       return jsonEncode(result.data);
     } on FirebaseFunctionsException catch (e) {
@@ -155,6 +159,7 @@ class GeminiService {
     required String userPhotoId,
     required List<String> clothingItemIds,
     required Map<String, dynamic> requestBody,
+    int? clientPrepMs,
   }) async {
     try {
       final result = await _functions
@@ -164,6 +169,7 @@ class GeminiService {
         'userPhotoId': userPhotoId,
         'clothingItemIds': clothingItemIds,
         'requestBody': requestBody,
+        if (clientPrepMs != null) 'clientPrepMs': clientPrepMs,
       });
       return jsonEncode(result.data);
     } on FirebaseFunctionsException catch (e) {
@@ -360,6 +366,8 @@ class GeminiService {
     // 상한의 목적은 남용 차단이지 정상 사용 차단이 아니다(fail-open, 서버
     // checkAndRecordRateLimit이 이미 트랜잭션 실패 시 이렇게 동작한다 —
     // 같은 원칙).
+    // §7 [2] 준비 구간 계측의 앞부분 — 진입부터 이 계수 호출(콜드스타트 포함)까지.
+    final beginWatch = Stopwatch()..start();
     try {
       await _beginFittingAttempt();
     } on RateLimitExceededException {
@@ -367,6 +375,8 @@ class GeminiService {
     } catch (e) {
       debugPrint('[GeminiService] beginFittingAttempt 실패(무시, fail-open): $e');
     }
+
+    final beginAttemptMs = beginWatch.elapsedMilliseconds;
 
     final order = fittingRenderOrder(clothingNames);
     if (sequentialFittingEnabled) {
@@ -393,6 +403,7 @@ class GeminiService {
           clothingLabels: clothingLabels,
           clothingDescriptions: clothingDescriptions,
           order: order,
+          beginAttemptMs: beginAttemptMs,
         ));
     return FittingGenerationResult(imageBytes: bytes);
   }
@@ -424,7 +435,12 @@ class GeminiService {
     required List<String> clothingLabels,
     required List<String> clothingDescriptions,
     required List<int> order,
+    required int beginAttemptMs,
   }) async {
+    // §7 [2] 준비 구간(이미지 내려받기 + base64 인코딩) 계측 — 이 시도 안에서만
+    // 잰다(재시도 시 실패한 호출 시간이 섞이지 않게). 서버로 보내는 값은
+    // 진입부 계수 호출 시간 + 이 구간이다.
+    final prepWatch = Stopwatch()..start();
     // 이미지들을 순차 다운로드하면 N개 x 다운로드시간만큼 대기하게 되므로
     // Future.wait로 병렬 실행해 가장 느린 한 건의 시간만큼만 기다리게 한다.
     final downloaded = await Future.wait([
@@ -455,16 +471,19 @@ class GeminiService {
     // serverFittingCacheEnabled가 꺼져 있으면(기본값) callGeminiText로
     // 중계한다(docs/task_fitting_server_cache_v1.md §3.2/§6). category는
     // 서버 로그에서 방식과 규모를 구분하는 계측용 형제 키(§4-1-6).
+    final clientPrepMs = beginAttemptMs + prepWatch.elapsedMilliseconds;
     final responseBody = serverFittingCacheEnabled
         ? await _callFittingProxy(
             userPhotoId: userPhotoId,
             clothingItemIds: clothingItemIds,
             requestBody: requestBody,
+            clientPrepMs: clientPrepMs,
           )
         : await _callProxyText(
             model: _imageModel,
             requestBody: requestBody,
             category: 'oneshot:${order.length}',
+            clientPrepMs: clientPrepMs,
             timeout: _imageCallTimeout,
           );
     return _extractImageFromResponse(responseBody);
