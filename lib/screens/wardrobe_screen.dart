@@ -102,7 +102,7 @@ Future<void> _extractAndCacheAttributes(
       AgentTask.create(
         type: AgentTask.typeGenerateRecommendation,
         payload: {'itemId': itemId},
-        lastError: '추천 파이프라인 실패(자기 평가 루프가 Gemini 폴백까지 모두 실패했거나 저장 실패)',
+        lastError: '추천 파이프라인 실패(자기 평가 루프가 AI 폴백까지 모두 실패했거나 저장 실패)',
       ),
     ));
   }

@@ -9,7 +9,7 @@ class GeminiApiException implements Exception {
   bool get isRetryable => statusCode == 503 || statusCode == 429;
 
   @override
-  String toString() => 'Gemini API 오류: $message';
+  String toString() => 'AI 호출 오류: $message';
 }
 
 // 서버 프록시(callGeminiText) 호출량 상한 초과 — 재시도 대상이 아니다.

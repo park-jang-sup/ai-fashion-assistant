@@ -454,7 +454,7 @@ class AgentPlanner {
       }) {
         final String message;
         if (wasError) {
-          message = '후보 ${index + 1} 평가: Gemini 호출 실패로 건너뛰고 다음 후보 검토';
+          message = '후보 ${index + 1} 평가: AI 호출 실패로 건너뛰고 다음 후보 검토';
         } else if (verdictWithheld) {
           // 폴백(주 모델이 아닌) 모델이 응답해 점수는 있어도 판정에 안 썼다.
           // "기준 미달"이라고 적으면 실제 미달과 구분이 안 되므로(나중에 이
@@ -1039,7 +1039,7 @@ class AgentPlanner {
         }) {
           final String message;
           if (wasError) {
-            message = '후보 ${index + 1} 평가: Gemini 호출 실패로 건너뛰고 다음 후보 검토';
+            message = '후보 ${index + 1} 평가: AI 호출 실패로 건너뛰고 다음 후보 검토';
           } else if (verdictWithheld) {
             // agent_planner.dart의 다른 onStep 콜백과 같은 이유로 같은 라벨을
             // 쓴다 — "기준 미달"로 적으면 실제 미달과 구분이 안 된다.
