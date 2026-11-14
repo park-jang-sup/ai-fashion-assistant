@@ -52,7 +52,7 @@ void main() {
     test('스타일 원칙, 구매 제안·답 형식·내부 사정 규칙이 들어간다', () {
       final p = buildAskPrompt(request: 'x', steps: const [], today: DateTime(2026, 11, 16));
       expect(p, contains(askStylePrinciples));
-      expect(p, contains('"구매 제안:"으로 구분해서만'));
+      expect(p, contains('없는 옷은 "구매 제안:" 줄에만 쓴다'));
       expect(p, contains('브랜드, 가격, 판매처, 링크는 쓰지 않는다'));
       expect(p, contains('첫 줄은 결론 한 문장'));
       expect(p, contains('내부 사정을 쓰지 않는다'));

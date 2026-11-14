@@ -87,7 +87,7 @@ void main() {
       final r = await askTools(FakeAskData(items: items)).searchWardrobe({});
       expect(r.observation, '옷장 8벌 — 상의 2, 하의 2, 아우터 2, 신발 1, 액세서리 1');
       final onlyPhotos = await askTools(FakeAskData(items: [askW('b1', '전신')])).searchWardrobe({});
-      expect(onlyPhotos.observation, '옷장이 비어 있어요');
+      expect(onlyPhotos.observation, '옷장이 비어 있어요\n$askBuyNote');
     });
     test('키워드 조회에서도 "전신"(전신 사진)은 빼고 찾는다(§10 D)', () async {
       final items = [...askWardrobe, askW('b1', '전신', tags: ['올블랙', '겨울']), askW('b2', '전신', color: '블랙')];
@@ -107,7 +107,7 @@ void main() {
     });
     test('잘못된 종류·빈 옷장·일치 없음', () async {
       expect((await askTools(FakeAskData()).searchWardrobe({'category': '모자'})).ok, isFalse);
-      expect((await askTools(FakeAskData(items: const [])).searchWardrobe({})).observation, '옷장이 비어 있어요');
+      expect((await askTools(FakeAskData(items: const [])).searchWardrobe({})).observation, '옷장이 비어 있어요\n$askBuyNote');
       expect((await askTools(FakeAskData()).searchWardrobe({'keyword': '패딩'})).observation, contains('일치하는 옷 없음'));
     });
     test('category만 주면 그 종류 전체 요약 — 앞 8벌 밖의 한겨울용도 보인다', () async {

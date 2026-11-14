@@ -186,6 +186,20 @@ int? parseAskItemNumber(Object? v) {
   return null;
 }
 
+// 모델용 안내(run2 준비) — 맞는 옷이 부족하다·날씨에 맞추지 못했다·요청한 수를 채우지 못했다는 관찰
+// 문장 뒤에 한 번 붙인다. 화면용 한 줄(display)에는 붙이지 않는다.
+const askBuyNote = '없는 옷을 권할 때는 "구매 제안:" 줄에만 쓴다.';
+
+// 관찰의 줄 목록에서 처음 나오는 "부족" 문장 뒤에 안내 한 줄을 넣는다(없으면 그대로).
+List<String> askWithBuyNote(List<String> lines, bool Function(String line) isShort) {
+  final i = lines.indexWhere(isShort);
+  if (i < 0) return lines;
+  return [...lines.take(i + 1), askBuyNote, ...lines.skip(i + 1)];
+}
+
+// 날씨 문구(buildWeatherNote) 가운데 날씨에 맞추지 못했다·맞는 옷이 없다는 말.
+bool _weatherShort(String line) => ['없어', '그대로 들어갔', '나오지 않아'].any(line.contains);
+
 // 화면용 한 줄이 없는 실패(인자 오류 등)를 사용자 말로.
 const askDisplayFailed = '확인하지 못했어요';
 // 막힌 호출(상한·같은 인자 반복)을 사용자 말로.
@@ -365,7 +379,7 @@ class AskTools {
     } catch (e) {
       return AskToolResult('옷장을 불러오지 못했어요: $e', ok: false);
     }
-    if (wardrobe.isEmpty) return const AskToolResult('옷장이 비어 있어요', ok: false);
+    if (wardrobe.isEmpty) return const AskToolResult('옷장이 비어 있어요\n$askBuyNote', ok: false);
     if (category == null && keyword == null) {
       // 옷 종류(askCategories)만 센다 — "전신"(전신 사진) 같은 옷이 아닌 문서는 총수에 넣지 않는다.
       final counts = <String, int>{};
@@ -373,7 +387,7 @@ class AskTools {
         counts[i.category] = (counts[i.category] ?? 0) + 1;
       }
       final total = counts.values.fold(0, (a, b) => a + b);
-      if (total == 0) return const AskToolResult('옷장이 비어 있어요', ok: false);
+      if (total == 0) return const AskToolResult('옷장이 비어 있어요\n$askBuyNote', ok: false);
       return AskToolResult(
           '옷장 $total벌 — '
           '${[for (final c in askCategories) if (counts[c] != null) '$c ${counts[c]}'].join(', ')}',
@@ -397,7 +411,7 @@ class AskTools {
       });
     final what = [if (category != null) category, if (kw != null) "'$kw'"].join(' ');
     if (hits.isEmpty) {
-      return AskToolResult('일치하는 옷 없음(${category ?? '전체'}${kw != null ? ', "$kw"' : ''})',
+      return AskToolResult('일치하는 옷 없음(${category ?? '전체'}${kw != null ? ', "$kw"' : ''})\n$askBuyNote',
           display: '$what 옷은 없어요');
     }
     final shown = hits.take(8).toList();
@@ -405,7 +419,8 @@ class AskTools {
         '${[for (var i = 0; i < shown.length; i++) '- ${_line(shown[i])}'].join('\n')}';
     // category만 준 조회는 앞 8벌 밖을 다시 찾지 않게 그 종류 전체의 요약을 함께 준다.
     final summary = kw == null ? '\n${_categorySummary(category as String, hits)}' : '';
-    return AskToolResult(_clip(list + summary), display: '$what ${hits.length}벌을 찾았어요', items: shown);
+    final observed = askWithBuyNote((list + summary).split('\n'), (l) => l.endsWith(' 옷: 없음')).join('\n');
+    return AskToolResult(_clip(observed), display: '$what ${hits.length}벌을 찾았어요', items: shown);
   }
 
   // 태그별 벌수는 많은 순, 같으면 글자 순(프로브가 같은 규칙으로 재현한다).
@@ -460,7 +475,7 @@ class AskTools {
     } catch (e) {
       return AskToolResult('옷장을 불러오지 못했어요: $e', ok: false);
     }
-    if (all.length < 2) return const AskToolResult('옷장에 옷이 부족해 조합을 만들 수 없어요', ok: false);
+    if (all.length < 2) return const AskToolResult('옷장에 옷이 부족해 조합을 만들 수 없어요\n$askBuyNote', ok: false);
     final notes = <String>[];
 
     // 거르기 1 — exclude: 빼고 고를 옷.
@@ -542,7 +557,9 @@ class AskTools {
       if (w.length < 2) break;
       final m = AgentPlanner.matchForWeather(wardrobe: w, formalityHint: formality, recentItemIds: recent, day: day);
       if (m.match.candidates.isEmpty) {
-        if (n == 0) return AskToolResult('조합을 만들지 못했어요 — ${m.match.shortfall ?? '옷장이 부족해요'}', ok: false);
+        if (n == 0) {
+          return AskToolResult('조합을 만들지 못했어요 — ${m.match.shortfall ?? '옷장이 부족해요'}\n$askBuyNote', ok: false);
+        }
         break;
       }
       var top = List.of(m.match.candidates.first.items);
@@ -584,13 +601,18 @@ class AskTools {
     if (outOfRange) weatherText = '$weatherText(오늘 기온대 기준)';
     final head = '${askDateLabel(date)} [$tpo] 미리 보기(저장 안 함)'
         '${count > 1 ? ' — 요청 $count개 중 ${combos.length}개' : ''}:';
+    final observed = askWithBuyNote([
+      if (count == 1) '$head ${lines.first}' else ...[head, ...lines],
+      '날씨: $weatherText',
+      '격식 차선: ${fallback ? '예 — 일정 격식에 딱 맞는 조합이 없어요' : '아니요'}',
+      ...notes,
+    ], (l) =>
+        (l == head && combos.length < count) ||
+        (l.startsWith('날씨: ') && _weatherShort(l)) ||
+        l.startsWith('격식 차선: 예') ||
+        l.contains('태그가 맞는 옷이 없어'));
     return AskToolResult(
-      _clip([
-        if (count == 1) '$head ${lines.first}' else ...[head, ...lines],
-        '날씨: $weatherText',
-        '격식 차선: ${fallback ? '예 — 일정 격식에 딱 맞는 조합이 없어요' : '아니요'}',
-        ...notes,
-      ].join('\n')),
+      _clip(observed.join('\n')),
       display: combos.length == 1
           ? '${askShortDate(date)} [$tpo] 코디: ${combos.first.map(askShortItem).join(', ')}'
           : '${askShortDate(date)} [$tpo] 코디 ${combos.length}가지',
@@ -659,7 +681,9 @@ class AskTools {
     } catch (e) {
       return AskToolResult('옷장을 불러오지 못했어요: $e', ok: false);
     }
-    if (wardrobe.isEmpty) return const AskToolResult('옷장이 비어 있어요', display: '옷장이 비어 있어요', ok: false);
+    if (wardrobe.isEmpty) {
+      return const AskToolResult('옷장이 비어 있어요\n$askBuyNote', display: '옷장이 비어 있어요', ok: false);
+    }
     final byCat = {for (final c in askCategories) c: [for (final i in wardrobe) if (i.category == c) i]};
     final lines = <String>[
       '옷장 ${wardrobe.length}벌 — ${[for (final c in askCategories) if (byCat[c]!.isNotEmpty) '$c ${byCat[c]!.length}'].join(', ')}',
@@ -712,7 +736,12 @@ class AskTools {
     ];
     gaps.add('격식별로 0벌: ${noFormal.isEmpty ? '없음' : noFormal.join(', ')}');
     lines.add('빈 부분 — ${gaps.join(' / ')}');
-    return AskToolResult(_clip(lines.join('\n')), display: '옷장 ${wardrobe.length}벌을 요약했어요');
+    final observed = askWithBuyNote(
+        lines,
+        (l) =>
+            l == '한겨울용 아우터: 없음' ||
+            (l.startsWith('빈 부분 — ') && (!l.contains('미만: 없음') || !l.contains('0벌: 없음'))));
+    return AskToolResult(_clip(observed.join('\n')), display: '옷장 ${wardrobe.length}벌을 요약했어요');
   }
 
   // get_style_history {} — 최근 60일의 착장 기록과 추천 반응 요약(v2 §2-F-1).
