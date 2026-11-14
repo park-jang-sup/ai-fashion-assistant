@@ -1,5 +1,8 @@
 // 고른 조합을 하나로(docs/task_agent_ask_v2.md 실행 기록 "v2.1" A) — finish의 outfit, 이번 턴의 조합을 정하는
 // 순서(finish의 outfit → 성공한 try_on → 옷이 붙은 마지막 단계 → 이전 [현재 코디]), 대화 내역.
+// 답 아래 사진·"피팅룸에서 입어 보기"·대화 내역의 사진은 이번 턴에 정해진 조합(1~3)만, 이전 [현재 코디](4)는
+// 다음 턴의 [현재 코디]에만 쓴다.
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:ai_fashion_assistant/models/wardrobe_item.dart';
@@ -30,10 +33,13 @@ Future<(AskTools, List<List<WardrobeItem>>, List<String> Function(List<WardrobeI
   return (tools, combos, nums);
 }
 
+// 1×1 투명 PNG — 대화 화면이 피팅 사진을 실제로 그리므로 읽을 수 있는 그림이어야 한다.
+final _png = base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=');
+
 AskFittingPort _port() => AskFittingPort(
       hasUserPhoto: () => true,
       busy: () => false,
-      run: (_) async => AskFittingOutcome(shot: AskFittingShot(bytes: Uint8List(3), cacheKey: 'k1')),
+      run: (_) async => AskFittingOutcome(shot: AskFittingShot(bytes: Uint8List.fromList(_png), cacheKey: 'k1')),
     );
 
 Future<AskOutcome> _run(AskTools tools, List<Map<String, dynamic>> replies, {AskOutfit? current}) {
@@ -135,12 +141,12 @@ void main() {
       expect(_ids(o.outfit!.items), _ids(combos[0]));
     });
 
-    test('4) 이번 턴에 조합이 없으면 이전 [현재 코디] — 사진도 그것', () async {
+    test('4) 이번 턴에 조합이 없으면 다음 턴의 [현재 코디]는 이전 것을 이어받고, 사진은 없다', () async {
       final (tools, combos, _) = await _setup();
       final current = AskOutfit(date: DateTime(2026, 11, 17), tpo: '데이트', items: combos[1]);
       final o = await _run(tools, [_a('finish', {'answer': '그 코디가 좋아요.\n- 따뜻해요.\n- 색이 이어져요.'})], current: current);
       expect(o.outfit, same(current));
-      expect(_ids(askCombo(o)), _ids(combos[1]));
+      expect(askCombo(o), isEmpty);
       // finish의 outfit만 있고 이번 턴에 미리 보기가 없으면 날짜·상황은 이전 [현재 코디]에서
       final (tools2, combos2, nums2) = await _setup();
       final o2 = await _run(tools2, [
@@ -151,13 +157,22 @@ void main() {
     });
   });
 
-  testWidgets('대화 화면·대화 내역 — 답 아래 사진, 다시 열었을 때의 사진, 다음 턴의 [현재 코디]가 모두 finish의 outfit', (tester) async {
+  testWidgets('대화 화면·대화 내역 — 조합이 정해진 턴(outfit, try_on)에만 사진, 조합이 없는 턴은 사진 없이 [현재 코디]만 이어받는다',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 4000); // 세 턴이 한 화면에 다 보이게(ListView는 보이는 것만 그린다)
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     final (seedTools, combos, nums) = await _setup();
     final prompts = <String>[];
     final replies = [
+      // 1턴 — finish의 outfit으로 2번 조합
       _a('preview_outfit', _pv),
       _a('finish', {'answer': '2번 조합을 가장 권해요.\n- 따뜻해요.\n- 색이 이어져요.', 'outfit': nums(combos[1])}),
-      _a('finish', {'answer': '그 코디로 가요.\n- 따뜻해요.\n- 이어져요.'}),
+      // 2턴 — 조합이 없는 답
+      _a('finish', {'answer': '고마워요.\n- 언제든 말씀해 주세요.\n- 다른 코디도 볼 수 있어요.'}),
+      // 3턴 — try_on으로 1번 조합
+      _a('try_on', {'outfit': nums(combos[0])}),
+      _a('finish', {'answer': '입혀 봤어요.\n- 코디보드에도 올려 두었어요.\n- 따뜻해요.'}),
     ];
     var i = 0;
     final store = _Store();
@@ -174,29 +189,46 @@ void main() {
       },
       logSink: (_) {},
       historyFor: (_) => store,
+      fitting: _port(),
       now: () => DateTime(2026, 11, 16, 10),
     );
-    await tester.pumpWidget(MaterialApp(home: AskScreen(controller: c)));
+    List<String> thumbs() => tester.widgetList<AskItemThumb>(find.byType(AskItemThumb)).map((t) => t.id).toList();
+    String currentLine(String prompt) =>
+        RegExp(r'^\[현재 코디\] .*$', multiLine: true).firstMatch(prompt)!.group(0)!;
+    await tester.pumpWidget(MaterialApp(home: AskScreen(controller: c, onOpenFittingRoom: (_) {})));
     await tester.pump();
+    final fittingButton = find.text('피팅룸에서 입어 보기'); // 마지막 턴의 답 아래에만 있다
+    // 1턴 — outfit으로 정해진 조합의 사진과 "피팅룸에서 입어 보기"
     c.start('코디 두 가지 보여 주고 하나 골라줘');
     await tester.pumpAndSettle();
-    final thumbs = tester.widgetList<AskItemThumb>(find.byType(AskItemThumb)).map((t) => t.id).toList();
-    expect(thumbs, _ids(combos[1]));
+    expect(thumbs(), _ids(combos[1]));
+    expect(fittingButton, findsOneWidget);
     expect(_ids(c.currentOutfit!.items), _ids(combos[1]));
-    expect([for (final it in store.records.single.turns.single.items) it.id], _ids(combos[1]));
-    // 다음 턴의 [현재 코디]
-    c.start('그걸로 할게');
+    // 2턴 — 조합이 없는 답에는 사진이 없다(화면의 사진은 1턴 것뿐), [현재 코디]는 이어받는다
+    c.start('고마워');
     await tester.pumpAndSettle();
-    final cur = RegExp(r'^\[현재 코디\] .*$', multiLine: true).firstMatch(prompts.last)!.group(0)!;
     for (final n in nums(combos[1])) {
-      expect(cur, contains(n));
+      expect(currentLine(prompts[2]), contains(n)); // 2턴 프롬프트
     }
-    // 대화 내역에서 다시 열었을 때
+    expect(thumbs(), _ids(combos[1]));
+    expect(askCombo(c.turns[1].outcome!), isEmpty);
+    expect(fittingButton, findsNothing);
+    expect(_ids(c.currentOutfit!.items), _ids(combos[1]));
+    // 3턴 — 조합이 없는 턴 뒤에도 [현재 코디]는 1턴의 조합, try_on으로 정해진 조합은 사진이 있다
+    c.start('1번으로 입혀 줘');
+    await tester.pumpAndSettle();
+    for (final n in nums(combos[1])) {
+      expect(currentLine(prompts[3]), contains(n)); // 3턴 첫 단계 프롬프트
+    }
+    expect(thumbs(), [..._ids(combos[1]), ..._ids(combos[0])]);
+    expect(fittingButton, findsOneWidget);
+    expect(_ids(c.currentOutfit!.items), _ids(combos[0]));
+    // 대화 내역 — 저장된 사진도 같고, 다시 열었을 때도 2턴에는 사진이 없다
     final record = store.records.single;
+    expect([for (final t in record.turns) t.items.map((i) => i.id).toList()], [_ids(combos[1]), <String>[], _ids(combos[0])]);
     await tester.pumpWidget(MaterialApp(home: AskRecordScreen(record: record)));
     await tester.pump();
-    final reopened = tester.widgetList<AskItemThumb>(find.byType(AskItemThumb)).map((t) => t.id).toList();
-    expect(reopened, [..._ids(combos[1]), ..._ids(combos[1])]); // 두 턴 모두 같은 조합(2턴은 이전 [현재 코디])
+    expect(thumbs(), [..._ids(combos[1]), ..._ids(combos[0])]);
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(minutes: 5));
   });
