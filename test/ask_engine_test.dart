@@ -26,7 +26,13 @@ class _Script {
 }
 
 String _prompt(
-        {required String request, required List<AskStep> steps, required DateTime today, int? remainingCalls, String? profile}) =>
+        {required String request,
+        required List<AskStep> steps,
+        required DateTime today,
+        int? remainingCalls,
+        String? profile,
+        List<AskTurnBrief> history = const [],
+        String? currentOutfit}) =>
     'REQ:$request\n${steps.map((s) => '${s.action}=>${s.observation}').join('\n')}'
     '${remainingCalls == null ? '' : '\nLEFT:$remainingCalls'}';
 

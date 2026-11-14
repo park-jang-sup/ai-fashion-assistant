@@ -87,4 +87,19 @@ void main() {
     expect(p2.length, lessThanOrEqualTo(askPromptMaxChars));
     expect(p2, contains('(줄임)'));
   });
+
+  test('10턴째 요청도 상한 안 — 이전 턴 답이 길면 더 줄인다', () {
+    final history = [for (var i = 0; i < 9; i++) AskTurnBrief('요청 $i', '답' * 2000)];
+    final p = buildAskPrompt(
+        request: '자켓만 바꿔 줘',
+        steps: const [],
+        today: _today,
+        history: history,
+        currentOutfit: '11/17(화) [일상] 기준: #3 상의 블랙 맨투맨·코튼(캐주얼)');
+    expect(p.length, lessThanOrEqualTo(askPromptMaxChars));
+    expect(p, contains('9. 사용자: 요청 8'));
+    expect(p, contains('[현재 코디] 11/17(화) [일상] 기준'));
+    // ignore: avoid_print
+    print('10턴째 첫 단계 프롬프트 글자 수: ${p.length}');
+  });
 }

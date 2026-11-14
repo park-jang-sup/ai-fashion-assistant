@@ -34,7 +34,15 @@ class _Store implements AskHistoryStore {
   @override
   Future<List<AskRecord>> recent() async => List.of(records);
   @override
-  Future<void> add(AskRecord record) async => records.insert(0, record);
+  Future<void> save(AskRecord record) async {
+    records.removeWhere((r) => r.id == record.id);
+    records.insert(0, record);
+  }
+
+  @override
+  Future<void> delete(String id) async => records.removeWhere((r) => r.id == id);
+  @override
+  Future<void> clear() async => records.clear();
 }
 
 final _plan = [
@@ -189,13 +197,13 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.send);
     await tester.pump();
     expect(t.c.start('끼어든 요청'), isFalse); // 한 번에 하나만
-    await tester.tap(find.text('새로 부탁하기'));
+    await tester.tap(find.text('새 대화'));
     await tester.pump();
-    expect(find.text('진행 중인 부탁을 멈추고 새로 부탁할까요?'), findsOneWidget);
+    expect(find.text('진행 중인 부탁을 멈추고 새 대화를 시작할까요?'), findsOneWidget);
     await tester.tap(find.text('계속 진행'));
     await tester.pump();
     expect(t.c.request, '첫 요청');
-    await tester.tap(find.text('새로 부탁하기'));
+    await tester.tap(find.text('새 대화'));
     await tester.pump();
     await tester.tap(find.text('멈추기').last);
     await tester.pump();
@@ -229,7 +237,7 @@ void main() {
     // 저장 형식 왕복
     final back = AskRecord.fromMap(r.toMap());
     expect(back.toMap(), r.toMap());
-    await tester.tap(find.text('새로 부탁하기'));
+    await tester.tap(find.text('새 대화'));
     await tester.pumpAndSettle();
     expect(find.text('11/16 10:05 · 답'), findsOneWidget);
     await tester.tap(find.text(askExamples.first).last); // 지난 부탁 줄
@@ -240,7 +248,7 @@ void main() {
 
   testWidgets('지난 부탁을 누르면 그 대화를 읽기 전용으로 보여 준다', (tester) async {
     final t = _ctl(const []);
-    t.store.records.add(AskRecord(
+    t.store.records.add(AskRecord.single(
       request: '내일 데이트 일정 있어?',
       createdAt: DateTime(2026, 11, 15, 9, 0),
       end: 'finished',
@@ -290,12 +298,13 @@ void main() {
   test('지난 부탁은 최신이 앞, 최대 20건', () {
     var entries = <Map<String, dynamic>>[];
     for (var i = 0; i < 25; i++) {
-      entries = prependAskRecord(entries,
-          AskRecord(request: '요청 $i', createdAt: DateTime(2026, 11, 16, 10, i), end: 'finished', answer: '답'));
+      entries = upsertAskRecord(entries,
+          AskRecord.single(request: '요청 $i', createdAt: DateTime(2026, 11, 16, 10, i), end: 'finished', answer: '답'));
     }
+    String req(Map<String, dynamic> e) => AskRecord.fromMap(e).request;
     expect(entries.length, askHistoryMax);
-    expect(entries.first['request'], '요청 24');
-    expect(entries.last['request'], '요청 5');
+    expect(req(entries.first), '요청 24');
+    expect(req(entries.last), '요청 5');
   });
 
   test('탭별 자리 — 옷장은 추가 버튼 위, 피팅룸은 머리글 오른쪽 위, 나머지는 가상 피팅 표시 위', () {
@@ -322,15 +331,14 @@ void main() {
     await tester.tap(find.text(askExamples.first));
     await tester.pumpAndSettle();
     for (final label in ['등록하기', '멈추기']) {
-      await tester.scrollUntilVisible(find.text(label), 200);
+      await tester.scrollUntilVisible(find.text(label), 200, scrollable: find.byType(Scrollable).first);
       expect(find.text(label).hitTestable(), findsOneWidget);
     }
     await tester.tap(find.text('등록하기'));
     await tester.pumpAndSettle();
-    for (final label in ['캘린더에서 보기', '새로 부탁하기']) {
-      await tester.scrollUntilVisible(find.text(label), 200);
-      expect(find.text(label).hitTestable(), findsOneWidget);
-    }
+    await tester.scrollUntilVisible(find.text('캘린더에서 보기'), 200, scrollable: find.byType(Scrollable).first);
+    expect(find.text('캘린더에서 보기').hitTestable(), findsOneWidget);
+    expect(find.text('새 대화').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -345,5 +353,82 @@ void main() {
     await tester.pumpAndSettle();
     expect(tab, 3);
     expect(find.text('탭 화면'), findsOneWidget);
+  });
+
+  testWidgets('이어지는 대화 — 답 뒤에 입력창이 남고, 다음 턴에 이전 턴과 [현재 코디]가 넘어간다', (tester) async {
+    final prompts = <String>[];
+    final t = _ctl([
+      _a('preview_outfit', {'date': '2026-11-17', 'tpo': '일상'}),
+      _a('finish', {'answer': '내일은 이 코디예요\n- 비가 와요'}),
+      _a('finish', {'answer': '자켓을 바꿨어요'}),
+    ]);
+    final c = AskController(
+      currentUid: () => 'u',
+      toolsFor: (_) => askTools(t.data),
+      callModel: (p) {
+        prompts.add(p);
+        return t.model.call(p);
+      },
+      logSink: t.logs.add,
+      historyFor: (_) => t.store,
+      now: () => DateTime(2026, 11, 16, 10, 5),
+    );
+    await tester.pumpWidget(_shell(c));
+    await _openScreen(tester);
+    await tester.enterText(find.byType(TextField), '내일 뭐 입지?');
+    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await tester.pumpAndSettle();
+    expect(find.text('내일은 이 코디예요\n- 비가 와요'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget); // 입력창이 남는다
+    expect(c.currentOutfit?.tpo, '일상');
+    await tester.enterText(find.byType(TextField), '자켓만 바꿔 줘');
+    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await tester.pumpAndSettle();
+    expect(c.turns.length, 2);
+    final second = prompts.last;
+    expect(second, contains('[이전 대화]'));
+    expect(second, contains('1. 사용자: 내일 뭐 입지?'));
+    expect(second, contains('[현재 코디] 11/17(화) [일상] 기준: #'));
+    expect(second, isNot(contains('도구: preview_outfit'))); // 이전 턴의 단계는 넣지 않는다
+    expect(find.text('자켓을 바꿨어요'), findsOneWidget);
+    // 대화 내역 한 건 = 대화 전체.
+    final r = t.store.records.single;
+    expect([for (final x in r.turns) x.request], ['내일 뭐 입지?', '자켓만 바꿔 줘']);
+    expect(AskRecord.fromMap(r.toMap()).turns.length, 2);
+    // 답 카드의 옷 사진(서명 URL 재시도 타이머)을 정리한다.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(minutes: 5));
+  });
+
+  test('대화 하나는 10턴까지 — 넘으면 시작하지 않는다', () async {
+    final t = _ctl([for (var i = 0; i < 11; i++) _a('finish', {'answer': '답 $i'})]);
+    for (var i = 0; i < askMaxTurns; i++) {
+      expect(t.c.start('말 $i'), isTrue);
+      await pumpEventQueue();
+    }
+    expect(t.c.turns.length, 10);
+    expect(t.c.turnLimitReached, isTrue);
+    expect(t.c.start('11번째'), isFalse);
+    t.c.clear();
+    expect(t.c.start('새 대화'), isTrue);
+  });
+
+  test('v1 형식으로 저장된 기록은 한 턴짜리 대화로 읽는다, 답은 2,000자까지', () {
+    final v1 = {
+      'request': '내일 비 와?',
+      'createdAt': DateTime(2026, 11, 14).millisecondsSinceEpoch,
+      'end': 'finished',
+      'answer': '네',
+      'steps': [
+        {'action': 'get_weather', 'thought': 't', 'summary': '2026-11-15(일): 최고 9°C'},
+      ],
+      'items': const [],
+    };
+    final r = AskRecord.fromMap(v1);
+    expect(r.turns.length, 1);
+    expect(r.request, '내일 비 와?');
+    expect(r.steps.single.summary, '2026-11-15(일): 최고 9°C');
+    final long = AskRecord.single(request: 'x', createdAt: DateTime(2026), end: 'finished', answer: '가' * 3000);
+    expect((long.toMap()['turns'] as List).first['answer'].length, askRecordAnswerMax);
   });
 }

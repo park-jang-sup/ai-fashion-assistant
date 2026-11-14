@@ -1,10 +1,12 @@
-// AI에게 부탁하기 — 앱 수준 진행 컨트롤러(docs/task_agent_ask_v1.md §10 B). 가상 피팅의
-// FittingJobController처럼 AppShell이 갖고 있어서, 전용 화면을 닫아도 부탁은 계속 진행된다.
+// AI에게 부탁하기 — 앱 수준 진행 컨트롤러(docs/task_agent_ask_v1.md §10 B, task_agent_ask_v2.md §2-D).
+// 가상 피팅의 FittingJobController처럼 AppShell이 갖고 있어서, 전용 화면을 닫아도 대화는 계속 진행된다.
 // 화면과 떠 있는 버튼은 이 컨트롤러를 구독만 한다.
-//  · 한 번에 부탁 하나만 진행한다(start는 진행 중이면 false).
+//  · 대화 하나 = 여러 턴(사용자 말 → 단계들 → 답). 답이 나온 뒤에도 이어서 말할 수 있다(10턴까지).
+//    대화 안의 옷 번호는 AskTools 하나가 갖고, 이전 턴은 사용자 말·답과 [현재 코디]만 다음 턴에 넘긴다.
+//  · 한 번에 턴 하나만 진행한다(start는 진행 중이면 false).
 //  · add_plan은 확인 카드에서 [등록]을 눌러야만 실행된다 — 화면이 닫혀 있으면 확인을 기다린다.
-//  · [멈추기]만 부탁을 멈춘다(뒤로 나가기는 멈추지 않는다).
-//  · 끝나면(답·멈춤·실패) 지난 부탁 기록과 활동 내역 끝 줄을 남긴다.
+//  · [멈추기]만 진행을 멈춘다(뒤로 나가기는 멈추지 않는다).
+//  · 턴이 끝나면(답·멈춤·실패) 대화 내역(대화 전체)과 활동 내역 끝 줄을 남긴다.
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -24,14 +26,19 @@ import 'gemini_service.dart';
 // 떠 있는 버튼의 모양 — 평소 / 진행 중(고리) / 사용자 차례·새 답(점).
 enum AskButtonState { idle, running, attention }
 
-// 답 카드의 사진 — 마지막으로 나온 조합(등록·미리 보기, 하루짜리 일정 확인의 준비된 추천).
-List<WardrobeItem> askCombo(List<AskStep> steps) {
-  for (final s in steps.reversed) {
-    if (s.items.isEmpty) continue;
-    if (s.action == 'add_plan' || s.action == 'preview_outfit') return s.items;
-    if (s.action == 'get_calendar' && s.args['from'] == s.args['to']) return s.items;
-  }
-  return const [];
+// 대화 하나의 턴 상한(v2 §2-D).
+const askMaxTurns = 10;
+
+// 답 카드의 사진 — 이 턴에 마지막으로 나온 조합.
+List<WardrobeItem> askCombo(List<AskStep> steps) => askOutfitOf(steps)?.items ?? const [];
+
+// 대화의 턴 하나.
+class AskTurn {
+  final String request;
+  final DateTime createdAt;
+  List<AskStep> steps = const [];
+  AskOutcome? outcome;
+  AskTurn(this.request, this.createdAt);
 }
 
 class AskController extends ChangeNotifier {
@@ -53,9 +60,12 @@ class AskController extends ChangeNotifier {
   })  : _uid = currentUid ?? (() => FirebaseAuth.instance.currentUser?.uid),
         _now = now ?? DateTime.now;
 
-  String? _request;
-  List<AskStep> _steps = const [];
-  AskOutcome? _outcome;
+  // 대화
+  final List<AskTurn> _turns = [];
+  AskTools? _tools;
+  String? _conversationId;
+  AskOutfit? _outfit; // 다음 턴의 [현재 코디]
+
   (DateTime, String)? _confirmArgs;
   String? _question;
   Completer<bool>? _confirm;
@@ -68,21 +78,29 @@ class AskController extends ChangeNotifier {
   List<AskRecord>? _history;
   bool _disposed = false;
 
-  String? get request => _request;
-  List<AskStep> get steps => _steps;
-  AskOutcome? get outcome => _outcome;
+  List<AskTurn> get turns => List.unmodifiable(_turns);
+  AskTurn? get _last => _turns.isEmpty ? null : _turns.last;
+  // 지금(마지막) 턴.
+  String? get request => _last?.request;
+  List<AskStep> get steps => _last?.steps ?? const [];
+  AskOutcome? get outcome => _last?.outcome;
+  AskOutfit? get currentOutfit => _outfit;
   (DateTime, String)? get confirmArgs => _confirmArgs;
   String? get question => _question;
-  bool get isRunning => _request != null && _outcome == null;
+  bool get isRunning => _last != null && _last!.outcome == null;
   bool get isStopping => _stopping;
   bool get userTurn => isRunning && (_confirmArgs != null || _question != null);
+  bool get hasConversation => _turns.isNotEmpty;
+  // 이어서 말할 수 있는가 — 진행 중이 아니고 10턴 전.
+  bool get canContinue => !isRunning && _turns.length < askMaxTurns;
+  bool get turnLimitReached => _turns.length >= askMaxTurns && !isRunning;
   List<AskRecord>? get history => _history;
   DateTime get today => _now();
 
   AskButtonState get buttonState {
     if (userTurn) return AskButtonState.attention;
     if (isRunning) return AskButtonState.running;
-    if (_outcome != null && !_seen) return AskButtonState.attention;
+    if (outcome != null && !_seen) return AskButtonState.attention;
     return AskButtonState.idle;
   }
 
@@ -93,7 +111,7 @@ class AskController extends ChangeNotifier {
   // 전용 화면이 열려 있는 동안 — 그 사이에 나온 답은 본 것으로 친다.
   void attach() {
     _viewers++;
-    if (_outcome != null) _seen = true;
+    if (outcome != null) _seen = true;
     _changed();
   }
 
@@ -101,51 +119,59 @@ class AskController extends ChangeNotifier {
     if (_viewers > 0) _viewers--;
   }
 
+  AskHistoryStore _store(String uid) => historyFor?.call(uid) ?? FirestoreAskHistoryStore(uid);
+
   Future<void> loadHistory() async {
     final uid = _uid();
     if (uid == null) return;
     try {
-      _history = await (historyFor?.call(uid) ?? FirestoreAskHistoryStore(uid)).recent();
+      _history = await _store(uid).recent();
     } catch (e) {
-      debugPrint('[ASK] 지난 부탁을 불러오지 못함(무시): $e');
+      debugPrint('[ASK] 대화 내역을 불러오지 못함(무시): $e');
       _history ??= const [];
     }
     _changed();
   }
 
-  // 새 부탁 — 진행 중이면 시작하지 않고 false(화면이 먼저 멈출지 묻는다).
+  // 사용자 말 — 대화가 없으면 새 대화를, 있으면 다음 턴을 시작한다. 진행 중이거나 10턴을 채웠으면 false.
   bool start(String text) {
     final request = text.trim();
-    if (request.isEmpty || isRunning) return false;
+    if (request.isEmpty || isRunning || _turns.length >= askMaxTurns) return false;
     final uid = _uid();
     final id = ++_runId;
-    _request = request;
-    _steps = const [];
-    _outcome = null;
+    final history = [
+      for (final t in _turns)
+        if (t.outcome != null) AskTurnBrief(t.request, t.outcome!.answer),
+    ];
+    final turn = AskTurn(request, _now());
+    _conversationId ??= 'ask_${turn.createdAt.millisecondsSinceEpoch}';
+    _turns.add(turn);
     _confirmArgs = null;
     _question = null;
     _stopping = false;
     _seen = false;
     _changed();
     if (uid == null) {
-      _outcome = const AskOutcome(AskEnd.error, '로그인한 뒤에 부탁할 수 있어요', [], 0);
+      turn.outcome = const AskOutcome(AskEnd.error, '로그인한 뒤에 부탁할 수 있어요', [], 0);
       _seen = _viewers > 0;
       _changed();
       return true;
     }
-    unawaited(_run(uid, request, id));
+    _tools ??= toolsFor?.call(uid) ?? AskTools(FirestoreAskDataSource(uid));
+    unawaited(_run(uid, turn, history, id));
     return true;
   }
 
-  Future<void> _run(String uid, String request, int id) async {
+  Future<void> _run(String uid, AskTurn turn, List<AskTurnBrief> history, int id) async {
     bool current() => id == _runId && !_disposed;
+    final conversationId = _conversationId!;
     final log = AskActivityLog(
       write: logSink ?? (e) => unawaited(FirestoreService.addAgentLogSilently(uid, e)),
       relatedId: 'ask_${_now().millisecondsSinceEpoch}',
     );
-    log.started(request);
+    log.started(turn.request);
     final engine = AskEngine(
-      tools: toolsFor?.call(uid) ?? AskTools(FirestoreAskDataSource(uid)),
+      tools: _tools!,
       callModel: callModel ??
           (prompt) async {
             final r = await GeminiService.callAgentStep(prompt);
@@ -171,19 +197,24 @@ class AskController extends ChangeNotifier {
       onUpdate: (steps) {
         log.steps(steps);
         if (!current()) return;
-        _steps = List.of(steps);
+        turn.steps = List.of(steps);
         _changed();
       },
     );
     _engine = engine;
-    final outcome = await engine.run(request);
+    final outcome = await engine.run(turn.request, history: history, current: _outfit);
     log.ended(outcome);
-    final record = AskRecord.fromOutcome(request, outcome, askCombo(outcome.steps), _now());
+    turn.steps = List.of(outcome.steps);
+    turn.outcome = outcome;
+    // 대화 내역 — 대화 전체를 같은 id로 갈아 끼운다(멈춘 대화도 남긴다).
+    final record = AskRecord(id: conversationId, turns: [
+      for (final t in (current() ? _turns : [turn]))
+        if (t.outcome != null) AskRecordTurn.fromOutcome(t.request, t.outcome!, askCombo(t.outcome!.steps), t.createdAt),
+    ]);
     unawaited(_save(uid, record));
     if (!current()) return;
     _engine = null;
-    _outcome = outcome;
-    _steps = List.of(outcome.steps);
+    if (outcome.outfit != null) _outfit = outcome.outfit;
     _confirmArgs = null;
     _question = null;
     _stopping = false;
@@ -192,12 +223,39 @@ class AskController extends ChangeNotifier {
   }
 
   Future<void> _save(String uid, AskRecord record) async {
-    _history = [record, ...?_history].take(askHistoryMax).toList();
+    _history = [record, for (final r in _history ?? const <AskRecord>[]) if (r.id != record.id) r]
+        .take(askHistoryMax)
+        .toList();
     _changed();
     try {
-      await (historyFor?.call(uid) ?? FirestoreAskHistoryStore(uid)).add(record);
+      await _store(uid).save(record);
     } catch (e) {
-      debugPrint('[ASK] 지난 부탁 저장 실패(무시): $e');
+      debugPrint('[ASK] 대화 내역 저장 실패(무시): $e');
+    }
+  }
+
+  // 대화 내역 한 건 삭제 / 모두 삭제(v2 §2-G — 화면이 먼저 묻는다).
+  Future<void> deleteRecord(String id) async {
+    final uid = _uid();
+    _history = [for (final r in _history ?? const <AskRecord>[]) if (r.id != id) r];
+    _changed();
+    if (uid == null) return;
+    try {
+      await _store(uid).delete(id);
+    } catch (e) {
+      debugPrint('[ASK] 대화 내역 삭제 실패(무시): $e');
+    }
+  }
+
+  Future<void> clearHistory() async {
+    final uid = _uid();
+    _history = const [];
+    _changed();
+    if (uid == null) return;
+    try {
+      await _store(uid).clear();
+    } catch (e) {
+      debugPrint('[ASK] 대화 내역 모두 삭제 실패(무시): $e');
     }
   }
 
@@ -235,14 +293,15 @@ class AskController extends ChangeNotifier {
     if (a != null && !a.isCompleted) a.complete(null);
   }
 
-  // 첫 상태로 — 진행 중이면 멈추고(기록은 멈춤으로 남는다) 화면은 바로 비운다.
+  // [새 대화] — 진행 중이면 멈추고(기록은 멈춤으로 남는다) 처음부터. 대화 사이의 기억은 없다.
   void clear() {
     stop();
     _runId++;
     _engine = null;
-    _request = null;
-    _steps = const [];
-    _outcome = null;
+    _turns.clear();
+    _tools = null;
+    _conversationId = null;
+    _outfit = null;
     _stopping = false;
     _seen = true;
     _changed();

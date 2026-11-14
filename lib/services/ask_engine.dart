@@ -39,6 +39,8 @@ typedef AskPromptBuilder = String Function({
   required DateTime today,
   int? remainingCalls,
   String? profile,
+  List<AskTurnBrief> history,
+  String? currentOutfit,
 });
 
 // 이 횟수만큼 부른 뒤부터 프롬프트 단계 기록 끝에 남은 호출 수를 알린다(프로브 T6 다시 실행).
@@ -81,7 +83,38 @@ class AskOutcome {
   final List<AskStep> steps;
   final int modelCalls;
   final DateTime? plannedDate; // add_plan이 실제로 쓴 날짜
-  const AskOutcome(this.end, this.answer, this.steps, this.modelCalls, {this.plannedDate});
+  final AskOutfit? outfit; // 이 턴에 마지막으로 보여 준 조합(다음 턴의 [현재 코디])
+  const AskOutcome(this.end, this.answer, this.steps, this.modelCalls, {this.plannedDate, this.outfit});
+}
+
+// 이어지는 대화(v2 §2-D) — 이전 턴은 사용자 말과 답만 프롬프트에 넣는다.
+class AskTurnBrief {
+  final String request;
+  final String answer;
+  const AskTurnBrief(this.request, this.answer);
+}
+
+// 마지막으로 보여 준 조합과 그 날짜·상황.
+class AskOutfit {
+  final DateTime? date;
+  final String? tpo;
+  final List<WardrobeItem> items;
+  const AskOutfit({this.date, this.tpo, required this.items});
+}
+
+// 단계 기록에서 마지막으로 보여 준 조합 — 등록·미리 보기, 하루짜리 일정 확인의 준비된 추천.
+AskOutfit? askOutfitOf(List<AskStep> steps) {
+  for (final s in steps.reversed) {
+    if (s.items.isEmpty) continue;
+    final from = s.args['from'];
+    if (s.action == 'add_plan' || s.action == 'preview_outfit') {
+      return AskOutfit(date: parseAskDate(s.args['date']), tpo: s.args['tpo'] as String?, items: s.items);
+    }
+    if (s.action == 'get_calendar' && from == s.args['to']) {
+      return AskOutfit(date: parseAskDate(from), items: s.items);
+    }
+  }
+  return null;
 }
 
 // 출력 규약 검증(순수) — 맞으면 null, 아니면 모델에 돌려줄 오류 글. knownItem이 있으면 옷 번호 인자가
@@ -133,7 +166,8 @@ class AskEngine {
   bool get cancelled => _cancelled;
   void cancel() => _cancelled = true;
 
-  Future<AskOutcome> run(String request) async {
+  // 한 턴을 진행한다. history는 이전 턴(사용자 말·답), current는 지금까지 마지막으로 보여 준 조합.
+  Future<AskOutcome> run(String request, {List<AskTurnBrief> history = const [], AskOutfit? current}) async {
     final steps = <AskStep>[];
     final watch = Stopwatch()..start();
     var calls = 0;
@@ -158,7 +192,14 @@ class AskEngine {
       isCancelled: () => _cancelled,
     );
 
-    AskOutcome end(AskEnd e, String answer) => AskOutcome(e, answer, steps, calls, plannedDate: plannedDate);
+    AskOutcome end(AskEnd e, String answer) =>
+        AskOutcome(e, answer, steps, calls, plannedDate: plannedDate, outfit: askOutfitOf(steps) ?? current);
+    String? outfitText() {
+      final o = askOutfitOf(steps) ?? current;
+      if (o == null) return null;
+      final when = [if (o.date != null) askShortDate(o.date!), if (o.tpo != null) '[${o.tpo}]'].join(' ');
+      return '${when.isEmpty ? '' : '$when 기준: '}${o.items.map(tools.describe).join(', ')}';
+    }
     String lastObservation() =>
         steps.reversed.map((s) => s.observation).whereType<String>().firstWhere((_) => true, orElse: () => '');
 
@@ -171,7 +212,9 @@ class AskEngine {
           steps: steps,
           today: tools.today,
           remainingCalls: calls >= askRemainingNoticeAfter ? askMaxModelCalls - calls : null,
-          profile: profile);
+          profile: profile,
+          history: history,
+          currentOutfit: outfitText());
       calls++;
       final t0 = watch.elapsed;
       AskModelReply reply;

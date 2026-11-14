@@ -231,6 +231,9 @@ class AskTools {
 
   String _line(WardrobeItem i) => '#${book.numberOf(i)} ${_itemLine(i)}';
 
+  // 번호를 붙인 옷 한 줄(프롬프트의 [현재 코디]용).
+  String describe(WardrobeItem i) => _line(i);
+
   // get_calendar(from, to) — 날짜별 일정(상황, 예정/기록)과 그 날짜에 준비된 추천 요약.
   Future<AskToolResult> getCalendar(Map<String, dynamic> args) async {
     final from = parseAskDate(args['from']);

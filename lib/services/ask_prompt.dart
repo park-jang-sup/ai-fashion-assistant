@@ -27,6 +27,7 @@ String _rulesSection() => '''
 - 날짜 표현("내일", "모레", "다음 주 월요일", "금요일" 등)은 직접 계산하지 말고 [날짜표]에서 찾아 그 줄의 날짜를 쓴다. 주를 말하지 않은 요일은 표에서 오늘부터 가장 가까운 그 요일이다.
 - 표에 없는 날짜(14일 밖, 기념일 이름 등)는 표를 기준으로 세고, 확실하지 않으면 ask_user로 날짜를 묻는다.
 - 날짜나 상황을 알 수 없으면 ask_user를 한 번 쓴다.
+- [이전 대화]가 있으면 이어지는 대화다. "다시 추천해줘", "자켓만 바꿔 줘", "더 따뜻하게", "이걸로 등록해줘"처럼 [현재 코디]를 가리키는 말은 그 코디의 날짜·상황을 그대로 쓴다. 바꾸라는 종류는 preview_outfit의 exclude에 지금 옷 번호를, 그대로 둘 옷은 keep에 넣고, 기온 조절은 adjust로 푼다.
 - 도구 결과의 옷 앞 #번호는 이 대화에서만 쓰는 번호다. keep·exclude에는 이 번호를 쓰고, 보여 준 적 없는 번호는 쓰지 않는다.
 - 여러 벌·여러 세트를 원하면 preview_outfit의 count로 한 번에 고른다. 원하는 분위기가 있으면 style에 그 스타일 글자(예: 스트릿)를 넣는다.
 - 옷·일정·날씨와 무관한 요청은 도구를 쓰지 않고 finish로 할 수 있는 일을 안내한다.
@@ -58,14 +59,29 @@ String _stepLine(int i, AskStep s, {String? observationOverride}) {
   return '${i + 1}. 생각: ${s.thought}\n   도구: ${s.action} {$args}\n   결과: $obs';
 }
 
+// 이전 턴 한 건의 답을 프롬프트에 넣을 때의 상한 — 넘치면 더 줄인다(v2 §2-D).
+const askHistoryAnswerChars = 600;
+const askHistoryAnswerShortChars = 150;
+
+String _clipText(String s, int max) => s.length <= max ? s : '${s.substring(0, max)}… (줄임)';
+
+String _historySection(List<AskTurnBrief> history, int answerMax) => '[이전 대화] 이 대화에서 앞서 나눈 말이다.\n'
+    '${[
+      for (var i = 0; i < history.length; i++)
+        '${i + 1}. 사용자: ${history[i].request.trim()}\n   답: ${_clipText(history[i].answer.trim(), answerMax)}',
+    ].join('\n')}';
+
 // remainingCalls가 있으면 단계 기록 끝에 "남은 호출 N회"를 붙인다(엔진이 4회 호출 뒤부터 넘긴다).
+// history·currentOutfit은 이어지는 대화의 이전 턴(사용자 말·답)과 마지막으로 보여 준 조합이다.
 String buildAskPrompt(
     {required String request,
     required List<AskStep> steps,
     required DateTime today,
     int? remainingCalls,
-    String? profile}) {
-  String assemble(List<String> stepLines) => [
+    String? profile,
+    List<AskTurnBrief> history = const [],
+    String? currentOutfit}) {
+  String assemble(List<String> stepLines, int answerMax) => [
         '너는 사용자의 옷장·일정·날씨 예보를 도구로 확인해 코디를 돕는 비서다.',
         '[오늘] ${askDateLabel(today)}',
         '[날짜표] 오늘부터 $askDateTableDays일. 한 주는 월요일부터 일요일까지다.\n${buildAskDateTable(today)}',
@@ -74,6 +90,8 @@ String buildAskPrompt(
         _toolsSection(),
         _rulesSection(),
         askStylePrinciples,
+        if (history.isNotEmpty) _historySection(history, answerMax),
+        if (currentOutfit != null) '[현재 코디] $currentOutfit',
         '[사용자 요청] ${request.trim()}',
         (stepLines.isEmpty ? '[지금까지의 단계] 아직 없음' : '[지금까지의 단계]\n${stepLines.join('\n')}') +
             (remainingCalls == null ? '' : '\n남은 호출 $remainingCalls회'),
@@ -81,13 +99,18 @@ String buildAskPrompt(
       ].join('\n\n');
 
   var lines = [for (var i = 0; i < steps.length; i++) _stepLine(i, steps[i])];
-  var prompt = assemble(lines);
-  // 상한을 넘으면 오래된 관찰부터 짧게 줄인다(마지막 단계의 관찰은 남긴다).
+  var answerMax = askHistoryAnswerChars;
+  var prompt = assemble(lines, answerMax);
+  // 상한을 넘으면 이전 턴의 답부터, 그다음 오래된 관찰부터 짧게 줄인다(마지막 단계의 관찰은 남긴다).
+  if (prompt.length > askPromptMaxChars && history.isNotEmpty) {
+    answerMax = askHistoryAnswerShortChars;
+    prompt = assemble(lines, answerMax);
+  }
   for (var i = 0; i < steps.length - 1 && prompt.length > askPromptMaxChars; i++) {
     final obs = steps[i].observation ?? '';
     lines[i] = _stepLine(i, steps[i],
         observationOverride: obs.length <= 200 ? obs : '${obs.substring(0, 200)}… (줄임)');
-    prompt = assemble(lines);
+    prompt = assemble(lines, answerMax);
   }
   return prompt;
 }
