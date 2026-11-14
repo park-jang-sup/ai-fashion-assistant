@@ -110,3 +110,91 @@ export function validateBatch(items: SignedUrlRequestItem[]): BatchValidation {
   if (items.length > MAX_BATCH_SIZE) return {valid: false, reason: "too-large"};
   return {valid: true};
 }
+
+// ── 경로 검사(보안 최소 조치 S2-1) ──────────────────────────────────
+// wardrobe 문서의 경로는 문서 주인이 마음대로 적을 수 있다(firestore.rules가 경로 필드를 검사하지 않는다) —
+// 남의 파일 경로를 자기 문서에 적어 서명을 받는 것을 막는다. storage.rules(읽기: ownerUid 본인 또는
+// demo == 'true')와 같은 조건이다. demo_wardrobe·fitting_cache 요청은 이 검사를 하지 않는다(지금 그대로).
+//   ① 경로가 demo_wardrobe 문서들이 가리키는 경로 집합에 있으면 허용(isDemo 사본 문서가 여기 걸린다)
+//   ② 아니면 파일 메타데이터의 ownerUid가 호출자와 같을 때 허용
+//   ③ 그 밖에는 그 경로만 서명하지 않는다
+export type PathDenyReason = "file-missing" | "no-owner-metadata" | "other-owner";
+
+export interface FileMeta {
+  exists: boolean;
+  ownerUid?: string;
+}
+
+export interface PathDecision {
+  allowed: boolean;
+  via?: "demo" | "owner";
+  reason?: PathDenyReason;
+}
+
+export function decidePathOwnership(
+  path: string,
+  demoPaths: ReadonlySet<string>,
+  file: FileMeta | undefined,
+  callerUid: string
+): PathDecision {
+  if (demoPaths.has(path)) return {allowed: true, via: "demo"};
+  if (!file || !file.exists) return {allowed: false, reason: "file-missing"};
+  if (!file.ownerUid) return {allowed: false, reason: "no-owner-metadata"};
+  if (file.ownerUid !== callerUid) return {allowed: false, reason: "other-owner"};
+  return {allowed: true, via: "owner"};
+}
+
+// demo_wardrobe 문서들이 가리키는 경로 — 경로 필드가 있으면 그것, 없으면 다운로드 URL에서 역산.
+export function demoPathsFromDocs(docs: Iterable<Partial<DocFields>>): Set<string> {
+  const out = new Set<string>();
+  for (const d of docs) {
+    for (const p of [d.imagePath ?? pathFromDownloadUrl(d.imageUrl), d.cutoutPath ?? pathFromDownloadUrl(d.cutoutImageUrl)]) {
+      if (p) out.add(p);
+    }
+  }
+  return out;
+}
+
+// 모드 — "log"(기록: 거부할 것을 로그에만, 지금처럼 서명)·"enforce"(적용: 실제로 거부). 값이 없거나
+// 모르는 값이면 log(안전한 쪽).
+export type PathCheckMode = "log" | "enforce";
+export function pathCheckMode(raw: string | undefined): PathCheckMode {
+  return raw?.trim().toLowerCase() === "enforce" ? "enforce" : "log";
+}
+
+// 한 문서의 경로별 판정을 응답 URL 자리로 바꾼다. enforce에서 거부한 경로는 빈 문자열로 둔다 — 앱은
+// 자리 번호(0 원본, 1 누끼)로 URL을 고르므로 자리를 지켜야 한다. 모든 경로가 거부되면 null(응답에서 생략 —
+// 앱은 없는 id를 기존 URL 폴백 신호로 본다). log에서는 판정과 무관하게 모두 서명할 경로로 둔다.
+export function pathsToSign(
+  paths: string[],
+  decisions: PathDecision[],
+  mode: PathCheckMode
+): (string | null)[] | null {
+  if (mode === "log") return paths;
+  const out = paths.map((p, i) => (decisions[i]?.allowed ? p : null));
+  return out.every((p) => p === null) ? null : out;
+}
+
+// 동시 실행 상한 — 메타데이터 조회를 한 요청 안에서 동시에 하되 과하지 않게(200건 요청 대비).
+export function createLimiter(max: number): <T>(task: () => Promise<T>) => Promise<T> {
+  let active = 0;
+  const queue: (() => void)[] = [];
+  const next = () => {
+    if (active >= max) return;
+    const run = queue.shift();
+    if (run) run();
+  };
+  return <T>(task: () => Promise<T>) =>
+    new Promise<T>((resolve, reject) => {
+      queue.push(() => {
+        active++;
+        task().then(resolve, reject).finally(() => {
+          active--;
+          next();
+        });
+      });
+      next();
+    });
+}
+
+export const PATH_CHECK_CONCURRENCY = 16;

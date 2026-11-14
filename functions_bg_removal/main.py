@@ -88,6 +88,7 @@ from urllib.parse import quote
 from firebase_admin import firestore, initialize_app, storage
 from firebase_functions import options, storage_fn
 
+from cutout_write import cutout_metadata, doc_update
 from minimal_runtime import MinimalSession
 
 initialize_app()
@@ -163,15 +164,15 @@ def bg_removal_on_upload(event: storage_fn.CloudEvent) -> None:
 
         cutout_path = _cutout_path_for(path)
         cutout_blob = bucket.blob(cutout_path)
+        # 주인 표시(보안 최소 조치 S2-2) — 원본 파일의 ownerUid를 누끼에도.
+        cutout_blob.metadata = cutout_metadata(owner_uid)
         cutout_blob.upload_from_string(result_png, content_type="image/png")
         cutout_blob.reload()
         token = (cutout_blob.metadata or {}).get("firebaseStorageDownloadTokens", "")
         cutout_url = _legacy_download_url(bucket.name, cutout_path, token)
 
-        doc_ref.set(
-            {"cutoutPath": cutout_path, "cutoutImageUrl": cutout_url},
-            merge=True,
-        )
+        # ownerUid도 함께 — 트리거가 앱보다 먼저 문서를 만들어도 뒤이은 앱의 쓰기가 규칙을 통과하게.
+        doc_ref.set(doc_update(cutout_path, cutout_url, owner_uid), merge=True)
         elapsed = time.perf_counter() - t_start
         print(
             f"[bg_removal_on_upload] 완료 path={path} -> {cutout_path} "

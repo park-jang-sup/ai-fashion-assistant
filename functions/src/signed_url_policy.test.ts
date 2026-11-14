@@ -2,8 +2,13 @@
 // (node:assert, tsc로 컴파일 후 node로 실행).
 import * as assert from "node:assert";
 import {
+  createLimiter,
+  decidePathOwnership,
   decideSignedUrlAccess,
+  demoPathsFromDocs,
+  pathCheckMode,
   pathFromDownloadUrl,
+  pathsToSign,
   validateBatch,
   DocFields,
 } from "./signed_url_policy";
@@ -126,4 +131,82 @@ run("배치 상한(200) 초과는 거부(too-large)", () => {
   assert.strictEqual(result.reason, "too-large");
 });
 
-console.log("전부 통과");
+// ── 경로 검사(보안 최소 조치 S2-1) ──
+const DEMO = demoPathsFromDocs([
+  {imageUrl: "https://firebasestorage.googleapis.com/v0/b/bkt/o/wardrobe_images%2Fdemo.jpg?alt=media&token="},
+  {imagePath: "wardrobe_images/demo2.jpg", cutoutPath: "wardrobe_cutouts/demo2.png"},
+]);
+
+run("경로 검사 — 데모 경로 집합: 다운로드 URL 역산과 경로 필드 모두", () => {
+  assert.deepStrictEqual([...DEMO].sort(), ["wardrobe_cutouts/demo2.png", "wardrobe_images/demo.jpg", "wardrobe_images/demo2.jpg"]);
+});
+
+run("경로 검사 — 본인 파일(메타데이터 ownerUid == 호출자) 허용", () => {
+  const d = decidePathOwnership("wardrobe_images/mine.jpg", DEMO, {exists: true, ownerUid: CALLER}, CALLER);
+  assert.deepStrictEqual(d, {allowed: true, via: "owner"});
+});
+
+run("경로 검사 — 데모 경로는 파일 메타데이터 없이 허용(isDemo 사본 문서의 경로)", () => {
+  // isDemo 사본 문서는 호출자 소유지만 파일은 원본 주인 것 — 데모 집합으로 허용한다.
+  const copyDoc: DocFields = {exists: true, ownerUid: CALLER, imageUrl: "https://firebasestorage.googleapis.com/v0/b/bkt/o/wardrobe_images%2Fdemo.jpg?alt=media&token="};
+  const access = decideSignedUrlAccess({collection: "wardrobe", id: "copy1"}, copyDoc, CALLER);
+  assert.strictEqual(access.allowed, true);
+  const d = decidePathOwnership(access.paths[0], DEMO, undefined, CALLER);
+  assert.deepStrictEqual(d, {allowed: true, via: "demo"});
+});
+
+run("경로 검사 — 남의 파일 경로를 적은 내 문서는 거부(other-owner)", () => {
+  const myDoc: DocFields = {exists: true, ownerUid: CALLER, imagePath: "wardrobe_images/victim.jpg"};
+  const access = decideSignedUrlAccess({collection: "wardrobe", id: "mine"}, myDoc, CALLER);
+  assert.strictEqual(access.allowed, true); // 문서 주인 검사는 통과하지만
+  const d = decidePathOwnership(access.paths[0], DEMO, {exists: true, ownerUid: "uid-victim"}, CALLER);
+  assert.deepStrictEqual(d, {allowed: false, reason: "other-owner"});
+});
+
+run("경로 검사 — 메타데이터 없는 파일·없는 파일은 거부", () => {
+  assert.deepStrictEqual(decidePathOwnership("wardrobe_images/legacy.jpg", DEMO, {exists: true}, CALLER), {allowed: false, reason: "no-owner-metadata"});
+  assert.deepStrictEqual(decidePathOwnership("wardrobe_images/gone.jpg", DEMO, {exists: false}, CALLER), {allowed: false, reason: "file-missing"});
+});
+
+run("경로 검사 — 기록 모드는 거부하지 않는다(모든 경로 서명), 적용 모드는 거부한 자리만 비운다", () => {
+  const paths = ["wardrobe_images/a.jpg", "wardrobe_cutouts/a.png"];
+  const decisions = [{allowed: true, via: "owner" as const}, {allowed: false, reason: "no-owner-metadata" as const}];
+  assert.deepStrictEqual(pathsToSign(paths, decisions, "log"), paths);
+  assert.deepStrictEqual(pathsToSign(paths, decisions, "enforce"), ["wardrobe_images/a.jpg", null]);
+  assert.strictEqual(pathsToSign(paths, [decisions[1], decisions[1]], "enforce"), null); // 모두 거부 — 항목 생략
+});
+
+run("경로 검사 — 모드 값: enforce만 적용, 없거나 모르는 값은 기록", () => {
+  assert.strictEqual(pathCheckMode(undefined), "log");
+  assert.strictEqual(pathCheckMode("log"), "log");
+  assert.strictEqual(pathCheckMode(" ENFORCE "), "enforce");
+  assert.strictEqual(pathCheckMode("on"), "log");
+});
+
+async function limiterTest(): Promise<void> {
+  const limit = createLimiter(3);
+  let active = 0;
+  let peak = 0;
+  const done = await Promise.all(
+    Array.from({length: 20}, (_, i) =>
+      limit(async () => {
+        active++;
+        peak = Math.max(peak, active);
+        await new Promise((r) => setTimeout(r, 2));
+        active--;
+        return i;
+      })
+    )
+  );
+  assert.deepStrictEqual(done, Array.from({length: 20}, (_, i) => i));
+  assert.ok(peak <= 3, `동시 실행 ${peak}`);
+  console.log("PASS: 경로 검사 — 동시 실행 상한(3) 안에서 20건 모두 끝남");
+}
+
+limiterTest().then(
+  () => console.log("전부 통과"),
+  (err) => {
+    console.error("FAIL: 동시 실행 상한", err);
+    process.exitCode = 1;
+  }
+);

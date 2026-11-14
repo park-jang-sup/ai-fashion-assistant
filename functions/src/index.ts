@@ -18,6 +18,14 @@ import {
   DocFields,
   SignedUrlCollection,
   SignedUrlRequestItem,
+  createLimiter,
+  decidePathOwnership,
+  demoPathsFromDocs,
+  FileMeta,
+  PATH_CHECK_CONCURRENCY,
+  PathDecision,
+  pathCheckMode,
+  pathsToSign,
 } from "./signed_url_policy";
 import {buildFittingCacheKey} from "./fitting_cache_key";
 import {verifyFittingOwnership} from "./fitting_ownership_policy";
@@ -832,7 +840,8 @@ async function writeFittingCacheServerSide(
 ): Promise<void> {
   const bucket = getStorage().bucket();
   const path = `${FITTING_RESULTS_FOLDER}/${cacheKey}.jpg`;
-  await bucket.file(path).save(imageBytes, {contentType: "image/jpeg"});
+  // 소유 표시(보안 최소 조치 S2-3) — 앱의 uploadFittingResult와 같은 ownerUid 커스텀 메타데이터.
+  await bucket.file(path).save(imageBytes, {contentType: "image/jpeg", metadata: {metadata: {ownerUid}}});
   const imageUrl =
     `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
     `${encodeURIComponent(path)}?alt=media&token=`;
@@ -1126,6 +1135,15 @@ export const getSignedImageUrls = onCall(
     const bucket = getStorage().bucket();
     const results: Record<string, {urls: string[]; expiresAt: string}> = {};
 
+    // 경로 검사(보안 최소 조치 S2-1) — wardrobe 요청만. 모드는 환경변수 하나(SIGNED_URL_PATH_CHECK,
+    // 없으면 log). 로그에는 경로·uid 대신 개수와 이유만 남긴다.
+    const mode = pathCheckMode(process.env.SIGNED_URL_PATH_CHECK);
+    const limit = createLimiter(PATH_CHECK_CONCURRENCY);
+    const demoPaths = parsedItems.some((i) => i.collection === "wardrobe") ?
+      await loadDemoPaths(db) :
+      new Set<string>();
+    const pathCheck = {checked: 0, denied: {} as Record<string, number>};
+
     await Promise.all(
       parsedItems.map(async (item) => {
         const snap = await db.collection(item.collection).doc(item.id).get();
@@ -1147,10 +1165,29 @@ export const getSignedImageUrls = onCall(
           return; // 응답에서 생략 - 클라이언트는 없는 id를 기존 URL 폴백 신호로 본다(A-3).
         }
 
+        let signPaths: (string | null)[] = decision.paths;
+        if (item.collection === "wardrobe") {
+          const decisions: PathDecision[] = await Promise.all(
+            decision.paths.map((path) =>
+              demoPaths.has(path) ?
+                Promise.resolve(decidePathOwnership(path, demoPaths, undefined, uid)) :
+                limit(() => fileMetaOf(bucket, path)).then((meta) => decidePathOwnership(path, demoPaths, meta, uid))
+            )
+          );
+          pathCheck.checked += decisions.length;
+          for (const d of decisions) {
+            if (!d.allowed && d.reason) pathCheck.denied[d.reason] = (pathCheck.denied[d.reason] ?? 0) + 1;
+          }
+          const toSign = pathsToSign(decision.paths, decisions, mode);
+          if (toSign === null) return; // 모든 경로 거부(enforce) — 응답에서 생략(앱은 폴백)
+          signPaths = toSign;
+        }
+
         try {
           const expires = Date.now() + SIGNED_URL_EXPIRES_MS;
           const urls = await Promise.all(
-            decision.paths.map(async (path) => {
+            signPaths.map(async (path) => {
+              if (path === null) return ""; // enforce에서 거부한 경로 — 자리만 지킨다
               const [url] = await bucket.file(path).getSignedUrl({
                 version: "v4",
                 action: "read",
@@ -1171,6 +1208,14 @@ export const getSignedImageUrls = onCall(
       })
     );
 
+    if (pathCheck.checked > 0) {
+      const deniedTotal = Object.values(pathCheck.denied).reduce((a, b) => a + b, 0);
+      const reasons = Object.entries(pathCheck.denied).map(([k, v]) => `${k}=${v}`).join(",");
+      console.log(
+        `[getSignedImageUrls] 경로 검사 mode=${mode} 검사 ${pathCheck.checked}건 · ` +
+        `${mode === "log" ? "거부할 것" : "거부"} ${deniedTotal}건${reasons ? ` (${reasons})` : ""}`
+      );
+    }
     console.log(
       `[getSignedImageUrls] uid=${uid} 요청 ${parsedItems.length}건 중 ` +
       `${Object.keys(results).length}건 서명 성공`
@@ -1178,6 +1223,35 @@ export const getSignedImageUrls = onCall(
     return results;
   }
 );
+
+// 경로 검사용 파일 메타데이터 — 없거나 읽지 못하면 exists=false(거부 쪽).
+async function fileMetaOf(
+  bucket: ReturnType<ReturnType<typeof getStorage>["bucket"]>,
+  path: string
+): Promise<FileMeta> {
+  try {
+    const [metadata] = await bucket.file(path).getMetadata();
+    const custom = (metadata.metadata ?? {}) as Record<string, unknown>;
+    const owner = custom.ownerUid;
+    return {exists: true, ownerUid: typeof owner === "string" && owner !== "" ? owner : undefined};
+  } catch {
+    return {exists: false};
+  }
+}
+
+// demo_wardrobe 문서들이 가리키는 경로 집합 — 인스턴스 메모리에 5분 캐시(데모 옷장은 시드 스크립트로만
+// 바뀌어 자주 변하지 않는다).
+const DEMO_PATHS_TTL_MS = 5 * 60 * 1000;
+let demoPathsCache: {paths: Set<string>; at: number} | null = null;
+
+async function loadDemoPaths(db: ReturnType<typeof getFirestore>): Promise<Set<string>> {
+  const now = Date.now();
+  if (demoPathsCache && now - demoPathsCache.at < DEMO_PATHS_TTL_MS) return demoPathsCache.paths;
+  const snap = await db.collection("demo_wardrobe").get();
+  const paths = demoPathsFromDocs(snap.docs.map((d) => d.data() as Partial<DocFields>));
+  demoPathsCache = {paths, at: now};
+  return paths;
+}
 
 // FCM 무효 토큰 정리(handoff_2026-08-07.md §6 "FCM 무효 토큰이 정리되지
 // 않는다") - sendTestPush/runScheduledCheckCore 둘이 같은 로직을 쓴다.
