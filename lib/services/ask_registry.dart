@@ -283,8 +283,8 @@ final List<AskToolSpec> askToolRegistry = [
   ),
   AskToolSpec(
     name: 'finish',
-    signature: '{"answer":"사용자에게 보일 답"}',
-    description: '끝낸다.',
+    signature: '{"answer":"사용자에게 보일 답","buy":["옷 종류 — 가진 옷 가운데 무엇과 어울리는지"](선택, 최대 3개)}',
+    description: '끝낸다. 옷장에 없지만 가진 옷과 어울리는 옷 종류는 answer가 아니라 buy에 쓴다.',
     displayName: '답',
     validate: (args) {
       final a = args['answer'];

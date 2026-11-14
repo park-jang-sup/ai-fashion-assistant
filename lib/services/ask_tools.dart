@@ -188,7 +188,7 @@ int? parseAskItemNumber(Object? v) {
 
 // 모델용 안내(run2 준비) — 맞는 옷이 부족하다·날씨에 맞추지 못했다·요청한 수를 채우지 못했다는 관찰
 // 문장 뒤에 한 번 붙인다. 화면용 한 줄(display)에는 붙이지 않는다.
-const askBuyNote = '없는 옷을 권할 때는 "구매 제안:" 줄에만 쓴다.';
+const askBuyNote = '없는 옷을 권할 때는 finish의 buy에만 쓴다.';
 
 // 관찰의 줄 목록에서 처음 나오는 "부족" 문장 뒤에 안내 한 줄을 넣는다(없으면 그대로).
 List<String> askWithBuyNote(List<String> lines, bool Function(String line) isShort) {
