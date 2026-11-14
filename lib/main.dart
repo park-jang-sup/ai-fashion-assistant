@@ -383,7 +383,6 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final askPlace = askFabPlacementFor(_tabIndex);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -400,11 +399,14 @@ class _AppShellState extends State<AppShell> {
             return Stack(
               children: [
                 _buildBody(),
-                Positioned(
-                  right: askPlace.right,
-                  top: askPlace.top,
-                  bottom: askPlace.bottom,
-                  child: AskFab(controller: _ask, onTap: _openAsk, showBubble: _askBubble),
+                MovableAskFab(
+                  controller: _ask,
+                  onTap: _openAsk,
+                  showBubble: _askBubble,
+                  tab: _tabIndex,
+                  maxWidth: constraints.maxWidth,
+                  maxHeight: constraints.maxHeight,
+                  uid: FirebaseAuth.instance.currentUser?.uid,
                 ),
                 _FloatingFittingIcon(
                   jobController: _fittingJob,

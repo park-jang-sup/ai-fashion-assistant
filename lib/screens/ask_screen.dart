@@ -16,7 +16,7 @@ import '../widgets/signed_network_image.dart';
 
 // AI에게 부탁하기 전용 화면(docs/task_agent_ask_v1.md §2-5·§10). 진행 상태는 앱 수준의
 // AskController가 갖고, 이 화면은 그것을 보여 주기만 한다 — 닫아도 부탁은 이어지고, 떠 있는 버튼을
-// 누르면 같은 대화가 다시 열린다. 첫 상태는 인사말 + 예시 + 입력 + 지난 부탁.
+// 누르면 같은 대화가 다시 열린다. 첫 상태는 인사말 + 예시 + 입력 + 대화 내역.
 class AskScreen extends StatefulWidget {
   final AskController controller;
   final ValueChanged<List<WardrobeItem>>? onOpenFittingRoom;
@@ -29,10 +29,12 @@ class AskScreen extends StatefulWidget {
 
 const _calendarTab = 3;
 
+// 첫 상태의 예시(v2 §2-G).
 const askExamples = [
-  '금요일 저녁 모임에 입을 옷 준비해줘',
-  '내일 비 오면 뭐 입지?',
-  '겨울 아우터 뭐 있는지 보고 가장 추운 날 입을 것 골라줘',
+  '금요일 저녁 모임 옷 골라서 입혀 봐줘',
+  '내일 뭐 입지?',
+  '내 옷장에 부족한 옷 알려줘',
+  '요즘 안 입은 옷으로 코디해줘',
 ];
 
 // 도구의 화면 이름은 도구 등록부에서 — 읽지 못한 출력만 여기서 이름을 붙인다.
@@ -117,6 +119,29 @@ class _AskScreenState extends State<AskScreen> {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => AskRecordScreen(record: r)));
   }
 
+  // 대화 내역 지우기 — 지우기 전에 한 번 묻는다(v2 §2-G).
+  Future<bool> _confirmDelete(String message) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('지우기')),
+        ],
+      ),
+    );
+    return ok == true && mounted;
+  }
+
+  Future<void> _deleteRecord(AskRecord r) async {
+    if (await _confirmDelete('이 대화를 대화 내역에서 지울까요?')) await _c.deleteRecord(r.id);
+  }
+
+  Future<void> _clearHistory() async {
+    if (await _confirmDelete('대화 내역을 모두 지울까요?')) await _c.clearHistory();
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -176,7 +201,14 @@ class _AskScreenState extends State<AskScreen> {
         const SizedBox(height: 12),
         _inputField(),
         const SizedBox(height: 28),
-        const Text('지난 부탁', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+        Row(children: [
+          const Expanded(
+            child: Text('대화 내역',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+          ),
+          if (history != null && history.isNotEmpty)
+            TextButton(onPressed: _clearHistory, child: const Text('모두 삭제')),
+        ]),
         const SizedBox(height: 4),
         if (history == null)
           const Padding(
@@ -196,7 +228,11 @@ class _AskScreenState extends State<AskScreen> {
               subtitle: Text(
                   '${_timeLabel(r.createdAt)} · ${r.turns.length > 1 ? '${r.turns.length}턴 · ' : ''}${_endLabels[r.end] ?? r.end}',
                   style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
-              trailing: const Icon(Icons.chevron_right, color: AppColors.textDisabled),
+              trailing: IconButton(
+                tooltip: '삭제',
+                icon: const Icon(Icons.delete_outline, color: AppColors.textMuted),
+                onPressed: () => _deleteRecord(r),
+              ),
               onTap: () => _openRecord(r),
             ),
       ],
@@ -376,7 +412,7 @@ class _AskScreenState extends State<AskScreen> {
   }
 }
 
-// 지난 대화 다시 보기(읽기 전용) — 모든 턴.
+// 대화 내역 다시 보기(읽기 전용) — 모든 턴.
 class AskRecordScreen extends StatelessWidget {
   final AskRecord record;
   const AskRecordScreen({super.key, required this.record});
@@ -390,7 +426,7 @@ class AskRecordScreen extends StatelessWidget {
         surfaceTintColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
-        title: Text('지난 부탁 · ${_timeLabel(record.createdAt)}',
+        title: Text('대화 내역 · ${_timeLabel(record.createdAt)}',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
       ),
       body: SafeArea(

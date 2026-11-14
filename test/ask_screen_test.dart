@@ -103,17 +103,20 @@ Finder get _ring => find.byKey(const Key('ask-fab-ring'));
 Finder get _dot => find.byKey(const Key('ask-fab-dot'));
 
 void main() {
-  testWidgets('첫 상태: 인사말·예시 3개·입력·지난 부탁 — 예시를 누르면 바로 시작', (tester) async {
+  testWidgets('첫 상태: 인사말·예시 4개·입력·대화 내역 — 예시를 누르면 바로 시작', (tester) async {
     final t = _ctl([_a('finish', {'answer': '내일은 비가 와요'})]);
     await tester.pumpWidget(_shell(t.c));
     await _openScreen(tester);
     expect(find.text('무엇을 도와드릴까요?\n옷장·일정·날씨를 확인해 코디를 도와드려요.'), findsOneWidget);
+    expect(askExamples, ['금요일 저녁 모임 옷 골라서 입혀 봐줘', '내일 뭐 입지?', '내 옷장에 부족한 옷 알려줘', '요즘 안 입은 옷으로 코디해줘']);
     for (final e in askExamples) {
       expect(find.text(e), findsOneWidget);
     }
-    expect(find.text('지난 부탁'), findsOneWidget);
+    expect(find.text('대화 내역'), findsOneWidget);
+    expect(find.text('지난 부탁'), findsNothing);
+    expect(find.text('모두 삭제'), findsNothing); // 내역이 없으면 숨김
     expect(find.text('아직 없어요'), findsOneWidget);
-    await tester.tap(find.text('내일 비 오면 뭐 입지?'));
+    await tester.tap(find.text('내일 뭐 입지?'));
     await tester.pumpAndSettle();
     expect(find.text('내일은 비가 와요'), findsOneWidget);
   });
@@ -240,13 +243,51 @@ void main() {
     await tester.tap(find.text('새 대화'));
     await tester.pumpAndSettle();
     expect(find.text('11/16 10:05 · 답'), findsOneWidget);
-    await tester.tap(find.text(askExamples.first).last); // 지난 부탁 줄
+    await tester.tap(find.text(askExamples.first).last); // 대화 내역 줄
     await tester.pumpAndSettle();
     expect(find.byType(AskRecordScreen), findsOneWidget);
     expect(find.text('금요일 모임 일정을 등록했어요'), findsOneWidget);
   });
 
-  testWidgets('지난 부탁을 누르면 그 대화를 읽기 전용으로 보여 준다', (tester) async {
+  testWidgets('대화 내역 — 한 건 삭제·모두 삭제는 한 번 묻고, 취소하면 그대로', (tester) async {
+    final t = _ctl(const []);
+    for (final (i, q) in ['내일 뭐 입지?', '금요일 모임 옷 골라줘', '옷 좀 준비해줘'].indexed) {
+      t.store.records.insert(
+          0, AskRecord.single(request: q, createdAt: DateTime(2026, 11, 15, 9, i), end: 'finished', answer: '답 $i'));
+    }
+    await tester.pumpWidget(_shell(t.c));
+    await _openScreen(tester);
+    expect(find.byTooltip('삭제'), findsNWidgets(3));
+    // 한 건 — 취소하면 그대로, 지우기를 누르면 그 줄만 빠진다.
+    await tester.tap(find.byTooltip('삭제').first);
+    await tester.pumpAndSettle();
+    expect(find.text('이 대화를 대화 내역에서 지울까요?'), findsOneWidget);
+    await tester.tap(find.text('취소'));
+    await tester.pumpAndSettle();
+    expect(t.store.records.length, 3);
+    await tester.tap(find.byTooltip('삭제').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('지우기'));
+    await tester.pumpAndSettle();
+    expect([for (final r in t.store.records) r.request], ['금요일 모임 옷 골라줘', '내일 뭐 입지?']);
+    expect(find.text('옷 좀 준비해줘'), findsNothing);
+    // 모두 — 취소하면 그대로, 지우기를 누르면 비고 "모두 삭제"가 숨는다.
+    await tester.tap(find.text('모두 삭제'));
+    await tester.pumpAndSettle();
+    expect(find.text('대화 내역을 모두 지울까요?'), findsOneWidget);
+    await tester.tap(find.text('취소'));
+    await tester.pumpAndSettle();
+    expect(t.store.records.length, 2);
+    await tester.tap(find.text('모두 삭제'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('지우기'));
+    await tester.pumpAndSettle();
+    expect(t.store.records, isEmpty);
+    expect(find.text('아직 없어요'), findsOneWidget);
+    expect(find.text('모두 삭제'), findsNothing);
+  });
+
+  testWidgets('대화 내역을 누르면 그 대화를 읽기 전용으로 보여 준다', (tester) async {
     final t = _ctl(const []);
     t.store.records.add(AskRecord.single(
       request: '내일 데이트 일정 있어?',
@@ -295,7 +336,7 @@ void main() {
     t.c.detach();
   });
 
-  test('지난 부탁은 최신이 앞, 최대 20건', () {
+  test('대화 내역은 최신이 앞, 최대 20건', () {
     var entries = <Map<String, dynamic>>[];
     for (var i = 0; i < 25; i++) {
       entries = upsertAskRecord(entries,
