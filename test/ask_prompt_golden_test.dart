@@ -59,6 +59,15 @@ void main() {
     }
   });
 
+  test('남은 호출 수는 단계 기록 끝, [다음] 앞에 붙는다', () {
+    final steps = [
+      AskStep(thought: '예보', action: 'get_weather', args: const {}, observation: 'o', status: AskStepStatus.done),
+    ];
+    final p = buildAskPrompt(request: 'x', steps: steps, today: _today, remainingCalls: 2);
+    expect(p, contains('   결과: o\n남은 호출 2회\n\n[다음]'));
+    expect(buildAskPrompt(request: 'x', steps: steps, today: _today), isNot(contains('남은 호출')));
+  });
+
   test('6단계째 요청도 30,000자 안 — 관찰이 꽉 차면 오래된 것부터 줄인다', () {
     final long = '가' * askObservationMaxChars;
     final steps = [

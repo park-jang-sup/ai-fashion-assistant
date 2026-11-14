@@ -41,7 +41,11 @@ typedef AskPromptBuilder = String Function({
   required String request,
   required List<AskStep> steps,
   required DateTime today,
+  int? remainingCalls,
 });
+
+// 이 횟수만큼 부른 뒤부터 프롬프트 단계 기록 끝에 남은 호출 수를 알린다(프로브 T6 다시 실행).
+const askRemainingNoticeAfter = 4;
 
 enum AskStepStatus { running, done, failed }
 
@@ -153,7 +157,11 @@ class AskEngine {
       if (_cancelled) return end(AskEnd.cancelled, '요청을 멈췄어요');
       final remaining = totalTimeout - watch.elapsed;
       if (remaining <= Duration.zero) return end(AskEnd.timeout, '시간이 오래 걸려 여기서 멈췄어요');
-      final prompt = buildPrompt(request: request, steps: steps, today: tools.today);
+      final prompt = buildPrompt(
+          request: request,
+          steps: steps,
+          today: tools.today,
+          remainingCalls: calls >= askRemainingNoticeAfter ? askMaxModelCalls - calls : null);
       calls++;
       final t0 = watch.elapsed;
       AskModelReply reply;

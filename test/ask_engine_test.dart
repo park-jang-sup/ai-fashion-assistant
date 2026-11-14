@@ -25,8 +25,9 @@ class _Script {
   }
 }
 
-String _prompt({required String request, required List<AskStep> steps, required DateTime today}) =>
-    'REQ:$request\n${steps.map((s) => '${s.action}=>${s.observation}').join('\n')}';
+String _prompt({required String request, required List<AskStep> steps, required DateTime today, int? remainingCalls}) =>
+    'REQ:$request\n${steps.map((s) => '${s.action}=>${s.observation}').join('\n')}'
+    '${remainingCalls == null ? '' : '\nLEFT:$remainingCalls'}';
 
 ({AskEngine engine, FakeAskData data, _Script model, List<(DateTime, String)> confirms}) _engine(
   List<Object> replies, {
@@ -109,6 +110,9 @@ void main() {
     expect(o.end, AskEnd.maxSteps);
     expect(o.modelCalls, askMaxModelCalls);
     expect(o.answer, startsWith('여기까지 확인했어요 — 옷장 8벌'));
+    // 네 번째 호출 뒤부터 남은 호출 수를 알린다(5번째 요청에 2회, 6번째에 1회).
+    expect([for (final p in e.model.prompts) RegExp(r'LEFT:(\d)').firstMatch(p)?.group(1)],
+        [null, null, null, null, '2', '1']);
   });
 
   group('add_plan — 확인 뒤에만 쓴다', () {

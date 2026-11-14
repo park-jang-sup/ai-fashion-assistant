@@ -231,13 +231,19 @@ void main() {
             'firstPrompt': buildAskPrompt(request: s.request, steps: const [], today: _today),
           },
       ],
-      'promptCheck': {
-        'request': _scenarios.first.request,
-        'steps': [
-          for (final s in checkSteps) {'thought': s.thought, 'action': s.action, 'args': s.args, 'observation': s.observation},
-        ],
-        'prompt': buildAskPrompt(request: _scenarios.first.request, steps: checkSteps, today: _today),
-      },
+      'remainingNoticeAfter': askRemainingNoticeAfter,
+      // 두 번째는 네 번 부른 뒤의 요청(단계 기록 끝에 "남은 호출 2회").
+      'promptChecks': [
+        for (final (steps, left) in [(checkSteps, null), ([...checkSteps, ...checkSteps], 2)])
+          {
+            'request': _scenarios.first.request,
+            'remainingCalls': left,
+            'steps': [
+              for (final s in steps) {'thought': s.thought, 'action': s.action, 'args': s.args, 'observation': s.observation},
+            ],
+            'prompt': buildAskPrompt(request: _scenarios.first.request, steps: steps, today: _today, remainingCalls: left),
+          },
+      ],
       'wardrobe': [
         for (final i in wardrobe)
           {

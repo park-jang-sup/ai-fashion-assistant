@@ -14,7 +14,8 @@
 //   node ask_probe.mjs run                      # C 2회 + G 1회 × 9 시나리오
 //   node ask_probe.mjs run --targets C --reps 2 --scenarios S1,S5
 //   node ask_probe.mjs run --effort medium      # §3 사전 허용 재실행(thinkingBudget 뺌, "@medium"으로 따로 저장)
-//   node ask_probe.mjs report                   # t6_results.json → t6_results.md
+//   node ask_probe.mjs run --name run2          # 다시 실행 결과를 t6_run2_results.*에 따로 저장
+//   node ask_probe.mjs report [--name run2]     # 결과 json → md
 
 import {readFileSync, writeFileSync, existsSync, mkdirSync} from "node:fs";
 import {join, dirname} from "node:path";
@@ -25,8 +26,11 @@ const INPUT = join(HERE, "input", "ask_t6.json");
 const OUTPUT = join(HERE, "output");
 // --mock: 가짜 모델로 루프·판정·보고 경로만 확인한다(호출 없음, 결과는 따로 저장).
 const MOCK = process.argv.includes("--mock");
-const RESULTS = join(OUTPUT, MOCK ? "t6_mock_results.json" : "t6_results.json");
-const REPORT = join(OUTPUT, MOCK ? "t6_mock_results.md" : "t6_results.md");
+// --name run2: 다시 실행 결과를 따로 저장(첫 실행 t6_results.*는 그대로 둔다).
+const NAME = process.argv.includes("--name") ? `_${process.argv[process.argv.indexOf("--name") + 1]}` : "";
+const BASE = `t6${MOCK ? "_mock" : ""}${NAME}_results`;
+const RESULTS = join(OUTPUT, `${BASE}.json`);
+const REPORT = join(OUTPUT, `${BASE}.md`);
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const CLAUDE_URL = "https://api.anthropic.com/v1/messages";
 const CONCURRENCY = 3;
@@ -54,9 +58,10 @@ function stepLine(i, s, obsOverride) {
   return `${i + 1}. 생각: ${s.thought}\n   도구: ${s.action} {${args}}\n   결과: ${obs}`;
 }
 const EMPTY_STEPS = "[지금까지의 단계] 아직 없음";
-function buildPrompt(firstPrompt, steps) {
-  const assemble = (lines) => lines.length === 0 ? firstPrompt :
-    firstPrompt.replace(EMPTY_STEPS, `[지금까지의 단계]\n${lines.join("\n")}`);
+function buildPrompt(firstPrompt, steps, remainingCalls = null) {
+  const left = remainingCalls == null ? "" : `\n남은 호출 ${remainingCalls}회`;
+  const assemble = (lines) => firstPrompt.replace(EMPTY_STEPS,
+    (lines.length === 0 ? EMPTY_STEPS : `[지금까지의 단계]\n${lines.join("\n")}`) + left);
   const lines = steps.map((s, i) => stepLine(i, s));
   let prompt = assemble(lines);
   for (let i = 0; i < steps.length - 1 && prompt.length > D.promptMaxChars; i++) {
@@ -143,10 +148,10 @@ function tableTool(table, key, label) {
 
 // ── 대조(호출 없음) ───────────────────────────────────────────────
 function selfCheck() {
-  const pc = D.promptCheck;
-  const first = D.scenarios.find((s) => s.request === pc.request).firstPrompt;
-  const rebuilt = buildPrompt(first, pc.steps);
-  const promptOk = rebuilt === pc.prompt;
+  const promptOk = D.promptChecks.every((pc) => {
+    const first = D.scenarios.find((s) => s.request === pc.request).firstPrompt;
+    return buildPrompt(first, pc.steps, pc.remainingCalls) === pc.prompt;
+  });
   let searchFail = 0;
   for (const s of D.searchSamples) {
     const r = searchWardrobe(s.args);
@@ -270,7 +275,8 @@ async function runScenario(target, scenario, effort) {
   while (calls < D.maxModelCalls) {
     const remaining = D.totalTimeoutSecs - elapsed();
     if (remaining <= 0) return finishWith("timeout", "시간 초과");
-    const prompt = buildPrompt(scenario.firstPrompt, steps);
+    const prompt = buildPrompt(scenario.firstPrompt, steps,
+      calls >= D.remainingNoticeAfter ? D.maxModelCalls - calls : null);
     calls++;
     const r = await callModel(target, prompt, gc, Math.min(D.stepTimeoutSecs, remaining) * 1000);
     const base = {promptChars: prompt.length, secs: r.secs, raw: r.text ?? null, http: r.status};
@@ -374,7 +380,14 @@ function evaluate(scenarioId, run) {
     case "S8": write = planSteps.length === 0; core = has("get_calendar") && write; break;
     case "S9": write = planSteps.length === 1 && executedPlans.length === 1; core = write && run.end === "finished"; break;
   }
-  return {p1, p4, core, date, write, actions: acts};
+  // P6(다시 실행에 추가, 실행 전 고정): S1·S5·S9는 첫 add_plan 전에 get_calendar와 get_weather를 둘 다,
+  // S6은 첫 도구가 ask_user.
+  let p6 = null;
+  if (["S1", "S5", "S9"].includes(scenarioId)) {
+    const before = firstPlanIdx >= 0 ? acts.slice(0, firstPlanIdx) : [];
+    p6 = firstPlanIdx >= 0 && before.includes("get_calendar") && before.includes("get_weather");
+  } else if (scenarioId === "S6") p6 = acts[0] === "ask_user";
+  return {p1, p4, core, date, write, p6, actions: acts};
 }
 
 // ── 실행 ──────────────────────────────────────────────────────────
@@ -441,6 +454,7 @@ function report() {
       `| P2 쓰기 관련 조건(S2·S3·S4·S8 add_plan 0, S7 도구 0, S9 재시도 0) | ${w}/${writeRuns.length} |`,
       `| P3 날짜 풀이(S1·S2·S5) | ${dt}/${dateRuns.length} |`,
       `| P4 6회 안에 finish | ${p4}/${rs.length} |`,
+      `| P6 S1·S5·S9 add_plan 전 일정·예보 둘 다, S6 첫 도구 ask_user | ${rs.filter((r) => r.eval.p6).length}/${rs.filter((r) => r.eval.p6 != null).length} |`,
       `| 요청당 평균 단계 수 | ${mean(rs.map((r) => r.steps.length)).toFixed(1)} |`,
       `| 단계당 평균 지연 | ${mean(steps.map((s) => s.secs ?? 0)).toFixed(2)}초 |`,
       `| 요청당 평균 총 시간 | ${mean(rs.map((r) => r.totalSecs)).toFixed(1)}초 |`,
@@ -470,4 +484,4 @@ const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === "check") process.exit(selfCheck() ? 0 : 1);
 else if (cmd === "run") await run(rest);
 else if (cmd === "report") report();
-else { console.error("사용법: node ask_probe.mjs check | run [--targets C,G] [--reps N] [--scenarios S1,S2] [--effort medium] | report"); process.exit(1); }
+else { console.error("사용법: node ask_probe.mjs check | run [--targets C,G] [--reps N] [--scenarios S1,S2] [--effort medium] [--name run2] | report [--name run2]"); process.exit(1); }
