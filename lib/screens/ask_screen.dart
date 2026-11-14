@@ -373,7 +373,7 @@ class _AskScreenState extends State<AskScreen> {
 
   Widget _answerCard(AskTurn t, {required bool last}) {
     final o = t.outcome!;
-    final combo = o.end == AskEnd.finished ? askCombo(t.steps) : const <WardrobeItem>[];
+    final combo = o.end == AskEnd.finished ? askCombo(o) : const <WardrobeItem>[];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

@@ -111,8 +111,27 @@ class AskOutfit {
   const AskOutfit({this.date, this.tpo, required this.items});
 }
 
-// 단계 기록에서 마지막으로 보여 준 조합 — 등록·미리 보기, 하루짜리 일정 확인의 준비된 추천.
-AskOutfit? askOutfitOf(List<AskStep> steps) {
+// 이번 턴의 조합(v2.1 A-3) — 답 아래 사진, "피팅룸에서 입어 보기", 다음 턴의 [현재 코디], 대화 내역이 쓴다.
+//  1) 받아들인 finish의 outfit  2) 이번 턴에 성공한 try_on이 입힌 조합(마지막 것)
+//  3) 옷이 붙은 마지막 단계(등록·미리 보기, 하루짜리 일정 확인의 준비된 추천)  4) 이전 [현재 코디](current)
+// 1)·2)의 날짜·상황은 3)의 조합에서, 없으면 current에서 가져온다.
+AskOutfit? askOutfitOf(List<AskStep> steps, {AskOutfit? current}) {
+  final shown = _lastShownOutfit(steps);
+  AskOutfit pick(List<WardrobeItem> items) {
+    final ctx = shown ?? current;
+    return AskOutfit(date: ctx?.date, tpo: ctx?.tpo, items: items);
+  }
+
+  for (final s in steps.reversed) {
+    if (s.action == 'finish' && s.items.isNotEmpty) return pick(s.items);
+  }
+  for (final s in steps.reversed) {
+    if (s.action == 'try_on' && s.status == AskStepStatus.done && s.items.isNotEmpty) return pick(s.items);
+  }
+  return shown ?? current;
+}
+
+AskOutfit? _lastShownOutfit(List<AskStep> steps) {
   for (final s in steps.reversed) {
     if (s.items.isEmpty) continue;
     final from = s.args['from'];
@@ -124,6 +143,34 @@ AskOutfit? askOutfitOf(List<AskStep> steps) {
     }
   }
   return null;
+}
+
+// finish의 outfit(v2.1 A-2) — 목록이면 그대로, 문자열 하나면 그 안의 번호들. "#"이 없거나 숫자여도 읽는다.
+// 이 대화의 번호표에 없는 번호는 버리고, 남은 것이 없거나 형이 다르면 빈 목록(규약 위반으로 치지 않는다).
+final _outfitNumber = RegExp(r'\d+');
+
+List<WardrobeItem> askFinishOutfit(Object? v, WardrobeItem? Function(int number) item) {
+  final numbers = <int>[];
+  void read(Object? x) {
+    if (x is int) {
+      numbers.add(x);
+    } else if (x is double && x == x.roundToDouble()) {
+      numbers.add(x.toInt());
+    } else if (x is String) {
+      numbers.addAll(_outfitNumber.allMatches(x).map((m) => int.parse(m.group(0)!)));
+    }
+  }
+
+  if (v is List) {
+    v.forEach(read);
+  } else if (v is String) {
+    read(v);
+  }
+  final seen = <String>{};
+  return [
+    for (final n in numbers)
+      if (item(n) case final i? when seen.add(i.id)) i,
+  ];
 }
 
 // 출력 규약 검증(순수) — 맞으면 null, 아니면 모델에 돌려줄 오류 글. knownItem이 있으면 옷 번호 인자가
@@ -208,11 +255,11 @@ class AskEngine {
 
     AskOutcome end(AskEnd e, String answer) => AskOutcome(e, answer, steps, calls,
         plannedDate: plannedDate,
-        outfit: askOutfitOf(steps) ?? current,
+        outfit: askOutfitOf(steps, current: current),
         finishReturned: finishReturned,
         finishTrimmed: finishTrimmed);
     String? outfitText() {
-      final o = askOutfitOf(steps) ?? current;
+      final o = askOutfitOf(steps, current: current);
       if (o == null) return null;
       final when = [if (o.date != null) askShortDate(o.date!), if (o.tpo != null) '[${o.tpo}]'].join(' ');
       return '${when.isEmpty ? '' : '$when 기준: '}${o.items.map(tools.describe).join(', ')}';
@@ -307,6 +354,8 @@ class AskEngine {
             if (i == 0 || !hits.contains(i)) parts.answerLines[i],
         ];
         finishTrimmed = parts.answerLines.length - kept.length;
+        // 받아들인 finish의 outfit — 이번 턴의 조합 1순위(askOutfitOf).
+        step.items = askFinishOutfit(args['outfit'], tools.book.item);
         step.status = AskStepStatus.done;
         onUpdate?.call(steps);
         return end(AskEnd.finished, AskFinishParts(kept, parts.buy).compose());

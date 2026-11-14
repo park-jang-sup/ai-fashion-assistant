@@ -29,8 +29,10 @@ enum AskButtonState { idle, running, attention }
 // 대화 하나의 턴 상한(v2 §2-D).
 const askMaxTurns = 10;
 
-// 답 카드의 사진 — 이 턴에 마지막으로 나온 조합.
-List<WardrobeItem> askCombo(List<AskStep> steps) => askOutfitOf(steps)?.items ?? const [];
+// 답 카드의 사진 — 이번 턴의 조합(v2.1 A-3·A-4, 엔진이 정한 outcome.outfit: finish의 outfit → 성공한
+// try_on → 옷이 붙은 마지막 단계 → 이전 [현재 코디]). 답으로 끝나지 않은 턴은 이 턴의 단계에서만 찾는다.
+List<WardrobeItem> askCombo(AskOutcome o) =>
+    (o.end == AskEnd.finished ? o.outfit : askOutfitOf(o.steps))?.items ?? const [];
 
 // 이 턴의 가상 피팅 결과 사진(마지막 것).
 AskFittingShot? askFittingOf(List<AskStep> steps) =>
@@ -218,7 +220,7 @@ class AskController extends ChangeNotifier {
     final record = AskRecord(id: conversationId, turns: [
       for (final t in (current() ? _turns : [turn]))
         if (t.outcome != null)
-          AskRecordTurn.fromOutcome(t.request, t.outcome!, askCombo(t.outcome!.steps), t.createdAt,
+          AskRecordTurn.fromOutcome(t.request, t.outcome!, askCombo(t.outcome!), t.createdAt,
               fittingImageUrl: askFittingOf(t.outcome!.steps)?.url,
               fittingCacheKey: askFittingOf(t.outcome!.steps)?.cacheKey),
     ]);
