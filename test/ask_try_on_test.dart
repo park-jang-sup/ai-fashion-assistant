@@ -51,9 +51,9 @@ Future<(AskOutcome, AskTools)> _run(_Port p, List<Map<String, dynamic>> Function
 void main() {
   test('조합을 입혀 보고 사진을 단계에 남긴다 — 턴마다 한 번(엔진이 막는다)', () async {
     final p = _Port();
-    final (o, _) = await _run(p, (num) => [
-          _a('try_on', {'outfit': [num('t1'), num('p1'), num('s1')]}),
-          _a('try_on', {'outfit': [num('t2'), num('p2')]}),
+    final (o, _) = await _run(p, (no) => [
+          _a('try_on', {'outfit': [no('t1'), no('p1'), no('s1')]}),
+          _a('try_on', {'outfit': [no('t2'), no('p2')]}),
           _a('finish', {'answer': '입혀 봤어요\n- 코디보드에도 올려 두었어요'}),
         ]);
     expect(o.end, AskEnd.finished);
@@ -69,15 +69,15 @@ void main() {
 
   test('전신 사진이 없으면, 다른 피팅이 진행 중이면 실행하지 않는다', () async {
     final noPhoto = _Port()..photo = false;
-    final (o1, _) = await _run(noPhoto, (num) => [
-          _a('try_on', {'outfit': [num('t1')]}),
+    final (o1, _) = await _run(noPhoto, (no) => [
+          _a('try_on', {'outfit': [no('t1')]}),
           _a('finish', {'answer': '끝'}),
         ]);
     expect(noPhoto.runs, isEmpty);
     expect(o1.steps.first.observation, contains('전신 사진이 선택돼 있지 않아'));
     final busy = _Port()..busy = true;
-    final (o2, _) = await _run(busy, (num) => [
-          _a('try_on', {'outfit': [num('t1')]}),
+    final (o2, _) = await _run(busy, (no) => [
+          _a('try_on', {'outfit': [no('t1')]}),
           _a('finish', {'answer': '끝'}),
         ]);
     expect(busy.runs, isEmpty);
@@ -86,8 +86,8 @@ void main() {
 
   test('피팅 상한과 실패는 재시도하지 않고 사용자 말로', () async {
     final limited = _Port()..error = '호출량이 많아 잠시 후 다시 시도해주세요.';
-    final (o, _) = await _run(limited, (num) => [
-          _a('try_on', {'outfit': [num('t1')]}),
+    final (o, _) = await _run(limited, (no) => [
+          _a('try_on', {'outfit': [no('t1')]}),
           _a('finish', {'answer': '끝'}),
         ]);
     expect(limited.runs.length, 1);
@@ -97,8 +97,8 @@ void main() {
 
   test('피팅을 기다리는 시간은 요청 전체 시한에 세지 않는다', () async {
     final slow = _Port()..delay = const Duration(milliseconds: 300);
-    final (o, _) = await _run(slow, (num) => [
-          _a('try_on', {'outfit': [num('t1')]}),
+    final (o, _) = await _run(slow, (no) => [
+          _a('try_on', {'outfit': [no('t1')]}),
           _a('finish', {'answer': '끝'}),
         ], total: const Duration(milliseconds: 150));
     expect(o.end, AskEnd.finished);
