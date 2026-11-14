@@ -83,6 +83,11 @@ class AgentPlanner {
   }) async {
     // 같은 아이솔레이트에서 겹쳐 돌면 한 날짜의 추천을 둘 다 다시 만들 수 있어, 진행 중인
     // 실행을 retryForecastMissingRecommendations가 기다릴 수 있게 남겨 둔다(§9-1).
+    // AI에게 부탁하기의 일정 준비(preparePlanNow)와도 겹치지 않게, 진행 중인 실행이 있으면
+    // 끝나길 기다린 뒤 시작한다(docs/task_agent_ask_v1.md §2-3).
+    while (_proactiveInFlight != null) {
+      await _proactiveInFlight;
+    }
     final done = Completer<void>();
     _proactiveInFlight = done.future;
     try {
@@ -94,6 +99,35 @@ class AgentPlanner {
   }
 
   static Future<void>? _proactiveInFlight;
+
+  // AI에게 부탁하기의 add_plan(docs/task_agent_ask_v1.md §2-3)이 기존 준비 경로
+  // (_prepareRecommendationFor — 예보 → matchForWeather → 자기평가 → 추천 저장 → 활동 내역)를
+  // 그대로 쓰게 여는 통로. 선제 추천과 같은 옷장·지역 설정으로 부르고, 진행 중인 선제 추천과
+  // 겹치지 않게 같은 _proactiveInFlight로 묶는다. 준비 경로 자체는 바꾸지 않는다. 반환값은
+  // 추천을 저장했는지(옷장이 2벌 미만이면 false).
+  static Future<bool> preparePlanNow(String uid, OutfitCalendarEntry plan) async {
+    while (_proactiveInFlight != null) {
+      await _proactiveInFlight;
+    }
+    final done = Completer<void>();
+    _proactiveInFlight = done.future;
+    try {
+      final wardrobe = await FirestoreService.wardrobeStream(uid).first;
+      final usable = wardrobe.where((i) => i.attributes != null).toList();
+      if (usable.length < 2) return false;
+      final profile = await FirestoreService.getUserProfileSilently(uid);
+      return await _prepareRecommendationFor(uid, plan, usable,
+          latitude: profile?.regionLatitude, longitude: profile?.regionLongitude);
+    } finally {
+      done.complete();
+      if (identical(_proactiveInFlight, done.future)) _proactiveInFlight = null;
+    }
+  }
+
+  // 최근 추천에 쓰인 옷 — 선제 추천과 같은 기준(최근 30건, 14일). AI에게 부탁하기의
+  // preview_outfit이 일일 추천과 같은 정렬을 쓰게 한다.
+  static Future<Set<String>> recentItemIdsFor(String uid) async =>
+      recentItemIdsFrom(await FirestoreService.recentRecommendationsSilently(uid), DateTime.now());
 
   static Future<({int created, String? firstLabel})> _runProactiveCheck(
     String uid, {

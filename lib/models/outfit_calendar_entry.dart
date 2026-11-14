@@ -33,6 +33,12 @@ class OutfitCalendarEntry {
   // "데모 옷장 비우기"가 이 표시로 골라 지운다. 기존 필드(source 등)는 뜻이 달라
   // 섞지 않는다. firestore.rules는 calendar 문서 필드를 제한하지 않는다.
   final bool isDemo;
+  // 어떤 경로로 만든 일정인지 — 'ask'면 AI에게 부탁하기의 add_plan(사용자 확인 후)으로 등록한
+  // 예정 일정(docs/task_agent_ask_v1.md §2-3). source(manual/agent)는 "착장을 직접 기록 / 에이전트
+  // 플랜을 수락해 기록"이라 예정 일정 등록 경로와 뜻이 맞지 않아 따로 둔다. firestore.rules는
+  // calendar 필드를 제한하지 않는다. null이면 예전 경로.
+  final String? createdVia;
+  static const createdViaAsk = 'ask';
 
   const OutfitCalendarEntry({
     required this.id,
@@ -47,6 +53,7 @@ class OutfitCalendarEntry {
     this.status = statusRecorded,
     required this.createdAt,
     this.isDemo = false,
+    this.createdVia,
   });
 
   // 착장 없이 태그만 있는 미래 예정인지. status 우선, 없으면 itemIds 비어있음으로 판단.
@@ -71,6 +78,7 @@ class OutfitCalendarEntry {
       status: data['status'] as String? ?? statusRecorded,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isDemo: data['isDemo'] as bool? ?? false,
+      createdVia: data['createdVia'] as String?,
     );
   }
 
@@ -89,5 +97,6 @@ class OutfitCalendarEntry {
         'status': status,
         'createdAt': FieldValue.serverTimestamp(),
         if (isDemo) 'isDemo': isDemo,
+        if (createdVia != null) 'createdVia': createdVia,
       };
 }

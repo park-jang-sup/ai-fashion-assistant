@@ -30,7 +30,7 @@
 | 8 | 일정: `calendarEntriesForRange`, `addCalendarEntry`. planned 일정은 `status: planned`. 상황 태그는 9개(출근·데이트·여행·운동·모임·결혼식·면접·경조사·일상)이고 태그마다 격식이 정해져 있다 | `lib/services/firestore_service.dart`, `lib/models/outfit_calendar_entry.dart`, `lib/constants/tpo_tags.dart` |
 | 9 | 활동 내역은 `addAgentLogSilently`로 남긴다. 화면은 모르는 `eventType`도 기본 아이콘으로 보여 준다. `relatedDocId`가 같은 줄끼리 묶인다 | `lib/models/agent_log_entry.dart` |
 | 10 | `calendar`·`agent_logs`·`recommendations`는 본인만 읽고 쓰며 필드 제한이 없다 | `firestore.rules` |
-| 11 | 홈은 로고 → 인사 → 날씨 줄 → 추천 코디 카드 순서다 | `lib/screens/home_screen.dart` |
+| 11 | 홈은 제목("오늘 뭐 입지?") → 부제 → 날씨 줄 → 추천 코디 카드 → 주간 캘린더 순서다(2026-11-14 대조로 고침 — 로고 없음) | `lib/screens/home_screen.dart` |
 
 ## 2. 설계
 
