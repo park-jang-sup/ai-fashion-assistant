@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "838064162852-ilt0j5jej2a6r40uutjvpi5e31iuhuvh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fashionai.ai_fashion_assistant",
+            "certificate_hash": "e35f46d4b44e5666cda6c567938b00c851a78aab"
+          }
+        },
+        {
           "client_id": "838064162852-m64nttvnu9f6l1acskrt7l39rn9hs6m3.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
