@@ -12,6 +12,7 @@ import '../models/wardrobe_item.dart';
 import '../services/agent_planner.dart';
 import '../services/firestore_service.dart';
 import '../widgets/calendar_record_sheet.dart';
+import '../widgets/expandable_text.dart';
 import '../widgets/signed_network_image.dart';
 import '../widgets/weekly_plan_sheet.dart';
 
@@ -677,6 +678,7 @@ class _PlannedEntryCardState extends State<_PlannedEntryCard> {
                   ],
                 ),
               ),
+              if (entry.isDemo) ...[const SizedBox(width: 6), const DemoBadge()],
               const Spacer(),
               GestureDetector(
                 onTap: widget.onDelete,
@@ -735,11 +737,22 @@ class _PlannedEntryCardState extends State<_PlannedEntryCard> {
                               color: AppColors.navy, fontSize: 12, fontWeight: FontWeight.w700)),
                     ],
                   ),
+                  if (rec.forecastMissing) ...[
+                    const SizedBox(height: 6),
+                    const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.cloud_outlined, size: 14, color: AppColors.teal),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(RecommendationEntry.forecastMissingNote,
+                              style: TextStyle(color: AppColors.teal, fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 6),
-                  Text(preview,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  ExpandableText(preview),
                   const SizedBox(height: 10),
                   Row(
                     children: [

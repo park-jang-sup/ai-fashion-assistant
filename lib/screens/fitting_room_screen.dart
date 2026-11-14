@@ -327,6 +327,60 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
   }
 
   // ── Gemini 텍스트 분석 ───────────────────────────────────
+  // 결과(분석·피팅)가 지금 코디보드 조합의 것이 아닌가 — 추천 카드를 눌러 옷을 바꾼 뒤 등
+  // (docs/task_demo_flow_v1.md 부분 D). 진행 중이면 판단하지 않는다.
+  bool get _resultIsStale {
+    final c = widget.jobController;
+    if (c.isAnalyzing || c.isGeneratingFitting) return false;
+    final now = comboSignature(widget.selectedItems.values);
+    final analysisStale =
+        c.analysisResult != null && c.analyzedComboSignature != null && c.analyzedComboSignature != now;
+    final fittingStale = (c.fittingImage != null || c.fittingImageUrl != null) &&
+        c.fittedComboSignature != null &&
+        c.fittedComboSignature != now;
+    return analysisStale || fittingStale;
+  }
+
+  Widget _buildStaleResultNotice() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(color: AppColors.amberPale, borderRadius: BorderRadius.circular(10)),
+      child: const Row(
+        children: [
+          Icon(Icons.info_outline, color: AppColors.amber, size: 16),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text('조합이 바뀌었어요 — 다시 분석해 보세요. 아래 결과는 이전 조합의 것이에요',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 분석 결과 아래 추천 카드를 누르면 그 옷을 코디보드의 해당 칸에 넣는다(부분 D) —
+  // 칸 규칙은 옷장에서 코디보드로 보낼 때와 같은 boardSlotKeyFor. 빈 칸이면 추가,
+  // 찬 칸이면 교체하고 "되돌리기"를 잠깐 띄운다.
+  void _applyRecommendation(WardrobeItem item) {
+    final slot = boardSlotKeyFor(item);
+    if (slot == null || !widget.selectedItems.containsKey(slot)) return;
+    final previous = widget.selectedItems[slot];
+    if (previous?.id == item.id) return;
+    widget.onSetItem(slot, item);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(SnackBar(
+      content: Text(previous == null ? '코디보드 $slot 칸에 넣었어요' : '코디보드 $slot 칸을 바꿨어요'),
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 4),
+      action: SnackBarAction(
+        label: '되돌리기',
+        onPressed: () => previous == null ? widget.onClearItem(slot) : widget.onSetItem(slot, previous),
+      ),
+    ));
+  }
+
   Future<void> _analyze() async {
     if (!_canAnalyze) return;
     final selectedList = widget.selectedItems.values.whereType<WardrobeItem>().toList();
@@ -481,7 +535,13 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
                             widget.jobController.fittingImageUrl != null ||
                             widget.jobController.isAnalyzing ||
                             widget.jobController.isGeneratingFitting)
-                        ? _buildResultCard()
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (_resultIsStale) _buildStaleResultNotice(),
+                              _buildResultCard(),
+                            ],
+                          )
                         : _buildResultPlaceholder(),
                   ],
                 ),
@@ -929,7 +989,11 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
         child: Container(
           color: Colors.black.withValues(alpha: 0.5),
           alignment: Alignment.center,
-          child: _FittingLoadingPopup(selectedItems: widget.selectedItems),
+          child: _FittingLoadingPopup(
+            selectedItems: widget.selectedItems,
+            analysisCandidates: widget.jobController.analysisCandidates,
+            aiPicks: widget.jobController.analysisAiPicks,
+          ),
         ),
       ),
     );
@@ -1546,7 +1610,9 @@ class _FittingRoomScreenState extends State<FittingRoomScreen> {
                   _StyleRecommendationRow(
                     selectedItems: widget.selectedItems,
                     analysisCandidates: widget.jobController.analysisCandidates,
+                    analysisWeatherMaxTempC: widget.jobController.analysisWeatherMaxTempC,
                     aiPicks: widget.jobController.analysisAiPicks,
+                    onPick: _applyRecommendation,
                   ),
                   if (_isStreamingAnalysis) ...[
                     const SizedBox(height: 10),
@@ -1607,14 +1673,57 @@ typedef _PopupSlide = ({WardrobeItem item, String caption});
 // 지금 선택된 아이템들과 어울리는 "다른 카테고리" 옷장 아이템 — 계산은
 // style_recommendations.dart(loadStyleCandidates)로 옮겼다(docs/task_agent_grounding_v1.md
 // 부분 B: 분석 프롬프트와 카드·팝업이 같은 후보 목록을 쓰도록). 뽑는 규칙은 그대로다.
-Future<List<_PopupSlide>> _matchStyleRecommendations(
+Future<({List<_PopupSlide> slides, double? weatherMaxTempC})> _matchStyleRecommendations(
   Map<String, WardrobeItem?> selectedItems, {
   int maxItems = 5,
 }) async {
-  final candidates = await loadStyleCandidates(
+  final set = await loadStyleCandidates(
       selectedItems.values.whereType<WardrobeItem>().toList(),
       maxItems: maxItems);
-  return [for (final c in candidates) (item: c.item, caption: c.caption)];
+  return (
+    slides: [for (final c in set.candidates) (item: c.item, caption: c.caption)],
+    weatherMaxTempC: set.weatherMaxTempC,
+  );
+}
+
+// 카드·팝업이 함께 쓰는 순서(§10-2·5) — 분석 후보가 있으면 그것과 모델이 고른 번호, 없으면
+// 기기 안 매칭 후보(고른 것 없음). null이면 아직 계산 중.
+List<({_PopupSlide slide, bool aiPick})>? _orderedRecommendationSlides({
+  required List<StyleCandidate>? analysisCandidates,
+  required List<int> aiPicks,
+  required List<_PopupSlide>? localSlides,
+}) {
+  final List<StyleCandidate>? source = analysisCandidates ??
+      localSlides?.map((s) => StyleCandidate(item: s.item, caption: s.caption)).toList();
+  if (source == null) return null;
+  return [
+    for (final o in orderForCards(source, analysisCandidates != null ? aiPicks : const []))
+      (slide: (item: o.candidate.item, caption: o.candidate.caption), aiPick: o.aiPick),
+  ];
+}
+
+// "AI 추천" 표시(§10-3) — 모든 추천 카드에 붙인다. 글에 나온 옷(모델이 [추천후보]로 고른
+// 것)은 예전 모양 그대로(진한 바탕), 나머지는 같은 글자의 옅은 모양(색만 다르게).
+@visibleForTesting
+class AiRecommendBadge extends StatelessWidget {
+  final bool strong;
+  const AiRecommendBadge({super.key, required this.strong});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: strong ? AppColors.textPrimary : AppColors.textPrimary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text('AI 추천',
+          style: TextStyle(
+              color: strong ? AppColors.background : AppColors.textMuted,
+              fontSize: 10,
+              fontWeight: FontWeight.w800)),
+    );
+  }
 }
 
 // ── 분석 결과 하단 "내 스타일에 맞춰 추천" 가로 슬라이드 ────────
@@ -1629,11 +1738,16 @@ class _StyleRecommendationRow extends StatefulWidget {
   final Map<String, WardrobeItem?> selectedItems;
   final List<StyleCandidate>? analysisCandidates;
   final List<int> aiPicks;
+  // 카드를 누르면 코디보드에 반영(부분 D). null이면 보여 주기만 한다.
+  final ValueChanged<WardrobeItem>? onPick;
+  final double? analysisWeatherMaxTempC;
 
   const _StyleRecommendationRow({
     required this.selectedItems,
     this.analysisCandidates,
+    this.analysisWeatherMaxTempC,
     this.aiPicks = const [],
+    this.onPick,
   });
 
   @override
@@ -1642,6 +1756,7 @@ class _StyleRecommendationRow extends StatefulWidget {
 
 class _StyleRecommendationRowState extends State<_StyleRecommendationRow> {
   List<_PopupSlide>? _items;
+  double? _itemsWeatherMaxTempC;
   String? _lastSignature;
 
   @override
@@ -1667,26 +1782,29 @@ class _StyleRecommendationRowState extends State<_StyleRecommendationRow> {
     final signature = _signature;
     if (signature == _lastSignature) return;
     _lastSignature = signature;
-    List<_PopupSlide> result;
+    ({List<_PopupSlide> slides, double? weatherMaxTempC}) result;
     try {
       result = await _matchStyleRecommendations(widget.selectedItems, maxItems: 8);
     } catch (e) {
       debugPrint('[STYLE-RECOMMEND] 추천 매칭 실패: $e');
-      result = const [];
+      result = (slides: const <_PopupSlide>[], weatherMaxTempC: null);
     }
     if (!mounted || _signature != signature) return;
-    setState(() => _items = result);
+    setState(() {
+      _items = result.slides;
+      _itemsWeatherMaxTempC = result.weatherMaxTempC;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final fromAnalysis = widget.analysisCandidates;
-    final List<({_PopupSlide slide, bool aiPick})>? items = fromAnalysis != null
-        ? [
-            for (final o in orderWithAiPicks(fromAnalysis, widget.aiPicks))
-              (slide: (item: o.candidate.item, caption: o.candidate.caption), aiPick: o.aiPick),
-          ]
-        : _items?.map((s) => (slide: s, aiPick: false)).toList();
+    // 분석 전에는 기기 안 매칭 후보를, 분석 뒤에는 분석에 넣은 같은 후보와 모델이 고른
+    // 번호를 쓴다 — 순서는 둘 다 orderForCards(§10-2, 고른 것이 없으면 종류별 1위부터).
+    final items = _orderedRecommendationSlides(
+      analysisCandidates: widget.analysisCandidates,
+      aiPicks: widget.aiPicks,
+      localSlides: _items,
+    );
     if (items == null || items.isEmpty) return const SizedBox.shrink();
 
     return Padding(
@@ -1697,6 +1815,12 @@ class _StyleRecommendationRowState extends State<_StyleRecommendationRow> {
           const Text('내 스타일에 맞는 추천 옷',
               style: TextStyle(
                   color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w800)),
+          // 날씨를 써서 골랐을 때만(§10-1-3) — 지금 보이는 목록의 출처 기준.
+          if ((widget.analysisCandidates != null ? widget.analysisWeatherMaxTempC : _itemsWeatherMaxTempC)
+              case final maxT?) ...[
+            const SizedBox(height: 4),
+            Text(weatherPickNote(maxT), style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          ],
           const SizedBox(height: 10),
           SizedBox(
             height: 118,
@@ -1727,28 +1851,20 @@ class _StyleRecommendationRowState extends State<_StyleRecommendationRow> {
                         const Icon(Icons.image_outlined, color: AppColors.textDisabled),
                   ),
                 );
-                if (!aiPick) return card;
-                return Stack(
+                final onPick = widget.onPick;
+                Widget tappable(Widget child) => onPick == null
+                    ? child
+                    : Semantics(
+                        button: true,
+                        label: '코디보드에 넣기',
+                        child: GestureDetector(onTap: () => onPick(slide.item), child: child),
+                      );
+                return tappable(Stack(
                   children: [
                     card,
-                    Positioned(
-                      left: 6,
-                      top: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.textPrimary,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text('AI 추천',
-                            style: TextStyle(
-                                color: AppColors.background,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800)),
-                      ),
-                    ),
+                    Positioned(left: 6, top: 6, child: AiRecommendBadge(strong: aiPick)),
                   ],
-                );
+                ));
               },
             ),
           ),
@@ -1767,7 +1883,15 @@ class _StyleRecommendationRowState extends State<_StyleRecommendationRow> {
 class _FittingLoadingPopup extends StatefulWidget {
   final Map<String, WardrobeItem?> selectedItems;
 
-  const _FittingLoadingPopup({required this.selectedItems});
+  // 카드 줄과 같은 후보·순서·표시(§10-5) — 분석에 넣은 후보가 있으면 그것을 쓴다.
+  final List<StyleCandidate>? analysisCandidates;
+  final List<int> aiPicks;
+
+  const _FittingLoadingPopup({
+    required this.selectedItems,
+    this.analysisCandidates,
+    this.aiPicks = const [],
+  });
 
   @override
   State<_FittingLoadingPopup> createState() => _FittingLoadingPopupState();
@@ -1776,8 +1900,22 @@ class _FittingLoadingPopup extends StatefulWidget {
 class _FittingLoadingPopupState extends State<_FittingLoadingPopup> {
   late final PageController _pageController;
   Timer? _timer;
-  List<_PopupSlide>? _slides; // null = 아직 계산 중
+  List<_PopupSlide>? _slides; // null = 아직 계산 중(기기 안 매칭 후보 또는 폴백)
+  bool _slidesAreFallback = false; // 후보가 없어 지금 피팅 중인 옷 + 팁으로 채웠는지
   int _currentPage = 0;
+
+  // 화면에 보일 슬라이드 — 추천 후보면 카드 줄과 같은 순서·"AI 추천" 표시, 폴백이면 표시 없음.
+  List<({_PopupSlide slide, bool? aiPick})>? get _shown {
+    final ordered = _orderedRecommendationSlides(
+      analysisCandidates: (widget.analysisCandidates?.isEmpty ?? true) ? null : widget.analysisCandidates,
+      aiPicks: widget.aiPicks,
+      localSlides: _slidesAreFallback ? null : _slides,
+    );
+    if (ordered != null && ordered.isNotEmpty) {
+      return [for (final o in ordered) (slide: o.slide, aiPick: o.aiPick)];
+    }
+    return _slides?.map((s) => (slide: s, aiPick: null as bool?)).toList();
+  }
 
   @override
   void initState() {
@@ -1794,18 +1932,20 @@ class _FittingLoadingPopupState extends State<_FittingLoadingPopup> {
   }
 
   Future<void> _loadSlides() async {
-    final slides = await _buildSuggestionSlides();
+    final (slides, fallback) = await _buildSuggestionSlides();
     if (!mounted) return;
-    setState(() => _slides = slides);
+    setState(() {
+      _slides = slides;
+      _slidesAreFallback = fallback;
+    });
     _startAutoSlide();
   }
 
   void _startAutoSlide() {
-    final slides = _slides;
-    if (slides == null || slides.length <= 1) return;
     _timer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (!mounted || !_pageController.hasClients) return;
-      final next = ((_pageController.page ?? 0).round() + 1) % slides.length;
+      final count = _shown?.length ?? 0;
+      if (!mounted || !_pageController.hasClients || count <= 1) return;
+      final next = ((_pageController.page ?? 0).round() + 1) % count;
       _pageController.animateToPage(next,
           duration: const Duration(milliseconds: 450), curve: Curves.easeInOut);
     });
@@ -1819,26 +1959,30 @@ class _FittingLoadingPopupState extends State<_FittingLoadingPopup> {
   // 모아 전체를 궁합 점수순으로 정렬해 최대 5장. 로컬 계산만 하므로
   // Gemini 호출은 0회. 후보가 하나도 없으면(옷장이 빈약하거나 매칭 실패)
   // 현재 피팅 중인 옷 + style_tips 팁으로 폴백.
-  Future<List<_PopupSlide>> _buildSuggestionSlides() async {
+  // 카드 줄과 같은 수(8)로 뽑는다(§10-5 — 같은 후보·순서).
+  Future<(List<_PopupSlide>, bool)> _buildSuggestionSlides() async {
     final selected = widget.selectedItems.values.whereType<WardrobeItem>().toList();
     try {
-      final matched = await _matchStyleRecommendations(widget.selectedItems, maxItems: 5);
-      if (matched.isNotEmpty) return matched;
+      final matched =
+          (await _matchStyleRecommendations(widget.selectedItems, maxItems: analysisCandidateCount)).slides;
+      if (matched.isNotEmpty) return (matched, false);
     } catch (e) {
       debugPrint('[FITTING-POPUP] 추천 매칭 실패, 폴백으로 전환: $e');
     }
 
     // 폴백 — 현재 피팅 중인 옷 + 순환 팁.
-    if (selected.isEmpty) return const [];
-    return [
+    if (selected.isEmpty) return (const <_PopupSlide>[], true);
+    return ([
       for (var i = 0; i < selected.length; i++)
         (item: selected[i], caption: fittingStyleTips[i % fittingStyleTips.length]),
-    ];
+    ], true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final slides = _slides;
+    final shown = _shown;
+    final slides = shown?.map((e) => e.slide).toList();
+    if (slides != null && _currentPage >= slides.length) _currentPage = 0;
     return Container(
       width: MediaQuery.of(context).size.width * 0.8,
       padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
@@ -1873,7 +2017,8 @@ class _FittingLoadingPopupState extends State<_FittingLoadingPopup> {
                             onPageChanged: (i) => setState(() => _currentPage = i),
                             itemBuilder: (context, i) {
                               final item = slides[i].item;
-                              return Padding(
+                              final aiPick = shown![i].aiPick;
+                              final image = Padding(
                                 padding: const EdgeInsets.all(14),
                                 child: SignedNetworkImage(
                                   collection: 'wardrobe',
@@ -1887,6 +2032,12 @@ class _FittingLoadingPopupState extends State<_FittingLoadingPopup> {
                                       color: AppColors.textDisabled),
                                 ),
                               );
+                              // 폴백(지금 피팅 중인 옷)은 추천이 아니라 표시하지 않는다.
+                              if (aiPick == null) return image;
+                              return Stack(children: [
+                                Positioned.fill(child: image),
+                                Positioned(left: 8, top: 8, child: AiRecommendBadge(strong: aiPick)),
+                              ]);
                             },
                           ),
                         ),

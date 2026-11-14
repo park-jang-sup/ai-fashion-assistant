@@ -8,9 +8,12 @@ import '../models/outfit_calendar_entry.dart';
 import '../models/recommendation_entry.dart';
 import '../models/wardrobe_item.dart';
 import '../services/agent_activity.dart';
+import '../services/agent_planner.dart';
 import '../services/firestore_service.dart';
+import '../services/weather_fit.dart';
 import '../services/weather_service.dart';
 import '../widgets/calendar_record_sheet.dart';
+import '../widgets/expandable_text.dart';
 import '../widgets/signed_network_image.dart';
 
 // ── 홈 화면: "DOT." 레퍼런스 디자인에 맞춰 단순화한 버전.
@@ -54,15 +57,7 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 20),
                 const _WeatherRow(),
                 const SizedBox(height: 30),
-                const Text(
-                  '오늘의 추천 코디',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 10),
+                // 제목은 추천이 가리키는 일정 날짜에 따라 바뀌므로 카드 안에서 그린다.
                 _RecommendationCard(onOpenFittingRoom: onOpenFittingRoom, onNavigate: onNavigate),
                 const SizedBox(height: 32),
                 _WeeklyCalendarSection(onNavigate: onNavigate),
@@ -105,6 +100,11 @@ class _WeatherRowState extends State<_WeatherRow> {
       latitude: profile?.regionLatitude,
       longitude: profile?.regionLongitude,
     );
+    // 예보 조회에 성공했으면, 예보 없이 만든 다가오는 추천을 다시 준비한다(§9-1 a) —
+    // 그런 추천이 없으면 조회 한 번으로 끝난다.
+    if (uid != null && snapshot != null) {
+      unawaited(AgentPlanner.retryForecastMissingRecommendations(uid));
+    }
     if (!mounted) return;
     setState(() {
       _weather = snapshot;
@@ -115,19 +115,20 @@ class _WeatherRowState extends State<_WeatherRow> {
     });
   }
 
-  // 로컬 규칙 기반 한 줄 조언(Gemini 호출 없음) — 오늘 강수확률이 높으면
-  // 비 관련 조언을 우선하고, 아니면 현재 기온대에 맞는 옷차림을 안내한다.
+  // 로컬 규칙 기반 한 줄 조언(Gemini 호출 없음) — 일일 추천과 같은 기온대 함수
+  // (weather_fit.dart weatherAdviceFor)를 쓴다(docs/task_demo_flow_v1.md §2-4). 예전엔
+  // 현재 기온과 별도 기준(23°C 이상 "반팔이나 얇은 셔츠면 충분해요" 등)을 써서 홈은
+  // 반팔이라는데 추천은 긴팔인 일이 생길 수 있었다. 오늘 예보가 없으면 현재 기온을
+  // 최고·최저 삼아 같은 함수로 판정한다.
   String _adviceFor(WeatherSnapshot w) {
-    final today = w.forDate(DateTime.now());
-    if (today != null && today.precipitationProbability >= WeatherService.rainProbabilityThreshold) {
-      return '비 예보가 있어요, 우산을 챙기세요';
-    }
-    final tempC = w.current.tempC;
-    if (tempC >= 28) return '가볍고 통풍 잘 되는 소재가 좋아요';
-    if (tempC >= 23) return '반팔이나 얇은 셔츠면 충분해요';
-    if (tempC >= 17) return '가벼운 아우터 한 장이면 충분해요';
-    if (tempC >= 9) return '니트나 가디건 등 보온에 신경 써주세요';
-    return '두꺼운 아우터가 필요한 쌀쌀한 날씨예요';
+    final today = w.forDate(DateTime.now()) ??
+        DailyWeather(
+          date: DateTime.now(),
+          maxTempC: w.current.tempC,
+          minTempC: w.current.tempC,
+          precipitationProbability: 0,
+        );
+    return weatherAdviceFor(weatherContextFor(today)!);
   }
 
   @override
@@ -173,9 +174,54 @@ class _WeatherRowState extends State<_WeatherRow> {
   }
 }
 
-// ── 추천 코디 카드: 새 옷 등록을 계기로 백그라운드에서 자동 생성된
-// 코디 1건을 큰 사진 카드로 보여준다. 없으면 AI 피팅을 유도하는 빈 상태를
-// 보여준다.
+// 홈 추천 카드 제목(docs/task_demo_flow_v1.md 부분 B-4) — 추천이 가리키는 일정 날짜에
+// 맞춘다. 예전엔 내일 일정용 추천에도 "오늘의 추천 코디"였다. 일정 없이 만든 추천
+// (새 옷 등록 계기 — 상황 태그가 없다)은 그대로 "오늘의 추천 코디". 순수 함수.
+String homeRecommendationTitle({DateTime? targetDate, String? tpoTag, required DateTime now}) {
+  if (targetDate == null || tpoTag == null) return '오늘의 추천 코디';
+  final today = DateTime(now.year, now.month, now.day);
+  final diff = DateTime(targetDate.year, targetDate.month, targetDate.day).difference(today).inDays;
+  final when = switch (diff) {
+    < 0 => '${targetDate.month}월 ${targetDate.day}일',
+    0 => '오늘',
+    1 => '내일',
+    2 => '모레',
+    _ => '$diff일 뒤',
+  };
+  return '$when [$tpoTag] 추천 코디';
+}
+
+class _CardTitle extends StatelessWidget {
+  final String text;
+  final bool isDemo; // 데모 옷장 예시 일정용 추천(§9 (2))
+  const _CardTitle(this.text, {this.isDemo = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Flexible(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          if (isDemo) ...[const SizedBox(width: 6), const DemoBadge()],
+        ],
+      ),
+    );
+  }
+}
+
+// ── 추천 코디 카드: 에이전트가 만든 추천 코디 1건(일정용 선제 추천 또는 새 옷
+// 등록 계기)을 큰 사진 카드로 보여준다. 없으면 빈 상태를 보여준다 — 다가오는
+// 일정도 없으면 일정을 넣도록 안내하고(부분 B-3), 일정은 있으면 AI 피팅을 유도한다.
 class _RecommendationCard extends StatelessWidget {
   final ValueChanged<List<WardrobeItem>> onOpenFittingRoom;
   final ValueChanged<int> onNavigate;
@@ -185,7 +231,13 @@ class _RecommendationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return _EmptyCard(onNavigate: onNavigate);
+    const defaultTitle = _CardTitle('오늘의 추천 코디');
+    if (uid == null) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        defaultTitle,
+        _EmptyCard(onNavigate: onNavigate),
+      ]);
+    }
 
     return StreamBuilder<RecommendationEntry?>(
       stream: FirestoreService.recommendationStream(uid),
@@ -200,44 +252,95 @@ class _RecommendationCard extends StatelessWidget {
               };
               final matchedItems =
                   entry.itemIds.map((id) => byId[id]).whereType<WardrobeItem>().toList();
-              if (matchedItems.isEmpty) return _EmptyCard(onNavigate: onNavigate);
-              return _RecommendationCardBody(
-                key: ValueKey(entry.id),
-                entry: entry,
-                matchedItems: matchedItems,
-                onTap: () => onOpenFittingRoom(matchedItems),
+              if (matchedItems.isEmpty) {
+                return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  defaultTitle,
+                  _EmptyCard(onNavigate: onNavigate),
+                ]);
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _CardTitle(
+                      homeRecommendationTitle(
+                          targetDate: entry.targetDate, tpoTag: entry.targetTpoTag, now: DateTime.now()),
+                      isDemo: entry.isDemo),
+                  _RecommendationCardBody(
+                    key: ValueKey(entry.id),
+                    entry: entry,
+                    matchedItems: matchedItems,
+                    onTap: () => onOpenFittingRoom(matchedItems),
+                  ),
+                ],
               );
             },
           );
         }
-        return ValueListenableBuilder<String?>(
-          valueListenable: AgentActivity.current,
-          builder: (context, activity, _) {
-            if (activity == null) return _EmptyCard(onNavigate: onNavigate);
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Center(
-                child: Column(
-                  children: [
-                    const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textMuted),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            defaultTitle,
+            ValueListenableBuilder<String?>(
+              valueListenable: AgentActivity.current,
+              builder: (context, activity, _) {
+                if (activity == null) return _UpcomingAwareEmptyCard(uid: uid, onNavigate: onNavigate);
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textMuted),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          activity,
+                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      activity,
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// 추천이 없을 때 — 오늘~+3일에 planned 일정도 없으면 일정을 넣도록 안내한다
+// (선제 추천의 대상 범위와 같다, AgentPlanner._proactiveHorizonDays).
+class _UpcomingAwareEmptyCard extends StatelessWidget {
+  final String uid;
+  final ValueChanged<int> onNavigate;
+
+  const _UpcomingAwareEmptyCard({required this.uid, required this.onNavigate});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return StreamBuilder<List<OutfitCalendarEntry>>(
+      stream: FirestoreService.calendarEntriesStreamForRange(
+          uid, today, today.add(const Duration(days: 3))),
+      builder: (context, snapshot) {
+        final hasPlanned = (snapshot.data ?? const <OutfitCalendarEntry>[]).any((e) => e.isPlanned);
+        if (!snapshot.hasData || hasPlanned) return _EmptyCard(onNavigate: onNavigate);
+        return _EmptyCard(
+          onNavigate: onNavigate,
+          subtitle: '일정을 추가하면 AI 비서가 미리 코디를 준비해요',
+          buttonLabel: '캘린더에 일정 추가하기',
+          targetTab: 3,
+          icon: Icons.event_outlined,
         );
       },
     );
@@ -310,6 +413,9 @@ class _RecommendationCardBodyState extends State<_RecommendationCardBody> {
   Widget build(BuildContext context) {
     final entry = widget.entry;
     final items = widget.matchedItems;
+    // 날씨 문구 자리 — 예보 없이 만든 추천이면 그 사실을 말한다(§9-1 c).
+    final weatherLine =
+        entry.weatherNote ?? (entry.forecastMissing ? RecommendationEntry.forecastMissingNote : null);
     return GestureDetector(
       onTap: widget.onTap,
       child: ClipRRect(
@@ -392,8 +498,33 @@ class _RecommendationCardBodyState extends State<_RecommendationCardBody> {
             // 풀폭 배너)와 겹치지 않도록 배너를 새로 쌓지 않고, 회색 배경 한
             // 칸에 아이콘+텍스트 색상만 다르게 줄줄이 묶어 카드가 과하게
             // 길어지지 않게 한다.
+            // 다시 준비하는 동안 — 기존 진행 표시(AgentActivity)를 카드 안에도 보여 준다(§9-1 d).
+            ValueListenableBuilder<String?>(
+              valueListenable: AgentActivity.current,
+              builder: (context, activity, _) => activity == null
+                  ? const SizedBox.shrink()
+                  : Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      color: AppColors.background,
+                      child: Row(
+                        children: [
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 1.5, color: AppColors.textMuted),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(activity,
+                                style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    ),
+            ),
             if (entry.optionalNote != null ||
-                entry.weatherNote != null ||
+                weatherLine != null ||
                 entry.confidenceNote != null ||
                 entry.repairNote != null)
               Container(
@@ -409,19 +540,19 @@ class _RecommendationCardBodyState extends State<_RecommendationCardBody> {
                         color: AppColors.amber,
                         text: entry.optionalNote!,
                       ),
-                    if (entry.weatherNote != null)
+                    if (weatherLine != null)
                       Padding(
                         padding: EdgeInsets.only(top: entry.optionalNote != null ? 6 : 0),
                         child: _AgentNoteLine(
                           icon: Icons.cloud_outlined,
                           color: AppColors.teal,
-                          text: entry.weatherNote!,
+                          text: weatherLine,
                         ),
                       ),
                     if (entry.confidenceNote != null)
                       Padding(
                         padding: EdgeInsets.only(
-                            top: (entry.optionalNote != null || entry.weatherNote != null)
+                            top: (entry.optionalNote != null || weatherLine != null)
                                 ? 6
                                 : 0),
                         child: _AgentNoteLine(
@@ -434,7 +565,7 @@ class _RecommendationCardBodyState extends State<_RecommendationCardBody> {
                       Padding(
                         padding: EdgeInsets.only(
                             top: (entry.optionalNote != null ||
-                                    entry.weatherNote != null ||
+                                    weatherLine != null ||
                                     entry.confidenceNote != null)
                                 ? 6
                                 : 0),
@@ -461,7 +592,7 @@ class _RecommendationCardBodyState extends State<_RecommendationCardBody> {
                     children: [
                       const Expanded(
                         child: Text(
-                          '오늘의 추천 셋업',
+                          '추천 셋업',
                           style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 15,
@@ -477,10 +608,8 @@ class _RecommendationCardBodyState extends State<_RecommendationCardBody> {
                   ),
                   if (entry.summaryText.isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text(
+                    ExpandableText(
                       entry.summaryText,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.5),
                     ),
                   ],
@@ -567,8 +696,18 @@ class _RecommendationItemImage extends StatelessWidget {
 // ── 추천 코디가 아직 없을 때의 빈 상태 ────────────────────
 class _EmptyCard extends StatelessWidget {
   final ValueChanged<int> onNavigate;
+  final String subtitle;
+  final String buttonLabel;
+  final int targetTab;
+  final IconData icon;
 
-  const _EmptyCard({required this.onNavigate});
+  const _EmptyCard({
+    required this.onNavigate,
+    this.subtitle = 'AI 피팅을 먼저 사용해 보세요',
+    this.buttonLabel = 'AI 피팅 하러 가기',
+    this.targetTab = 2,
+    this.icon = Icons.checkroom_outlined,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -581,29 +720,30 @@ class _EmptyCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Icon(Icons.checkroom_outlined, color: AppColors.textDisabled, size: 30),
+          Icon(icon, color: AppColors.textDisabled, size: 30),
           const SizedBox(height: 12),
           const Text(
             '아직 추천 코디가 없어요',
             style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'AI 피팅을 먼저 사용해 보세요',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 16),
           GestureDetector(
-            onTap: () => onNavigate(2),
+            onTap: () => onNavigate(targetTab),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
               decoration: BoxDecoration(
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Text(
-                'AI 피팅 하러 가기',
-                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+              child: Text(
+                buttonLabel,
+                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -954,22 +1094,30 @@ class _WeeklyCalendarSectionState extends State<_WeeklyCalendarSection> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: tag.color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(tag.icon, size: 13, color: tag.color),
-                        const SizedBox(width: 4),
-                        Text(tag.label,
-                            style: TextStyle(
-                                color: tag.color, fontSize: 12, fontWeight: FontWeight.w700)),
-                      ],
-                    ),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: tag.color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(tag.icon, size: 13, color: tag.color),
+                            const SizedBox(width: 4),
+                            Text(tag.label,
+                                style: TextStyle(
+                                    color: tag.color, fontSize: 12, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                      ),
+                      if (entry.isDemo) const DemoBadge(),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Text(summary,

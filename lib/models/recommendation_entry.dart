@@ -90,6 +90,21 @@ class RecommendationEntry {
   // ── 날씨 관찰 ── 선제 추천 대상 날짜의 예보(비/기온)가 특이할 때 남기는
   // 문구. null이면 그 날 날씨가 평이했거나 예보 조회에 실패한 경우.
   final String? weatherNote;
+  // 데모 옷장 예시 일정(OutfitCalendarEntry.isDemo)용으로 만든 추천인지 — "데모 옷장
+  // 비우기"가 함께 지운다(docs/task_demo_flow_v1.md 부분 B-2).
+  final bool isDemo;
+  // 위 forecast* 값이 설정 진단의 가정 예보에서 왔는지 — 가정 예보가 관련된 다시
+  // 계획은 횟수 상한에 넣지 않는다(docs/task_demo_flow_v1.md §2-4).
+  final bool forecastAssumed;
+  // 만들 때 예보 조회에 실패해 forecast* 스냅샷이 없는지(docs/task_demo_flow_v1.md §9 (1)) —
+  // 예보를 얻게 되면 한 번 다시 계획한다. 이 필드가 없는 예전 추천은 그대로 비교 불가.
+  final bool forecastMissing;
+  // forecastMissing 추천을 예보 조회 성공 시점에 자동으로 다시 준비해 봤는지(§9-1) —
+  // 추천 하나당 최대 1회.
+  final bool forecastRetried;
+
+  // 예보 없이 만든 추천의 날씨 문구 자리 안내(§9-1 c).
+  static const forecastMissingNote = '예보를 아직 확인하지 못했어요 — 확인되면 다시 준비해요';
 
   const RecommendationEntry({
     required this.id,
@@ -122,6 +137,10 @@ class RecommendationEntry {
     this.replanCount = 0,
     this.confidenceNote,
     this.weatherNote,
+    this.isDemo = false,
+    this.forecastAssumed = false,
+    this.forecastMissing = false,
+    this.forecastRetried = false,
   });
 
   factory RecommendationEntry.fromFirestore(DocumentSnapshot doc) {
@@ -172,6 +191,10 @@ class RecommendationEntry {
       replanCount: data['replanCount'] as int? ?? 0,
       confidenceNote: data['confidenceNote'] as String?,
       weatherNote: data['weatherNote'] as String?,
+      isDemo: data['isDemo'] as bool? ?? false,
+      forecastAssumed: data['forecastAssumed'] as bool? ?? false,
+      forecastMissing: data['forecastMissing'] as bool? ?? false,
+      forecastRetried: data['forecastRetried'] as bool? ?? false,
     );
   }
 
@@ -211,6 +234,10 @@ class RecommendationEntry {
         if (replanCount > 0) 'replanCount': replanCount,
         if (confidenceNote != null) 'confidenceNote': confidenceNote,
         if (weatherNote != null) 'weatherNote': weatherNote,
+        if (isDemo) 'isDemo': isDemo,
+        if (forecastAssumed) 'forecastAssumed': forecastAssumed,
+        if (forecastMissing) 'forecastMissing': forecastMissing,
+        if (forecastRetried) 'forecastRetried': forecastRetried,
       };
 
   // "관련 코디 이력" 프롬프트 섹션에 한 줄씩 삽입할 요약. 실제로 다른 조합을

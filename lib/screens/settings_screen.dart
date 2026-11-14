@@ -15,6 +15,7 @@ import '../services/weather_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/notification_service.dart';
 import 'agent_log_screen.dart';
+import 'usage_guide_screen.dart';
 import 'body_profile_screen.dart';
 import 'scrap_screen.dart';
 
@@ -71,6 +72,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ForecastAssumption.none: '없음',
     ForecastAssumption.rain: '비',
     ForecastAssumption.hot: '더운 날',
+    ForecastAssumption.mild: '온화한 날',
+    ForecastAssumption.cool: '선선한 날',
     ForecastAssumption.cold: '추운 날',
   };
 
@@ -264,7 +267,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('데모 옷장 비우기'),
         content: const Text(
-          '데모로 불러온 옷만 삭제됩니다.\n직접 등록한 옷은 그대로 남습니다.',
+          '데모로 불러온 옷과 예시 일정, 그 일정용 추천만 삭제됩니다.\n직접 등록한 옷과 일정은 그대로 남습니다.',
         ),
         actions: [
           TextButton(
@@ -281,10 +284,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirmed != true || !mounted) return;
     try {
       final count = await FirestoreService.clearDemoWardrobe(uid);
+      // 예시 일정(docs/task_demo_flow_v1.md 부분 B-2)과 그 추천도 함께 — 옷만 지우면
+      // 홈에 빈 조합 카드와 일정이 남는다.
+      final plans = await FirestoreService.clearDemoPlans(uid);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('데모 옷장 $count벌을 삭제했습니다.'),
+            content: Text('데모 옷장 $count벌${plans > 0 ? '과 예시 일정 $plans건' : ''}을 삭제했습니다.'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -355,6 +361,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (confirmed == true) {
+      // 사용 가이드의 "이번 실행에서 띄웠음"은 계정 단위 — 로그아웃하면 지운다(§4-1).
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) UsageGuide.forgetLaunch(uid);
       await FirebaseAuth.instance.signOut();
       try {
         await GoogleAuthService.signOut();
@@ -576,6 +585,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 28),
                 const _SectionLabel('설정'),
                 _SettingsRow(label: '내 스크랩', onTap: _openScraps),
+                _SettingsRow(label: '사용 가이드 다시 보기', onTap: () => UsageGuide.open(context)),
                 _SettingsRow(
                   label: '테스트 알림 보내기',
                   onTap: () =>
@@ -617,7 +627,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (uid != null)
                   _SettingsRow(
                     label: '데모 옷장 비우기',
-                    sub: '데모로 불러온 옷만 삭제됩니다',
+                    sub: '데모로 불러온 옷과 예시 일정만 삭제됩니다',
                     onTap: _clearDemoWardrobe,
                   ),
                 if (showBackgroundDiagnostics) ...[

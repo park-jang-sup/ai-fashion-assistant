@@ -43,6 +43,13 @@ class FittingJobController extends ChangeNotifier {
   // 실패면 null / 빈 리스트 — 카드는 그때 지금 순서대로 보여 준다.
   List<StyleCandidate>? analysisCandidates;
   List<int> analysisAiPicks = const [];
+  // 분석 후보를 날씨를 써서 골랐으면 그날 최고기온(카드 줄 위 안내, §10-1-3).
+  double? analysisWeatherMaxTempC;
+  // 분석·피팅을 시작한 조합의 서명(comboSignature) — 그 뒤 코디보드가 바뀌면 화면이
+  // "조합이 바뀌었어요 — 다시 분석해 보세요"를 붙인다(docs/task_demo_flow_v1.md 부분 D).
+  // 예전엔 조합이 바뀌어도 이전 조합의 결과를 그대로 보여 줬다.
+  String? analyzedComboSignature;
+  String? fittedComboSignature;
 
   Uint8List? fittingImage;
   String? fittingImageUrl; // 캐시에서 가져온 결과 (Storage URL, bytes 아님)
@@ -76,9 +83,11 @@ class FittingJobController extends ChangeNotifier {
     if (isAnalyzing || clothingItems.isEmpty) return;
 
     isAnalyzing = true;
+    analyzedComboSignature = comboSignature(clothingItems);
     analysisResult = null;
     analysisError = null;
     analysisCandidates = null;
+    analysisWeatherMaxTempC = null;
     analysisAiPicks = const [];
     notifyListeners();
 
@@ -99,7 +108,7 @@ class FittingJobController extends ChangeNotifier {
       final candidatesFuture = loadStyleCandidates(clothingItems, maxItems: analysisCandidateCount)
           .catchError((Object e) {
         debugPrint('[STYLE-RECOMMEND] 분석용 후보 계산 실패(후보 없이 진행): $e');
-        return const <StyleCandidate>[];
+        return StyleCandidateSet.empty;
       });
 
       final itemsWithAttributes = await _resolveAttributes(clothingItems);
@@ -116,8 +125,10 @@ class FittingJobController extends ChangeNotifier {
       debugPrint('[HISTORY] 관련 이력 ${relevantHistory.lines.length}건 조회됨'
           '${recentHistoryText != null ? ' — 프롬프트에 전달:\n$recentHistoryText' : ' (없음, 섹션 생략)'}');
 
-      final candidates = await candidatesFuture;
+      final candidateSet = await candidatesFuture;
+      final candidates = candidateSet.candidates;
       analysisCandidates = candidates;
+      analysisWeatherMaxTempC = candidateSet.weatherMaxTempC;
       final candidateLines =
           candidates.isEmpty ? null : candidatePromptLines(candidates, clothingItems);
       // 모델이 낸 원문(raw)은 여기서만 다루고, 화면·이력에는 [추천후보] 줄을 지운
@@ -260,6 +271,7 @@ class FittingJobController extends ChangeNotifier {
     if (isGeneratingFitting || clothingItems.isEmpty) return;
 
     isGeneratingFitting = true;
+    fittedComboSignature = comboSignature(clothingItems);
     fittingImage = null;
     fittingImageUrl = null;
     fittingCacheKey = null;

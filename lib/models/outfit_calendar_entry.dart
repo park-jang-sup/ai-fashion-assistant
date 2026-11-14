@@ -29,6 +29,10 @@ class OutfitCalendarEntry {
   final String? recommendationId; // 에이전트 추천에서 왔으면 그 문서 id
   final String status; // statusPlanned | statusRecorded
   final DateTime createdAt;
+  // 데모 옷장 불러오기가 넣은 예시 일정인지(docs/task_demo_flow_v1.md 부분 B-2) —
+  // "데모 옷장 비우기"가 이 표시로 골라 지운다. 기존 필드(source 등)는 뜻이 달라
+  // 섞지 않는다. firestore.rules는 calendar 문서 필드를 제한하지 않는다.
+  final bool isDemo;
 
   const OutfitCalendarEntry({
     required this.id,
@@ -42,6 +46,7 @@ class OutfitCalendarEntry {
     this.recommendationId,
     this.status = statusRecorded,
     required this.createdAt,
+    this.isDemo = false,
   });
 
   // 착장 없이 태그만 있는 미래 예정인지. status 우선, 없으면 itemIds 비어있음으로 판단.
@@ -65,6 +70,7 @@ class OutfitCalendarEntry {
       recommendationId: data['recommendationId'] as String?,
       status: data['status'] as String? ?? statusRecorded,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isDemo: data['isDemo'] as bool? ?? false,
     );
   }
 
@@ -82,5 +88,6 @@ class OutfitCalendarEntry {
         if (recommendationId != null) 'recommendationId': recommendationId,
         'status': status,
         'createdAt': FieldValue.serverTimestamp(),
+        if (isDemo) 'isDemo': isDemo,
       };
 }

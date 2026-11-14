@@ -205,6 +205,36 @@ class FirestoreService {
     return docs.length;
   }
 
+  // 데모 옷장의 "전신" 사진 중 첫 번째(가장 먼저 등록된 것) — 데모 옷장을 불러온 뒤
+  // 전신 사진이 비어 있으면 자동으로 골라 둔다(docs/task_demo_flow_v1.md §2-5 추가).
+  // 동등 조건만이라 복합 인덱스가 필요 없고, 정렬은 기기에서 한다.
+  static Future<WardrobeItem?> firstDemoFullBodyItem(String uid) async {
+    final snapshot = await _db
+        .collection(_wardrobeCol)
+        .where('ownerUid', isEqualTo: uid)
+        .where('isDemo', isEqualTo: true)
+        .where('category', isEqualTo: '전신')
+        .get();
+    final items = snapshot.docs.map((d) => WardrobeItem.fromFirestore(d)).toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return items.isEmpty ? null : items.first;
+  }
+
+  // 데모 옷장 예시 일정(docs/task_demo_flow_v1.md 부분 B-2) — 이 일정과 이 일정용으로
+  // 만들어진 추천을 지운다(둘 다 isDemo:true). "데모 옷장 비우기"가 옷과 함께 부른다.
+  // 반환값은 지운 일정 수.
+  static Future<int> clearDemoPlans(String uid) async {
+    final user = _db.collection(_usersCol).doc(uid);
+    final plans = await user.collection(_calendarCol).where('isDemo', isEqualTo: true).get();
+    final recs = await user.collection(_recommendationsCol).where('isDemo', isEqualTo: true).get();
+    final batch = _db.batch();
+    for (final d in [...plans.docs, ...recs.docs]) {
+      batch.delete(d.reference);
+    }
+    if (plans.docs.isNotEmpty || recs.docs.isNotEmpty) await batch.commit();
+    return plans.docs.length;
+  }
+
   // ── 가상 피팅 결과 캐시 (doc id = 사용자 사진+옷 조합의 SHA-256 해시) ──
   static Future<String?> getCachedFittingImageUrl(String cacheKey) async {
     final doc = await _db.collection(_fittingCacheCol).doc(cacheKey).get();
@@ -430,6 +460,23 @@ class FirestoreService {
     } catch (e) {
       debugPrint('[FEEDBACK] 기간별 추천 조회 실패: $e');
       return [];
+    }
+  }
+
+  // 예보 없이 만든 추천을 자동으로 다시 준비해 봤다고 표시(docs/task_demo_flow_v1.md §9-1) —
+  // 추천 하나당 최대 1회를 보장하는 표시라, 실패하면 false를 돌려 재시도하지 않게 한다.
+  static Future<bool> markForecastRetriedSilently(String uid, String recId) async {
+    try {
+      await _db
+          .collection(_usersCol)
+          .doc(uid)
+          .collection(_recommendationsCol)
+          .doc(recId)
+          .update({'forecastRetried': true});
+      return true;
+    } catch (e) {
+      debugPrint('[PLAN] 예보 재시도 표시 실패: $e');
+      return false;
     }
   }
 
@@ -756,6 +803,25 @@ class FirestoreService {
   }
 
   // 해당 월(1일 00:00 ~ 다음달 1일 00:00 미만) 기록 스트림 — 캘린더 화면용.
+  // 홈 빈 상태 안내(docs/task_demo_flow_v1.md 부분 B-3)가 다가오는 일정 유무를 실시간으로
+  // 보기 위한 스트림 — calendarEntriesForRange와 같은 조건(날짜 범위 + 같은 필드 orderBy).
+  static Stream<List<OutfitCalendarEntry>> calendarEntriesStreamForRange(
+    String uid,
+    DateTime from,
+    DateTime to,
+  ) {
+    return _db
+        .collection(_usersCol)
+        .doc(uid)
+        .collection(_calendarCol)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(to))
+        .orderBy('date')
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => OutfitCalendarEntry.fromFirestore(doc)).toList());
+  }
+
   static Stream<List<OutfitCalendarEntry>> calendarEntriesForMonth(
     String uid,
     int year,

@@ -9,10 +9,12 @@ import 'package:image_picker/image_picker.dart';
 import '../constants/app_colors.dart';
 import '../data/wardrobe_data.dart' show categories;
 import '../models/agent_task.dart';
+import '../models/outfit_calendar_entry.dart';
 import '../models/clothing_attributes.dart';
 import '../models/clothing_size.dart';
 import '../models/user_profile.dart';
 import '../models/wardrobe_item.dart';
+import '../services/agent_activity.dart';
 import '../services/agent_planner.dart';
 import '../services/embedding_service.dart';
 import '../services/fit_predictor.dart';
@@ -127,8 +129,11 @@ Future<ClothingSize> _scanSizeChartWithRetry({
 
 class WardrobeScreen extends StatefulWidget {
   final ValueChanged<WardrobeItem>? onSelectItem;
+  // 데모 옷장을 불러온 뒤 데모 전신 사진(첫 번째)을 넘긴다 — 피팅룸 전신 사진이 비어
+  // 있을 때만 쓰는 판단은 받는 쪽(main.dart)이 한다(docs/task_demo_flow_v1.md §2-5).
+  final ValueChanged<WardrobeItem>? onDemoFullBody;
 
-  const WardrobeScreen({super.key, this.onSelectItem});
+  const WardrobeScreen({super.key, this.onSelectItem, this.onDemoFullBody});
 
   @override
   State<WardrobeScreen> createState() => _WardrobeScreenState();
@@ -914,13 +919,33 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     });
     try {
       final count = await FirestoreService.seedDemoWardrobe(uid);
+      // 예시 일정(docs/task_demo_flow_v1.md 부분 B-2) — 실패해도 옷장 불러오기는
+      // 성공으로 둔다.
+      OutfitCalendarEntry? demoPlan;
+      if (count > 0) {
+        try {
+          final fullBody = await FirestoreService.firstDemoFullBodyItem(uid);
+          if (fullBody != null) widget.onDemoFullBody?.call(fullBody);
+        } catch (e) {
+          debugPrint('[DEMO] 데모 전신 사진 선택 실패(무시): $e');
+        }
+        try {
+          demoPlan = await AgentPlanner.addDemoPlanIfNoneSoon(uid);
+        } catch (e) {
+          debugPrint('[DEMO] 예시 일정 추가 실패(무시): $e');
+        }
+      }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.showSnackBar(
           SnackBar(
-            content: Text('데모 옷장 $count벌을 불러왔습니다.'),
+            content: Text(demoPlan == null
+                ? '데모 옷장 $count벌을 불러왔습니다.'
+                : '데모 옷장 $count벌을 불러왔어요. 내일 예시 일정도 함께 넣었어요 — AI 비서가 [${demoPlan.tpoTag}] 코디를 준비하고 있어요'),
             behavior: SnackBarBehavior.floating,
           ),
         );
+        if (demoPlan != null) unawaited(_prepareDemoPlan(uid, demoPlan, messenger));
       }
     } catch (e) {
       // 이 경로는 폴백이 "아무것도 하지 않음"이면 안 된다(F'.1.4) — 실패를
@@ -936,6 +961,26 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  // 예시 일정을 넣은 직후 선제 추천을 한 번 돌린다 — 사용자가 백그라운드 주기를
+  // 기다리지 않고 추천과 활동 내역을 바로 보게 한다. 진행 중에는 홈 추천 카드
+  // 자리에 AgentActivity 문구가 뜬다. 화면을 떠나도 끝까지 돌도록 context 대신
+  // 미리 잡아 둔 messenger만 쓴다.
+  Future<void> _prepareDemoPlan(
+      String uid, OutfitCalendarEntry plan, ScaffoldMessengerState messenger) async {
+    AgentActivity.current.value = '내일 [${plan.tpoTag}] 일정용 코디를 준비 중...';
+    try {
+      final result = await AgentPlanner.runProactiveCheck(uid, maxPlans: 2, manual: true);
+      messenger.showSnackBar(SnackBar(
+        content: Text(result.created > 0
+            ? '${result.firstLabel ?? '내일'} 코디를 준비했어요 — 홈에서 확인하세요'
+            : '코디를 준비하지 못했어요 — AI 비서 활동 내역에서 이유를 확인할 수 있어요'),
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      AgentActivity.current.value = null;
     }
   }
 

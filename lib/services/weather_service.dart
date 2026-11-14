@@ -127,7 +127,31 @@ class WeatherService {
   static const _defaultLongitude = 126.98;
   static const _baseUrl = 'https://api.open-meteo.com/v1/forecast';
 
-  static final http.Client _client = http.Client();
+  static http.Client _client = http.Client();
+  // 요청 시한 — 실제 값은 10초 그대로다. 테스트만 짧게 바꿔 시간 초과 경로를 확인한다.
+  static Duration _requestTimeout = const Duration(seconds: 10);
+
+  @visibleForTesting
+  static void configureForTest({http.Client? client, Duration? requestTimeout}) {
+    if (client != null) _client = client;
+    if (requestTimeout != null) _requestTimeout = requestTimeout;
+    _cache = null;
+    _cachedAt = null;
+  }
+
+  // 시간 초과·네트워크 오류면 한 번만 바로 다시 시도한다(docs/task_demo_flow_v1.md §9-2) —
+  // 2026-11-14 실기기에서 첫 조회가 10초 시간 초과로 실패해 예시 일정 추천이 날씨 없이
+  // 만들어졌다. HTTP 오류 응답(200 아님)·응답 파싱 실패는 다시 시도하지 않는다. 두 번 다
+  // 실패하면 예외를 그대로 던져 호출부가 지금과 같은 실패 처리를 한다.
+  static Future<http.Response> _getWithOneRetry(Uri uri) async {
+    try {
+      return await _client.get(uri).timeout(_requestTimeout);
+    } on Object catch (e) {
+      if (e is! TimeoutException && e is! SocketException && e is! http.ClientException) rethrow;
+      debugPrint('[WEATHER] 첫 조회 실패($e) — 한 번 다시 시도');
+      return await _client.get(uri).timeout(_requestTimeout);
+    }
+  }
 
   // 같은 세션에서 반복 호출하지 않게 메모리 캐시(프로세스 생존 동안만,
   // Firestore 저장 없음). 좌표를 캐시 키에 포함시킨다 — 그래야 지역을
@@ -180,7 +204,7 @@ class WeatherService {
         'timezone': 'Asia/Seoul',
         'forecast_days': '7',
       });
-      final response = await _client.get(uri).timeout(const Duration(seconds: 10));
+      final response = await _getWithOneRetry(uri);
       if (response.statusCode != 200) {
         debugPrint('[WEATHER] 조회 실패: HTTP ${response.statusCode}');
         lastFetchOk = false;
@@ -246,6 +270,10 @@ class WeatherService {
     final (maxT, minT, rain, code) = switch (a) {
       ForecastAssumption.rain => (17.0, 11.0, 80, 63),
       ForecastAssumption.hot => (31.0, 24.0, 10, 0),
+      // 온화·선선(docs/task_demo_flow_v1.md §2-4) — 각 기온대(최고 18~25 / 10~18°C)의
+      // 가운데쯤. 온화는 최저 10°C 이상이라 일교차 아우터가 걸리지 않는다.
+      ForecastAssumption.mild => (22.0, 14.0, 10, 1),
+      ForecastAssumption.cool => (14.0, 8.0, 10, 2),
       ForecastAssumption.cold => (3.0, -3.0, 10, 3),
       ForecastAssumption.none => (20.0, 12.0, 0, 0),
     };
@@ -265,4 +293,4 @@ class WeatherService {
   }
 }
 
-enum ForecastAssumption { none, rain, hot, cold }
+enum ForecastAssumption { none, rain, hot, mild, cool, cold }

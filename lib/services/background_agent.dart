@@ -260,7 +260,7 @@ class BackgroundAgent {
       await Future.delayed(const Duration(seconds: 3));
       // 6-3. 선제 추천. WorkManager 실행 시간 한도(~10분) 때문에 가장
       // 가까운 일정 2건까지만 처리한다(앱 내 호출은 제한 없음, 영향 없음).
-      final result = await AgentPlanner.runProactiveCheck(uid, maxPlans: 2);
+      final result = await AgentPlanner.runProactiveCheck(uid, maxPlans: 2, manual: force);
       resultCreated = result.created;
       // 6-4. 새 추천이 생겼을 때만 알림 — 없는데 알림이 오면 사용자가 금방
       // 끈다. 하루 상한은 이미 빈도 가드(10시간)가 맡고 있다.

@@ -140,7 +140,7 @@ class TpoMatchPolicy {
   // 보려면 이 축만 단독으로 켠 프리셋(fillOnly)이 필요하다(§3-1).
   final bool fillOptionalFromRelaxed;
 
-  // 그날 예보가 특이할 때(비·더위·추위 — weather_fit.dart) 피하는 게 좋은 옷에
+  // 그날 예보로 피하는 게 좋은 옷(비 규칙·기온대 감점 표 — weather_fit.dart)에
   // 매길 감점(docs/task_agent_grounding_v1.md §4-1). recencyPenalty와 같은
   // 방식으로 **정렬에만** 쓰고 격식 적합 자격(keep)에는 쓰지 않는다 — 자격은
   // 격식이, 순서는 최근도·날씨가 정한다. findForTpo에 예보를 넘기지 않으면(기본)
@@ -263,6 +263,16 @@ class OutfitMatcher {
   // findForTpo의 무채색 보너스와 추천 이유 템플릿(outfit_reason.dart)이
   // "뉴트럴끼리인지/포인트 컬러인지" 판단할 때 공유하는 공개 창구.
   static bool isNeutralColor(String color) => ColorTaxonomy.resolve(color).isNeutral;
+
+  // 격식 적합도 점수가 0보다 큰가 — findForTpo와 같은 기준(차이 0·1이면 참, 격식 라벨이
+  // 없거나 모르는 값이면 findForTpo처럼 0.5로 보아 참). 기온대 아우터 계절 구분
+  // (weather_fit.dart, docs/task_demo_flow_v1.md §2-8 결정 2)이 "일정 격식과 한 단계
+  // 이내"를 가릴 때 쓴다. 점수 계산 자체는 바꾸지 않는다.
+  static bool isWithinOneFormalityStep(String formalityHint, String? itemFormality) {
+    final rank = _formalityRank[itemFormality];
+    if (rank == null) return true;
+    return _formalityFitScore(_formalityRank[formalityHint] ?? 0, rank) > 0;
+  }
 
   // 기존 단일 조합 API — 후보 목록의 1순위(카테고리별 최고점 조합)를 그대로
   // 돌려준다. 자기 평가 루프를 쓰지 않는 호출부를 위해 유지한다.
@@ -490,8 +500,8 @@ class OutfitMatcher {
     // 최근에 추천/착용된 아이템 id. policy.recencyPenalty와 함께 동작하며,
     // 둘 중 하나라도 비어 있으면(기본값) 정렬 결과가 현행과 완전히 같다.
     Set<String> recentItemIds = const {},
-    // 그날 예보(docs/task_agent_grounding_v1.md §4-1). null이거나 특이 조건이
-    // 없으면 정렬 결과가 현행과 완전히 같다(test/outfit_matcher_weather_test.dart).
+    // 그날 예보(docs/task_agent_grounding_v1.md §4-1, task_demo_flow_v1.md §2-2).
+    // null이면 정렬 결과가 현행과 완전히 같다(test/weather_fit_test.dart).
     DailyWeather? weather,
   }) {
     final targetRank = _formalityRank[formalityHint] ?? 0;
@@ -520,13 +530,16 @@ class OutfitMatcher {
     // 내려간 아이템이 탈락하면 최근에 뭘 입었느냐가 폴백 판정을 바꿔버린다.
     // 자격은 격식이, 순서는 최근도가 정한다.
     final applyRecency = policy.recencyPenalty > 0 && recentItemIds.isNotEmpty;
-    final weatherFlags = weatherFlagsFor(weather);
-    final applyWeather = policy.weatherPenalty > 0 && weatherFlags.isNotEmpty;
+    // 감점 대상은 비 규칙 + 기온대 감점 표(weather_fit.dart, docs/task_demo_flow_v1.md
+    // §2-2). 기온대에 명백히 어긋나는 옷을 빼는 일은 여기가 아니라 호출부가 넘기는
+    // wardrobe에서 한다(filterWardrobeForBand).
+    final weatherCtx = weatherContextFor(weather, wardrobe: wardrobe);
+    final applyWeather = policy.weatherPenalty > 0 && weatherCtx != null;
     double rankScore(({WardrobeItem item, double score}) c) {
       var s = applyRecency && recentItemIds.contains(c.item.id)
           ? c.score - policy.recencyPenalty
           : c.score;
-      if (applyWeather && isWeatherPenaltyTarget(c.item, weatherFlags)) {
+      if (applyWeather && isWeatherPenaltyTarget(c.item, weatherCtx)) {
         s -= policy.weatherPenalty;
       }
       return s;

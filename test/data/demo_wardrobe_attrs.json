@@ -1,0 +1,2021 @@
+{
+ "source": "Firestore demo_wardrobe 2026-11-14 읽기 전용 조사 — 매칭에 쓰는 속성만. 문서 id는 순번으로 바꿨고(원래 id 정렬 순서 유지) 이미지 URL은 없다",
+ "items": [
+  {
+   "id": "demo001",
+   "category": "액세서리",
+   "subCategory": "모자",
+   "attributes": {
+    "color": "블랙",
+    "style": "스포티",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "볼캡",
+     "야구모자",
+     "스트릿웨어",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo002",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "화이트",
+    "style": "스포티",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "반팔",
+     "여름",
+     "스트릿웨어",
+     "블록코어"
+    ]
+   }
+  },
+  {
+   "id": "demo003",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "미니멀",
+    "pattern": "무지",
+    "formality": "세미포멀",
+    "fit": "오버사이즈",
+    "tags": [
+     "와이드팬츠",
+     "슬랙스",
+     "봄가을",
+     "벨티드"
+    ]
+   }
+  },
+  {
+   "id": "demo004",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "차콜",
+    "style": "미니멀",
+    "pattern": "무지",
+    "formality": "세미포멀",
+    "fit": "레귤러",
+    "tags": [
+     "슬랙스",
+     "가을",
+     "겨울",
+     "울혼방"
+    ]
+   }
+  },
+  {
+   "id": "demo005",
+   "category": "액세서리",
+   "subCategory": "모자",
+   "attributes": {
+    "color": "브라운",
+    "style": "캐주얼",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "볼캡",
+     "워싱",
+     "코튼",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo006",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블루",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "세미포멀",
+    "fit": "레귤러",
+    "tags": [
+     "셔츠",
+     "반팔",
+     "옥스포드",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo007",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "스카이블루",
+    "style": "유니크",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "와이드핏",
+    "tags": [
+     "랩스타일",
+     "레이어드",
+     "리본스트랩",
+     "린넨혼방"
+    ]
+   }
+  },
+  {
+   "id": "demo008",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "옐로우",
+    "style": "캐주얼",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "반팔",
+     "면",
+     "여름",
+     "레트로"
+    ]
+   }
+  },
+  {
+   "id": "demo009",
+   "category": "액세서리",
+   "subCategory": "모자",
+   "attributes": {
+    "color": "블루",
+    "style": "스포티",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "볼캡",
+     "야구모자",
+     "코튼",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo010",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블루",
+    "style": "스포티",
+    "pattern": "도트",
+    "formality": "캐주얼",
+    "fit": "와이드",
+    "tags": [
+     "트레이닝팬츠",
+     "사이드라인",
+     "밴딩팬츠",
+     "글로시"
+    ]
+   }
+  },
+  {
+   "id": "demo011",
+   "category": "전신",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "미니멀",
+    "pattern": "무지",
+    "formality": "세미포멀",
+    "fit": "레귤러",
+    "tags": [
+     "올블랙",
+     "슬랙스",
+     "터틀넥",
+     "가을/겨울"
+    ]
+   }
+  },
+  {
+   "id": "demo012",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "캔버스",
+     "스트릿",
+     "데일리"
+    ]
+   }
+  },
+  {
+   "id": "demo013",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "화이트",
+    "style": "스트릿",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "가죽",
+     "사계절",
+     "클래식"
+    ]
+   }
+  },
+  {
+   "id": "demo014",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스포티",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "러닝화",
+     "메쉬",
+     "쿠셔닝",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo015",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "미니멀",
+    "pattern": "무지",
+    "formality": "세미포멀",
+    "fit": "레귤러",
+    "tags": [
+     "카라티",
+     "니트",
+     "반팔",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo016",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "데님",
+     "와이드팬츠",
+     "턱팬츠",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo017",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "데님",
+     "반팔셔츠",
+     "스티치",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo018",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "화이트",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "반팔",
+     "그래피티",
+     "면",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo019",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트리트",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "와이드",
+    "tags": [
+     "데님쇼츠",
+     "버뮤다팬츠",
+     "흑청",
+     "하프팬츠"
+    ]
+   }
+  },
+  {
+   "id": "demo020",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "차콜",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "데님",
+     "워싱",
+     "사계절",
+     "와이드"
+    ]
+   }
+  },
+  {
+   "id": "demo021",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "나일론",
+     "트랙팬츠",
+     "스포티",
+     "밴딩팬츠"
+    ]
+   }
+  },
+  {
+   "id": "demo022",
+   "category": "액세서리",
+   "subCategory": "모자",
+   "attributes": {
+    "color": "카키",
+    "style": "스트릿",
+    "pattern": "카모플라쥬",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "볼캡",
+     "자수",
+     "밀리터리",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo023",
+   "category": "액세서리",
+   "subCategory": "모자",
+   "attributes": {
+    "color": "네이비",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "볼캡",
+     "스냅백",
+     "야구모자",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo024",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "자켓",
+     "버클디테일",
+     "봄가을",
+     "유니크"
+    ]
+   }
+  },
+  {
+   "id": "demo025",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "아이보리",
+    "style": "미니멀",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "블루종",
+     "가을",
+     "스웨이드",
+     "집업"
+    ]
+   }
+  },
+  {
+   "id": "demo026",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "화이트",
+    "style": "캐주얼",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "반팔",
+     "면",
+     "여름",
+     "아웃도어"
+    ]
+   }
+  },
+  {
+   "id": "demo027",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "브라운",
+    "style": "아메카지",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "와이드",
+    "tags": [
+     "밴딩팬츠",
+     "숏팬츠",
+     "피그먼트",
+     "스트링"
+    ]
+   }
+  },
+  {
+   "id": "demo028",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스포티",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "스웨이드",
+     "핑크배색",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo029",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "카키",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "코듀로이",
+     "퀼팅안감",
+     "워크자켓",
+     "가을/겨울"
+    ]
+   }
+  },
+  {
+   "id": "demo030",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "화이트",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "세미포멀",
+    "fit": "오버사이즈",
+    "tags": [
+     "반팔셔츠",
+     "여름",
+     "포켓",
+     "코튼"
+    ]
+   }
+  },
+  {
+   "id": "demo031",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스포티",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "러닝화",
+     "메쉬",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo032",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "데님",
+     "워싱",
+     "와이드핏",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo033",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "화이트",
+    "style": "캐주얼",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "반팔",
+     "코튼",
+     "여름",
+     "스트릿웨어"
+    ]
+   }
+  },
+  {
+   "id": "demo034",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "베이지",
+    "style": "스트릿",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "가죽",
+     "스웨이드",
+     "데일리"
+    ]
+   }
+  },
+  {
+   "id": "demo035",
+   "category": "액세서리",
+   "subCategory": "모자",
+   "attributes": {
+    "color": "카키",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "볼캡",
+     "카모플라쥬",
+     "밀리터리",
+     "코튼"
+    ]
+   }
+  },
+  {
+   "id": "demo036",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "차콜",
+    "style": "미니멀",
+    "pattern": "무지",
+    "formality": "세미포멀",
+    "fit": "레귤러",
+    "tags": [
+     "슬랙스",
+     "와이드팬츠",
+     "핀턱",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo037",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "화이트",
+    "style": "스포티",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "가죽",
+     "사계절",
+     "로고"
+    ]
+   }
+  },
+  {
+   "id": "demo038",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스포티",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "가죽",
+     "사계절",
+     "콜라보레이션"
+    ]
+   }
+  },
+  {
+   "id": "demo039",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "반팔티셔츠",
+     "그래피티",
+     "여름",
+     "코튼"
+    ]
+   }
+  },
+  {
+   "id": "demo040",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "반팔",
+     "면",
+     "여름",
+     "캐릭터"
+    ]
+   }
+  },
+  {
+   "id": "demo041",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "화이트",
+    "style": "스포티",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "가죽",
+     "사계절",
+     "클래식"
+    ]
+   }
+  },
+  {
+   "id": "demo042",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스포티",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "바람막이",
+     "나일론",
+     "간절기",
+     "집업"
+    ]
+   }
+  },
+  {
+   "id": "demo043",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "네이비",
+    "style": "캐주얼",
+    "pattern": "스트라이프",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "스웨이드",
+     "클래식",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo044",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "윈드브레이커",
+     "나일론",
+     "봄가을",
+     "후드"
+    ]
+   }
+  },
+  {
+   "id": "demo045",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "와펜",
+     "레이싱",
+     "간절기",
+     "지퍼"
+    ]
+   }
+  },
+  {
+   "id": "demo046",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "아이보리",
+    "style": "캐주얼",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "링거티",
+     "반팔",
+     "여름",
+     "코튼"
+    ]
+   }
+  },
+  {
+   "id": "demo047",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스포티",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "나일론",
+     "여름",
+     "숏팬츠",
+     "밴딩"
+    ]
+   }
+  },
+  {
+   "id": "demo048",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "스카이블루",
+    "style": "스포티",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "축구유니폼",
+     "반팔",
+     "기능성",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo049",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "차콜",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "반팔티",
+     "빈티지",
+     "링거티",
+     "워싱"
+    ]
+   }
+  },
+  {
+   "id": "demo050",
+   "category": "액세서리",
+   "subCategory": "가방",
+   "attributes": {
+    "color": "블랙",
+    "style": "스포티",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "나일론",
+     "숄더백",
+     "크로스백",
+     "아디다스"
+    ]
+   }
+  },
+  {
+   "id": "demo051",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "카키",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "카고팬츠",
+     "반바지",
+     "면",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo052",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스포티",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "바람막이",
+     "나일론",
+     "봄가을",
+     "집업"
+    ]
+   }
+  },
+  {
+   "id": "demo053",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "바람막이",
+     "나일론",
+     "스포티",
+     "간절기"
+    ]
+   }
+  },
+  {
+   "id": "demo054",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "차콜",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "반팔",
+     "면",
+     "여름",
+     "로고"
+    ]
+   }
+  },
+  {
+   "id": "demo055",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "바람막이",
+     "나일론",
+     "간절기",
+     "로고"
+    ]
+   }
+  },
+  {
+   "id": "demo056",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "차콜",
+    "style": "스트릿",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "카고",
+     "반바지",
+     "코튼",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo057",
+   "category": "액세서리",
+   "subCategory": "모자",
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "볼캡",
+     "데미지",
+     "자수",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo058",
+   "category": "액세서리",
+   "subCategory": "시계",
+   "attributes": {
+    "color": "블랙",
+    "style": "포멀",
+    "pattern": "무지",
+    "formality": "포멀",
+    "fit": "레귤러",
+    "tags": [
+     "가죽스트랩",
+     "사각프레임",
+     "클래식",
+     "로마숫자"
+    ]
+   }
+  },
+  {
+   "id": "demo059",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "네이비",
+    "style": "스포티",
+    "pattern": "스트라이프",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "반팔",
+     "골지",
+     "아디다스",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo060",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "네이비",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "데님",
+     "트러커",
+     "봄가을",
+     "아우터"
+    ]
+   }
+  },
+  {
+   "id": "demo061",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "나일론",
+     "스웨이드",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo062",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "네이비",
+    "style": "캐주얼",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "반팔",
+     "면",
+     "여름",
+     "레터링"
+    ]
+   }
+  },
+  {
+   "id": "demo063",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "반팔",
+     "면",
+     "여름",
+     "프린팅"
+    ]
+   }
+  },
+  {
+   "id": "demo064",
+   "category": "액세서리",
+   "subCategory": "모자",
+   "attributes": {
+    "color": "그레이",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "볼캡",
+     "데미지",
+     "코튼",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo065",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "맨투맨",
+     "스포티",
+     "코튼",
+     "봄가을"
+    ]
+   }
+  },
+  {
+   "id": "demo066",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "아이보리",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "가죽",
+     "사계절",
+     "클래식"
+    ]
+   }
+  },
+  {
+   "id": "demo067",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "네이비",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "데님",
+     "청자켓",
+     "봄가을",
+     "아우터"
+    ]
+   }
+  },
+  {
+   "id": "demo068",
+   "category": "전신",
+   "subCategory": null,
+   "attributes": {
+    "color": "레드",
+    "style": "스포티",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "트레이닝팬츠",
+     "반팔티",
+     "스트릿웨어",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo069",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "아이보리",
+    "style": "스포티",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "어글리슈즈",
+     "스니커즈",
+     "로고",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo070",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "차콜",
+    "style": "스트릿",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "피그먼트",
+     "레이어드",
+     "반소매",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo071",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "베이지",
+    "style": "스포티",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "메쉬",
+     "아웃도어",
+     "키높이"
+    ]
+   }
+  },
+  {
+   "id": "demo072",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "차콜",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "반팔",
+     "레터링",
+     "코튼",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo073",
+   "category": "액세서리",
+   "subCategory": "모자",
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "볼캡",
+     "야구모자",
+     "사계절",
+     "코튼"
+    ]
+   }
+  },
+  {
+   "id": "demo074",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "아이보리",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "스웨이드",
+     "데일리",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo075",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "와인",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "바람막이",
+     "나일론",
+     "스포티",
+     "가을"
+    ]
+   }
+  },
+  {
+   "id": "demo076",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "카키",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "블루종",
+     "봄가을",
+     "나일론",
+     "집업"
+    ]
+   }
+  },
+  {
+   "id": "demo077",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "베이지",
+    "style": "미니멀",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "스웨이드",
+     "봄",
+     "가을",
+     "블루종"
+    ]
+   }
+  },
+  {
+   "id": "demo078",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "버건디",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "반팔",
+     "면",
+     "롤업",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo079",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "아이보리",
+    "style": "미니멀",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "밴딩팬츠",
+     "와이드핏",
+     "봄가을",
+     "편안함"
+    ]
+   }
+  },
+  {
+   "id": "demo080",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "가죽",
+     "사계절",
+     "스티치"
+    ]
+   }
+  },
+  {
+   "id": "demo081",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "그레이",
+    "style": "캐주얼",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "스웨트팬츠",
+     "반바지",
+     "밴딩",
+     "캐릭터"
+    ]
+   }
+  },
+  {
+   "id": "demo082",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "미니멀",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "밴딩팬츠",
+     "와이드",
+     "사계절",
+     "편안함"
+    ]
+   }
+  },
+  {
+   "id": "demo083",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "퍼플",
+    "style": "스트릿",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "후드",
+     "캔버스",
+     "겨울",
+     "양털안감"
+    ]
+   }
+  },
+  {
+   "id": "demo084",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "와이드팬츠",
+     "밴딩",
+     "봄가을",
+     "편안한"
+    ]
+   }
+  },
+  {
+   "id": "demo085",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스포티",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "스웨이드",
+     "사계절",
+     "클래식"
+    ]
+   }
+  },
+  {
+   "id": "demo086",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "블루",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "반팔가디건",
+     "니트",
+     "여름아우터",
+     "라운드넥"
+    ]
+   }
+  },
+  {
+   "id": "demo087",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스포티",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "트레이닝",
+     "반바지",
+     "여름",
+     "스트링"
+    ]
+   }
+  },
+  {
+   "id": "demo088",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "차콜",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스웨이드",
+     "스니커즈",
+     "사계절",
+     "데일리"
+    ]
+   }
+  },
+  {
+   "id": "demo089",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "차콜",
+    "style": "포멀",
+    "pattern": "스트라이프",
+    "formality": "세미포멀",
+    "fit": "오버사이즈",
+    "tags": [
+     "와이드팬츠",
+     "핀턱",
+     "슬랙스",
+     "가을/겨울"
+    ]
+   }
+  },
+  {
+   "id": "demo090",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "옐로우",
+    "style": "캐주얼",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "반팔",
+     "면",
+     "여름",
+     "로고"
+    ]
+   }
+  },
+  {
+   "id": "demo091",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "옐로우",
+    "style": "캐주얼",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "반팔",
+     "레터링",
+     "면",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo092",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "캐주얼",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "반팔",
+     "링거티",
+     "코튼",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo093",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스포티",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "바람막이",
+     "나일론",
+     "밀리터리",
+     "봄가을"
+    ]
+   }
+  },
+  {
+   "id": "demo094",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "옐로우",
+    "style": "스포티",
+    "pattern": "스트라이프",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "트랙재킷",
+     "봄가을",
+     "스포티룩",
+     "집업"
+    ]
+   }
+  },
+  {
+   "id": "demo095",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "네이비",
+    "style": "스포티",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "반팔",
+     "스트릿웨어",
+     "여름",
+     "사이드라인"
+    ]
+   }
+  },
+  {
+   "id": "demo096",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "미니멀",
+    "pattern": "무지",
+    "formality": "세미포멀",
+    "fit": "레귤러",
+    "tags": [
+     "슬랙스",
+     "와이드팬츠",
+     "사계절",
+     "핀턱"
+    ]
+   }
+  },
+  {
+   "id": "demo097",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "가죽",
+     "여름",
+     "플랫폼",
+     "샌들"
+    ]
+   }
+  },
+  {
+   "id": "demo098",
+   "category": "전신",
+   "subCategory": null,
+   "attributes": {
+    "color": "화이트",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "데님",
+     "반팔셔츠",
+     "카고팬츠",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo099",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "차콜",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "피그먼트",
+     "하프티셔츠",
+     "빈티지",
+     "여름"
+    ]
+   }
+  },
+  {
+   "id": "demo100",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "나일론",
+     "카고팬츠",
+     "고프코어",
+     "밴딩"
+    ]
+   }
+  },
+  {
+   "id": "demo101",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "미니멀",
+    "pattern": "무지",
+    "formality": "세미포멀",
+    "fit": "오버사이즈",
+    "tags": [
+     "블레이저",
+     "봄가을",
+     "아우터",
+     "데일리룩"
+    ]
+   }
+  },
+  {
+   "id": "demo102",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스포티",
+    "pattern": "스트라이프",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "가죽",
+     "사계절",
+     "클래식"
+    ]
+   }
+  },
+  {
+   "id": "demo103",
+   "category": "액세서리",
+   "subCategory": "모자",
+   "attributes": {
+    "color": "브라운",
+    "style": "스포티",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "볼캡",
+     "야구모자",
+     "코튼",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo104",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블루",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "데님",
+     "반바지",
+     "여름",
+     "워싱"
+    ]
+   }
+  },
+  {
+   "id": "demo105",
+   "category": "하의",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "벌룬팬츠",
+     "밴딩",
+     "나일론",
+     "봄가을"
+    ]
+   }
+  },
+  {
+   "id": "demo106",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "스트릿",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "차이나카라",
+     "버클디테일",
+     "봄가을",
+     "코튼"
+    ]
+   }
+  },
+  {
+   "id": "demo107",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "그레이",
+    "style": "캐주얼",
+    "pattern": "스트라이프",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스웨이드",
+     "스니커즈",
+     "데일리",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo108",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "브라운",
+    "style": "미니멀",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "스웨이드",
+     "가을",
+     "겨울",
+     "블루종"
+    ]
+   }
+  },
+  {
+   "id": "demo109",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "블랙",
+    "style": "캐주얼",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "바람막이",
+     "나일론",
+     "간절기",
+     "집업"
+    ]
+   }
+  },
+  {
+   "id": "demo110",
+   "category": "아우터",
+   "subCategory": null,
+   "attributes": {
+    "color": "카키",
+    "style": "스트릿",
+    "pattern": "무지",
+    "formality": "캐주얼",
+    "fit": "오버사이즈",
+    "tags": [
+     "항공점퍼",
+     "봄가을",
+     "나일론",
+     "밀리터리"
+    ]
+   }
+  },
+  {
+   "id": "demo111",
+   "category": "신발",
+   "subCategory": null,
+   "attributes": {
+    "color": "화이트",
+    "style": "스트릿",
+    "pattern": "그래픽",
+    "formality": "캐주얼",
+    "fit": "레귤러",
+    "tags": [
+     "스니커즈",
+     "가죽",
+     "플랫폼",
+     "사계절"
+    ]
+   }
+  },
+  {
+   "id": "demo112",
+   "category": "상의",
+   "subCategory": null,
+   "attributes": {
+    "color": "그레이",
+    "style": "미니멀",
+    "pattern": "스트라이프",
+    "formality": "세미포멀",
+    "fit": "레귤러",
+    "tags": [
+     "니트",
+     "카라티",
+     "여름",
+     "반소매"
+    ]
+   }
+  }
+ ]
+}

@@ -58,16 +58,36 @@ void main() {
     });
   });
 
-  group('orderWithAiPicks', () {
-    final c = [for (final id in ['a', 'b', 'c', 'd']) StyleCandidate(item: _item(id, '상의'), caption: id)];
-    test('고른 후보를 고른 순서대로 맨 앞에, 나머지는 원래 순서', () {
-      final o = orderWithAiPicks(c, [2, 0]);
-      expect(o.map((e) => e.candidate.caption), ['c', 'a', 'b', 'd']);
-      expect(o.map((e) => e.aiPick), [true, true, false, false]);
+  // docs/task_demo_flow_v1.md §10-2·4 — 예전 orderWithAiPicks(고른 것 → 나머지 원래 순서)를 대체.
+  group('orderForCards — 고른 것 → 안 나온 종류의 1위(상의·하의·아우터·신발·액세서리) → 나머지', () {
+    // 점수순으로 들어온 후보라고 가정한 순서.
+    final c = [
+      StyleCandidate(item: _item('o1', '아우터'), caption: 'o1'),
+      StyleCandidate(item: _item('t1', '상의'), caption: 't1'),
+      StyleCandidate(item: _item('o2', '아우터'), caption: 'o2'),
+      StyleCandidate(item: _item('a1', '액세서리', sub: '팔찌'), caption: 'a1'),
+      StyleCandidate(item: _item('s1', '신발'), caption: 's1'),
+      StyleCandidate(item: _item('t2', '상의'), caption: 't2'),
+    ];
+    List<String> ids(List<({StyleCandidate candidate, bool aiPick})> o) => [for (final e in o) e.candidate.caption];
+    test('고른 순서 그대로 맨 앞, 그 종류는 다시 1위로 넣지 않는다', () {
+      final o = orderForCards(c, [3, 2]); // 팔찌, 아우터 o2
+      expect(ids(o), ['a1', 'o2', 't1', 's1', 'o1', 't2']);
+      expect(o.map((e) => e.aiPick), [true, true, false, false, false, false]);
     });
-    test('고른 것이 없거나 범위 밖이면 지금 순서 그대로', () {
-      expect(orderWithAiPicks(c, const []).map((e) => e.candidate.caption), ['a', 'b', 'c', 'd']);
-      expect(orderWithAiPicks(c, [9]).map((e) => e.aiPick), [false, false, false, false]);
+    test('고른 것이 없으면 종류별 1위부터, 전부 옅은 표시(aiPick false)', () {
+      final o = orderForCards(c, const []);
+      expect(ids(o), ['t1', 'o1', 's1', 'a1', 'o2', 't2']);
+      expect(o.every((e) => !e.aiPick), isTrue);
+    });
+    test('범위 밖·중복 번호는 버린다(줄을 읽지 못한 것과 같게)', () {
+      expect(ids(orderForCards(c, [9, -1])), ids(orderForCards(c, const [])));
+      expect(ids(orderForCards(c, [1, 1])), ['t1', 'o1', 's1', 'a1', 'o2', 't2']);
+    });
+    test('모든 후보가 한 번씩만', () {
+      final o = orderForCards(c, [5]);
+      expect(ids(o).toSet().length, c.length);
+      expect(ids(o).first, 't2');
     });
   });
 
@@ -99,6 +119,38 @@ void main() {
     });
     test('속성 있는 선택 옷이 없으면 빈 리스트', () {
       expect(matchStyleCandidates(selected: const [], wardrobe: [_item('o', '아우터')]), isEmpty);
+    });
+    // §10-1 — 후보가 있는 종류마다 1위는 반드시 들어간다(남는 자리는 점수순, 총 개수 유지).
+    test('후보가 있는 종류마다 한 벌 이상', () {
+      final selected = [_item('t', '상의'), _item('p', '하의')];
+      final wardrobe = [
+        ...selected,
+        for (var i = 0; i < 3; i++) _item('o$i', '아우터'),
+        for (var i = 0; i < 3; i++) _item('t$i', '상의', color: '네이비'),
+        for (var i = 0; i < 3; i++) _item('p$i', '하의', color: '베이지'),
+        // 궁합이 낮게 나오는 신발·액세서리(유채색·격식 차이) — 예전 규칙에선 잘려 나갈 수 있었다.
+        _item('s0', '신발', color: '레드', formality: '포멀', style: '포멀'),
+        _item('a0', '액세서리', sub: '모자', color: '퍼플', formality: '포멀', style: '포멀'),
+      ];
+      for (final max in [5, 8]) {
+        final r = matchStyleCandidates(selected: selected, wardrobe: wardrobe, maxItems: max);
+        expect(r.length, max);
+        for (final cat in ['상의', '하의', '아우터', '신발', '액세서리']) {
+          expect(r.any((x) => x.item.category == cat), isTrue, reason: '$cat · max $max');
+        }
+      }
+    });
+    test('자리가 종류 수보다 적으면 종류별 1위만, 서로 다른 종류로', () {
+      final selected = [_item('t', '상의')];
+      final wardrobe = [
+        ...selected,
+        for (var i = 0; i < 2; i++) _item('o$i', '아우터'),
+        for (var i = 0; i < 2; i++) _item('p$i', '하의'),
+        for (var i = 0; i < 2; i++) _item('s$i', '신발'),
+      ];
+      final r = matchStyleCandidates(selected: selected, wardrobe: wardrobe, maxItems: 2);
+      expect(r.length, 2);
+      expect(r.map((x) => x.item.category).toSet().length, 2);
     });
   });
 

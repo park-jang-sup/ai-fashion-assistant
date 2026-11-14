@@ -12,6 +12,7 @@ import 'constants/app_colors.dart';
 import 'models/wardrobe_item.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/usage_guide_screen.dart';
 import 'screens/wardrobe_screen.dart';
 import 'screens/fitting_room_screen.dart';
 import 'screens/calendar_screen.dart';
@@ -20,6 +21,7 @@ import 'package:workmanager/workmanager.dart';
 import 'services/agent_planner.dart';
 import 'services/agent_sweeper.dart';
 import 'services/background_agent.dart';
+import 'services/style_recommendations.dart';
 import 'services/fitting_job_controller.dart';
 import 'services/fitting_progress.dart';
 import 'services/notification_service.dart';
@@ -206,6 +208,12 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
+    // 첫 실행 사용 가이드(docs/task_demo_flow_v1.md 부분 C, §4-1) — 로그인 뒤 홈에 들어오면
+    // 계정 단위로 판단해 띄운다. 첫 프레임 뒤라야 Navigator가 준비돼 있다.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final guideUid = FirebaseAuth.instance.currentUser?.uid;
+      if (mounted && guideUid != null) unawaited(UsageGuide.maybeShow(context, guideUid));
+    });
     // 상태 지속성(복구) → 레벨 1 선제 추천 순으로 앱 진입 시 1회씩 실행한다.
     // 복구가 새 작업보다 우선이고, 둘 다 Gemini를 호출할 수 있어 동시에
     // 겹치지 않도록 순차 실행 + 짧은 간격을 둔다(과부하 시 호출이 한꺼번에
@@ -240,12 +248,9 @@ class _AppShellState extends State<AppShell> {
     super.dispose();
   }
 
-  // 액세서리는 등록 카테고리가 전부 "액세서리"라 subCategory(모자/가방/시계/팔찌)로
-  // 코디보드 슬롯 키를 가려낸다. 그 외 카테고리는 카테고리명이 곧 슬롯 키.
-  String? _boardSlotKeyFor(WardrobeItem item) {
-    if (item.category == '액세서리') return item.subCategory;
-    return item.category;
-  }
+  // 코디보드 슬롯 키 규칙은 style_recommendations.dart boardSlotKeyFor 하나를 쓴다 —
+  // 분석 결과의 추천 카드를 누를 때(docs/task_demo_flow_v1.md 부분 D)도 같은 규칙.
+  String? _boardSlotKeyFor(WardrobeItem item) => boardSlotKeyFor(item);
 
   // 옷장 탭에서 선택 → 피팅룸 이동
   void _sendToFittingRoom(WardrobeItem item) {
@@ -346,7 +351,13 @@ class _AppShellState extends State<AppShell> {
         );
       case 1:
         // 옷장: 아이템 선택 콜백 전달
-        return WardrobeScreen(onSelectItem: _sendToFittingRoom);
+        return WardrobeScreen(
+          onSelectItem: _sendToFittingRoom,
+          // 데모 옷장 불러오기 직후 — 사용자가 이미 고른 전신 사진이 있으면 건드리지 않는다.
+          onDemoFullBody: (item) {
+            if (_fittingUserPhoto == null) _setFittingUserPhoto(item);
+          },
+        );
       case 2:
         return FittingRoomScreen(
           jobController: _fittingJob,

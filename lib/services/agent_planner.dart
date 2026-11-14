@@ -71,9 +71,34 @@ class AgentPlanner {
   // 인자를 넘기지 않으므로 동작이 바뀌지 않는다. planned는 이미 date
   // 오름차순으로 조회되므로(calendarEntriesForRange의 orderBy('date')),
   // take(maxPlans)는 자연히 "가장 가까운 일정부터" N건을 고른다.
+  //
+  // manual은 사용자가 직접 돌린 실행(설정 진단의 "즉시 실행" 등 force 실행, 데모
+  // 옷장 예시 일정 직후 실행)인지다 — 처리할 일정이 0건일 때 활동 내역에 남기는
+  // "할 일 없음" 한 줄을 수동 실행에서는 매번, 자동 실행에서는 하루 한 번만
+  // 남긴다(docs/task_demo_flow_v1.md 부분 B-1).
   static Future<({int created, String? firstLabel})> runProactiveCheck(
     String uid, {
     int? maxPlans,
+    bool manual = false,
+  }) async {
+    // 같은 아이솔레이트에서 겹쳐 돌면 한 날짜의 추천을 둘 다 다시 만들 수 있어, 진행 중인
+    // 실행을 retryForecastMissingRecommendations가 기다릴 수 있게 남겨 둔다(§9-1).
+    final done = Completer<void>();
+    _proactiveInFlight = done.future;
+    try {
+      return await _runProactiveCheck(uid, maxPlans: maxPlans, manual: manual);
+    } finally {
+      done.complete();
+      if (identical(_proactiveInFlight, done.future)) _proactiveInFlight = null;
+    }
+  }
+
+  static Future<void>? _proactiveInFlight;
+
+  static Future<({int created, String? firstLabel})> _runProactiveCheck(
+    String uid, {
+    int? maxPlans,
+    bool manual = false,
   }) async {
     var created = 0;
     String? firstLabel;
@@ -87,7 +112,10 @@ class AgentPlanner {
       if (maxPlans != null) {
         planned = planned.take(maxPlans).toList();
       }
-      if (planned.isEmpty) return (created: 0, firstLabel: null);
+      if (planned.isEmpty) {
+        await _logIdleCheck(uid, manual: manual);
+        return (created: 0, firstLabel: null);
+      }
       debugPrint('[PLAN] 선제 추천 체크: 다가오는 예정 ${planned.length}건');
 
       final wardrobe = await FirestoreService.wardrobeStream(uid).first;
@@ -133,18 +161,24 @@ class AgentPlanner {
             snapshotPrecipProbability: existing.forecastPrecipProbability,
             snapshotMaxTempC: existing.forecastMaxTempC,
             currentForecast: weather?.forDate(plan.date),
+            snapshotMissingAtCreation: existing.forecastMissing,
           );
           if (!decision.replan) {
             debugPrint('[PLAN] ${_dateLabel(plan.date)} 추천 이미 존재 — 스킵');
             continue;
           }
-          if (existing.replanCount >= _maxReplanPerDate) {
+          final nextCount = replanCountAfterWeatherChange(
+            existingCount: existing.replanCount,
+            existingAssumed: existing.forecastAssumed,
+            currentAssumed: weather?.isAssumed ?? false,
+          );
+          if (nextCount == null) {
             debugPrint('[PLAN] ${_dateLabel(plan.date)} 예보 변화 감지(${decision.reason})했지만 '
                 '재계획 상한($_maxReplanPerDate회) 도달 — 스킵');
             continue;
           }
           await FirestoreService.dismissRecommendation(uid, existing.id);
-          replanCount = existing.replanCount + 1;
+          replanCount = nextCount;
           previousItemIds = existing.itemIds;
           unawaited(FirestoreService.addAgentLogSilently(
             uid,
@@ -174,6 +208,229 @@ class AgentPlanner {
     } catch (e) {
       debugPrint('[PLAN] 선제 추천 체크 예외로 중단: $e');
       return (created: 0, firstLabel: null);
+    }
+  }
+
+  // 예보 없이 만든 추천 다시 준비(docs/task_demo_flow_v1.md §9-1). 심사위원은 새로 설치해
+  // 데모 옷장부터 불러오는데, 예시 일정 추천을 만드는 순간 예보 조회가 실패하면(2026-11-14
+  // 15:55 — 시한 10초, 재시도 없음) 날씨 없이 고른 추천이 다음 실행까지 첫 화면에 남았다.
+  // 앱이 예보 조회에 성공한 시점(홈 날씨 줄)에 부른다. 다가오는 추천 중 예보 없이 만든 것이
+  // 있을 때만 선제 추천을 한 번 돌리고(없으면 조회 한 번으로 끝 — 홈에 들어올 때마다 돌지
+  // 않는다), 추천마다 forecastRetried를 먼저 남겨 자동 재시도는 하나당 최대 1회다. 방금
+  // 성공한 조회가 캐시(30분)에 있어 다시 만든 추천에는 예보 스냅샷이 남는다.
+  @visibleForTesting
+  static List<RecommendationEntry> forecastRetryTargets(List<RecommendationEntry> recs, DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    final horizon = today.add(const Duration(days: _proactiveHorizonDays));
+    return [
+      for (final r in recs)
+        if (r.forecastMissing &&
+            !r.forecastRetried &&
+            !r.dismissed &&
+            r.userChoice == null &&
+            r.targetDate != null &&
+            !r.targetDate!.isBefore(today) &&
+            !r.targetDate!.isAfter(horizon))
+          r,
+    ];
+  }
+
+  static bool _forecastRetryRunning = false;
+
+  static Future<void> retryForecastMissingRecommendations(String uid) async {
+    if (_forecastRetryRunning) return;
+    _forecastRetryRunning = true;
+    try {
+      final inFlight = _proactiveInFlight;
+      if (inFlight != null) await inFlight; // 앱 진입 실행이 먼저 고쳤을 수 있다
+      final today = _todayMidnight();
+      final recs = await FirestoreService.recommendationsInDateRangeSilently(
+          uid, today.add(const Duration(days: 2)), 2);
+      final targets = forecastRetryTargets(recs, DateTime.now());
+      if (targets.isEmpty) return;
+      var marked = 0;
+      for (final r in targets) {
+        if (await FirestoreService.markForecastRetriedSilently(uid, r.id)) marked++;
+      }
+      if (marked == 0) return; // 표시를 못 남기면 1회 보장을 못 하므로 돌리지 않는다
+      debugPrint('[PLAN] 예보 없이 만든 추천 $marked건 — 예보를 얻어 다시 준비');
+      AgentActivity.current.value = '예보를 확인해 코디를 다시 준비 중...';
+      try {
+        await runProactiveCheck(uid);
+      } finally {
+        AgentActivity.current.value = null;
+      }
+    } catch (e) {
+      debugPrint('[PLAN] 예보 재시도 실패(무시): $e');
+    } finally {
+      _forecastRetryRunning = false;
+    }
+  }
+
+  // 데모 옷장 예시 일정(docs/task_demo_flow_v1.md 부분 B-2). 심사위원은 빈 캘린더로
+  // 시작해 선제 추천이 아무것도 하지 않으므로, 데모 옷장을 불러오면 내일 날짜에
+  // planned 일정 하나를 넣는다. 상황 태그는 데모 옷장(demo_wardrobe 113벌, 2026-11-14
+  // 읽기 전용 조사)으로 격식에 맞는 조합이 기온대와 무관하게 나오는 것으로 골랐다 —
+  // 세미포멀 상의 4벌이 전부 반팔·여름이라 쌀쌀한 날엔 세미포멀 일정이 차선이 된다.
+  static const demoPlanTpoTag = '일상';
+
+  // 오늘~+3일에 planned 일정이 이미 있으면 넣지 않는다(순수 함수).
+  @visibleForTesting
+  static bool shouldAddDemoPlan(List<OutfitCalendarEntry> upcoming) => !upcoming.any((e) => e.isPlanned);
+
+  // 넣었으면 그 일정을, 넣지 않았으면 null을 돌려준다.
+  static Future<OutfitCalendarEntry?> addDemoPlanIfNoneSoon(String uid) async {
+    final today = _todayMidnight();
+    final upcoming = await FirestoreService.calendarEntriesForRange(
+        uid, today, today.add(const Duration(days: _proactiveHorizonDays)));
+    if (!shouldAddDemoPlan(upcoming)) return null;
+    final plan = OutfitCalendarEntry(
+      id: '',
+      date: today.add(const Duration(days: 1)),
+      tpoTag: demoPlanTpoTag,
+      status: OutfitCalendarEntry.statusPlanned,
+      createdAt: DateTime.now(),
+      isDemo: true,
+    );
+    final id = await FirestoreService.addCalendarEntry(uid, plan);
+    return OutfitCalendarEntry(
+      id: id,
+      date: plan.date,
+      tpoTag: plan.tpoTag,
+      status: plan.status,
+      createdAt: plan.createdAt,
+      isDemo: true,
+    );
+  }
+
+  // 날씨를 넣은 조합 선택(docs/task_demo_flow_v1.md 부분 A·§2-5) — 순수 함수, 기기 안 계산.
+  // 감점(0.3)만으로는 반팔·여름 상의나 더운 날 블레이저를 밀어내지 못했다(2026-11-14).
+  // 기온대에 명백히 어긋나는 옷은 매칭 대상에서 빼고(대안이 있을 때만, findForTpo 바깥 —
+  // filterWardrobeForBand), 덜 어울리는 옷만 findForTpo가 감점한다.
+  //  · 거른 목록으로 후보가 하나도 안 나오면 전체로 다시 돌린다(fellBack).
+  //  · 격식 우선(§2-5-3): 거른 목록의 결과가 격식 차선이고 거르지 않은 목록의 결과가
+  //    격식 적합이면 거르지 않은 결과를 쓴다(formalityOverride).
+  //  · 비교용(baseline)은 옷장 전체·날씨 없이 — "날씨 때문에 실제로 바뀐 것"만 말하려고.
+  // 예보가 없으면 거르기·감점·비교를 모두 건너뛰어 예전과 같다.
+  static ({
+    TpoMatchResult match,
+    TpoMatchResult? baseline,
+    BandFilterResult? filter,
+    bool fellBack,
+    bool formalityOverride,
+  }) matchForWeather({
+    required List<WardrobeItem> wardrobe,
+    required String formalityHint,
+    TpoMatchPolicy policy = _matchPolicy,
+    Set<String> recentItemIds = const {},
+    DailyWeather? day,
+  }) {
+    TpoMatchResult run(List<WardrobeItem> w, {bool withWeather = true}) => OutfitMatcher.findForTpo(
+          wardrobe: w,
+          formalityHint: formalityHint,
+          policy: policy,
+          recentItemIds: recentItemIds,
+          weather: withWeather ? day : null,
+        );
+    final ctx = weatherContextFor(day);
+    if (ctx == null) {
+      return (match: run(wardrobe), baseline: null, filter: null, fellBack: false, formalityOverride: false);
+    }
+    final filter = filterWardrobeForBand(wardrobe, ctx, formalityHint: formalityHint);
+    var match = run(filter.items);
+    var fellBack = false;
+    var formalityOverride = false;
+    if (filter.removedIds.isNotEmpty) {
+      if (match.candidates.isEmpty) {
+        fellBack = true;
+        match = run(wardrobe);
+      } else if (match.isFallback) {
+        final full = run(wardrobe);
+        if (full.candidates.isNotEmpty && !full.isFallback) {
+          match = full;
+          formalityOverride = true;
+        }
+      }
+    }
+    return (
+      match: match,
+      baseline: run(wardrobe, withWeather: false),
+      filter: filter,
+      fellBack: fellBack,
+      formalityOverride: formalityOverride,
+    );
+  }
+
+  // 새 옷 등록 추천에 오늘 기온대를 적용(docs/task_demo_flow_v1.md §2-8 결정 1) — 순수 함수.
+  // findCandidateMatches에 넘기는 기존 옷만 일일 추천과 같은 거르기 함수로 거른다(새 옷
+  // 자체는 거르지 않음, 격식 개념이 없으니 빼기만 하고 감점은 없음). 로직·점수는 그대로.
+  // 예보가 없으면 거르지 않아 예전과 같고, 거른 목록으로 후보가 없으면 거르지 않은
+  // 목록으로 다시 돌린다. 이 경로에는 날씨 문구를 붙이지 않는다.
+  static List<OutfitMatch> newItemCandidatesForWeather({
+    required WardrobeItem newItem,
+    required List<WardrobeItem> existingItems,
+    DailyWeather? today,
+  }) {
+    final ctx = weatherContextFor(today);
+    if (ctx == null) {
+      return OutfitMatcher.findCandidateMatches(newItem: newItem, existingItems: existingItems);
+    }
+    final others = [for (final i in existingItems) if (i.id != newItem.id) i];
+    final filtered = filterWardrobeForBand(others, ctx).items;
+    final matches = OutfitMatcher.findCandidateMatches(newItem: newItem, existingItems: filtered);
+    if (matches.isNotEmpty || filtered.length == others.length) return matches;
+    return OutfitMatcher.findCandidateMatches(newItem: newItem, existingItems: existingItems);
+  }
+
+  // 예보 변화로 다시 계획할 때 다음 replanCount — 상한에 막히면 null(순수 함수).
+  // 가정 예보(설정 진단 "예보 가정(테스트용)")가 관련된 다시 계획은 상한에 넣지 않는다
+  // (docs/task_demo_flow_v1.md §2-4): 가정 예보로 바뀐 경우와, 가정 예보로 만든 추천이
+  // 실제 예보로 돌아와 다시 계획되는 경우 둘 다다. 2026-11-14 확인에서 "없음"으로
+  // 되돌려도 상한에 막혀 가정 예보 추천이 남았다. 실제 예보끼리의 상한은 그대로다.
+  // 한 실행에서 날짜마다 이 게이트를 한 번만 지나므로 "즉시 실행" 한 번에 다시 계획은
+  // 최대 1회이고, 가정 예보가 켜진 채 실행이 반복돼도 추천에 저장된 예보가 이미 가정
+  // 값이라 shouldReplanForWeather가 변화 없음으로 막는다(테스트로 고정).
+  @visibleForTesting
+  static int? replanCountAfterWeatherChange({
+    required int existingCount,
+    required bool existingAssumed,
+    required bool currentAssumed,
+  }) {
+    if (existingAssumed || currentAssumed) return existingCount;
+    if (existingCount >= _maxReplanPerDate) return null;
+    return existingCount + 1;
+  }
+
+  // 처리할 예정 일정이 0건일 때의 활동 내역 한 줄(부분 B-1). 예전엔 아무 기록 없이
+  // 끝나서, 캘린더가 빈 채로 "즉시 실행"을 누르면 에이전트가 멈춘 것처럼 보였다
+  // (2026-11-14 실기기 확인). 자동 실행(앱 진입·백그라운드 주기·FCM)은 하루 한
+  // 번만 남겨 활동 내역을 같은 줄로 채우지 않는다 — 날짜는 agent_meta에 둔다.
+  static const idleCheckMessage = '확인할 예정 일정이 없어요 — 캘린더에 일정을 추가하면 미리 코디를 준비해요';
+  static const _idleLogDayField = 'idleCheckLoggedDay';
+
+  static String dayKey(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  @visibleForTesting
+  static bool shouldLogIdleCheck({required bool manual, String? lastLoggedDay, required DateTime now}) =>
+      manual || lastLoggedDay != dayKey(now);
+
+  static Future<void> _logIdleCheck(String uid, {required bool manual}) async {
+    try {
+      final now = DateTime.now();
+      String? lastDay;
+      if (!manual) {
+        final meta = await FirestoreService.getBackgroundAgentMeta(uid);
+        lastDay = meta?[_idleLogDayField] as String?;
+      }
+      if (!shouldLogIdleCheck(manual: manual, lastLoggedDay: lastDay, now: now)) return;
+      await FirestoreService.addAgentLogSilently(
+        uid,
+        AgentLogEntry(id: '', eventType: AgentLogEntry.typeScheduleDetected, message: idleCheckMessage),
+      );
+      await FirestoreService.setBackgroundAgentMeta(uid, {_idleLogDayField: dayKey(now)});
+    } catch (e) {
+      debugPrint('[PLAN] 할 일 없음 기록 실패(무시): $e');
     }
   }
 
@@ -276,11 +533,23 @@ class AgentPlanner {
   // 안전하게 false.
   static const _tempDiffThreshold = 5.0;
 
+  //
+  // 예외(§9 (1), 2026-11-14 실기기): 만들 때 예보 조회 자체가 실패해 스냅샷이 없는 추천
+  // (snapshotMissingAtCreation — 추천의 forecastMissing)은 예보를 얻으면 한 번 다시
+  // 계획한다. 예전엔 이것도 "비교 불가"로 막혀, 예시 일정 추천이 예보 시간 초과로 날씨 없이
+  // 만들어진 뒤에는 가정 예보를 바꿔도 끝까지 다시 계획되지 않았다. 다시 만든 추천에는
+  // 스냅샷이 남으므로 되풀이되지 않는다. 표시가 없는 예전 추천은 그대로 비교 불가.
   static ({bool replan, String? reason}) shouldReplanForWeather({
     required int? snapshotPrecipProbability,
     required double? snapshotMaxTempC,
     required DailyWeather? currentForecast,
+    bool snapshotMissingAtCreation = false,
   }) {
+    if (snapshotMissingAtCreation &&
+        currentForecast != null &&
+        (snapshotPrecipProbability == null || snapshotMaxTempC == null)) {
+      return (replan: true, reason: '예보를 새로 확인했어요');
+    }
     if (snapshotPrecipProbability == null ||
         snapshotMaxTempC == null ||
         currentForecast == null) {
@@ -357,7 +626,7 @@ class AgentPlanner {
     final weatherSnapshot = await WeatherService.fetch(latitude: latitude, longitude: longitude);
     final dayWeather = weatherSnapshot?.forDate(plan.date);
     final forecastAssumed = weatherSnapshot?.isAssumed ?? false;
-    final weatherFlags = weatherFlagsFor(dayWeather);
+    final weatherCtx = weatherContextFor(dayWeather);
 
     // 최근 추천 이력을 조회해 동점 타이브레이커 재료로 넘긴다. 조회가
     // 실패하면 빈 집합이 되고, 그러면 findForTpo는 현행과 동일하게 동작한다
@@ -366,23 +635,17 @@ class AgentPlanner {
       await FirestoreService.recentRecommendationsSilently(uid),
       DateTime.now(),
     );
-    final match = OutfitMatcher.findForTpo(
+    final weatherMatch = matchForWeather(
       wardrobe: wardrobe,
       formalityHint: tag.formalityHint,
-      policy: _matchPolicy,
       recentItemIds: recentItemIds,
-      weather: weatherFlags.isEmpty ? null : dayWeather,
+      day: dayWeather,
     );
-    // 예보가 특이한 날만 날씨 없이 한 번 더 돌려 비교한다(기기 안 계산, 모델 호출 없음) —
-    // "날씨 때문에 실제로 바뀐 것"만 문구·활동 내역에 말하기 위해서다.
-    final baselineMatch = weatherFlags.isEmpty
-        ? null
-        : OutfitMatcher.findForTpo(
-            wardrobe: wardrobe,
-            formalityHint: tag.formalityHint,
-            policy: _matchPolicy,
-            recentItemIds: recentItemIds,
-          );
+    final match = weatherMatch.match;
+    final bandFilter = weatherMatch.filter;
+    final bandFilterFellBack = weatherMatch.fellBack;
+    final formalityOverride = weatherMatch.formalityOverride;
+    final baselineMatch = weatherMatch.baseline;
     // 레벨 4: 조합 자체가 불가 — 조용히 넘기지 않고 무엇이 부족한지 로그로 남긴다.
     if (match.candidates.isEmpty) {
       unawaited(FirestoreService.addAgentLogSilently(
@@ -479,19 +742,34 @@ class AgentPlanner {
 
     // 날씨 문구·활동 내역(§4-3) — 최종 채택 조합(자기평가가 고른 것) 기준으로 맞춘다.
     String? weatherNote;
-    if (weatherFlags.isNotEmpty && dayWeather != null) {
+    if (weatherCtx != null && dayWeather != null) {
       final weatherTop = match.candidates.first.items;
       final baselineTop = (baselineMatch?.candidates.isNotEmpty ?? false)
           ? baselineMatch!.candidates.first.items
           : weatherTop;
       weatherNote = buildWeatherNote(
-        flags: weatherFlags,
+        ctx: weatherCtx,
         baselineTop: baselineTop,
         weatherTop: weatherTop,
         finalItems: outcome.bestMatch.items,
+        wardrobe: wardrobe,
+        removedIds: (bandFilterFellBack || formalityOverride) ? const {} : bandFilter!.removedIds,
         isAssumed: forecastAssumed,
+        formalityHint: tag.formalityHint,
+        coldOuterRuleApplied: !bandFilterFellBack && !formalityOverride && bandFilter!.coldOuterRuleApplied,
       );
       final changed = weatherChangedTopCombo(baselineTop, weatherTop);
+      final bandLabel = switch (weatherCtx.band) {
+        TempBand.hot => '더움',
+        TempBand.mild => '온화',
+        TempBand.cool => '선선',
+        TempBand.cold => '추움',
+      };
+      final filterText = bandFilterFellBack
+          ? ' · 기온대에 맞춘 옷으로는 조합이 나오지 않아 옷장 전체로 다시 골랐어요'
+          : formalityOverride
+              ? ' · 기온대에 맞춘 옷으로는 격식에 맞는 조합이 나오지 않아 옷장 전체로 골랐어요'
+              : (bandFilter!.removedIds.isEmpty ? '' : ' · 기온대에 맞지 않는 옷 ${bandFilter.removedIds.length}벌 제외');
       unawaited(FirestoreService.addAgentLogSilently(
         uid,
         AgentLogEntry(
@@ -499,7 +777,8 @@ class AgentPlanner {
           eventType: AgentLogEntry.typeWeatherChecked,
           message: '${_relativeLabel(plan.date)} 예보를 확인했습니다 — '
               '강수확률 ${dayWeather.precipitationProbability}%, '
-              '최고 ${dayWeather.maxTempC.round()}°C/최저 ${dayWeather.minTempC.round()}°C · '
+              '최고 ${dayWeather.maxTempC.round()}°C/최저 ${dayWeather.minTempC.round()}°C(기온대 $bandLabel)'
+              '$filterText · '
               '날씨 반영: 조합 변경 ${changed ? '있음' : '없음'}'
               '${forecastAssumed ? ' (테스트용 가정 예보)' : ''}',
           relatedDocId: plan.id,
@@ -567,6 +846,9 @@ class AgentPlanner {
       replanCount: replanCount,
       confidenceNote: confidenceNote,
       weatherNote: weatherNote,
+      isDemo: plan.isDemo,
+      forecastAssumed: dayWeather != null && forecastAssumed,
+      forecastMissing: dayWeather == null,
     );
     final recId = await FirestoreService.addRecommendationSilently(uid, entry);
     if (recId == null) return false;
@@ -1028,10 +1310,20 @@ class AgentPlanner {
         ),
       ));
 
+      // 오늘 예보는 옷장 조회와 동시에 받는다(일일 추천과 같은 방법 — 지역 설정·가정
+      // 예보 포함). 이 파이프라인은 옷 등록 흐름이 기다리지 않는 백그라운드 작업이라
+      // (wardrobe_screen.dart가 unawaited로 흘려보냄) 등록 자체는 느려지지 않는다.
+      final weatherFuture = () async {
+        final profile = await FirestoreService.getUserProfileSilently(uid);
+        final snapshot = await WeatherService.fetch(
+            latitude: profile?.regionLatitude, longitude: profile?.regionLongitude);
+        return snapshot?.forDate(DateTime.now());
+      }();
       final existingItems = await FirestoreService.wardrobeStream(uid).first;
-      final candidates = OutfitMatcher.findCandidateMatches(
+      final candidates = newItemCandidatesForWeather(
         newItem: newItem,
         existingItems: existingItems,
+        today: await weatherFuture,
       );
       if (candidates.isEmpty) return true; // 매칭 불가 — 재시도 대상 아님
 
