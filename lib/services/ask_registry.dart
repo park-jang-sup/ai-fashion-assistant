@@ -250,6 +250,7 @@ final List<AskToolSpec> askToolRegistry = [
         return const AskRunResult(AskToolResult('이 기기에서는 입혀 보기를 쓸 수 없어요', display: '입혀 보기를 쓸 수 없어요', ok: false));
       }
       final items = [for (final n in askNumberList(args['outfit'])) ctx.tools.book.item(n)].whereType<WardrobeItem>().toList();
+      await port.ensureUserPhoto?.call(); // 선택이 없으면 기본 전신 사진을 잡는다(문장은 그대로)
       if (!port.hasUserPhoto()) {
         return const AskRunResult(AskToolResult(
             '전신 사진이 선택돼 있지 않아 입혀 보지 못했어요 — 피팅룸에서 전신 사진을 고르면 입혀 볼 수 있어요',

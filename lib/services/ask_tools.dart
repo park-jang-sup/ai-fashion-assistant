@@ -103,7 +103,9 @@ class AskFittingShot {
   final Uint8List? bytes;
   final String? url;
   final String? cacheKey;
-  const AskFittingShot({this.bytes, this.url, this.cacheKey});
+  // 전신 사진을 앱이 기본값으로 골라 입혔는가 — 화면의 단계 줄에만 쓴다(모델에게 가는 글에는 없다).
+  final bool autoPicked;
+  const AskFittingShot({this.bytes, this.url, this.cacheKey, this.autoPicked = false});
 }
 
 class AskFittingOutcome {
@@ -119,7 +121,10 @@ class AskFittingPort {
   final bool Function() busy; // 다른 피팅이 진행 중인가
   // 그 조합을 코디보드에 올리고 피팅을 실행한다.
   final Future<AskFittingOutcome> Function(List<WardrobeItem> items) run;
-  const AskFittingPort({required this.hasUserPhoto, required this.busy, required this.run});
+  // 선택된 전신 사진이 없으면 기본값(이 계정이 마지막으로 쓴 것 → 가장 최근에 등록한 것)을 잡는다.
+  // 잡았거나 이미 있으면 참.
+  final Future<bool> Function()? ensureUserPhoto;
+  const AskFittingPort({required this.hasUserPhoto, required this.busy, required this.run, this.ensureUserPhoto});
 }
 
 const askTryOnWait = Duration(seconds: 120);

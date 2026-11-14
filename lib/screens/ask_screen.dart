@@ -21,13 +21,34 @@ class AskScreen extends StatefulWidget {
   final AskController controller;
   final ValueChanged<List<WardrobeItem>>? onOpenFittingRoom;
   final ValueChanged<int>? onNavigate;
-  const AskScreen({super.key, required this.controller, this.onOpenFittingRoom, this.onNavigate});
+  // 전신 사진 바꾸기(채팅 안) — 등록된 전신 사진 목록과, 하나를 고르면 그것을 선택 상태로.
+  final Future<List<WardrobeItem>> Function()? loadFullBodies;
+  final ValueChanged<WardrobeItem>? onPickFullBody;
+  const AskScreen(
+      {super.key,
+      required this.controller,
+      this.onOpenFittingRoom,
+      this.onNavigate,
+      this.loadFullBodies,
+      this.onPickFullBody});
 
   @override
   State<AskScreen> createState() => _AskScreenState();
 }
 
 const _calendarTab = 3;
+const _wardrobeTab = 1;
+
+// 전신 사진(화면에만 — 모델에게 가는 글에는 없다).
+const askAutoPickedNote = '전신 사진은 자동으로 골랐어요';
+const askNoFullBodyTitle = '등록된 전신 사진이 없어요';
+const askOtherFullBodyLabel = '다른 전신 사진으로';
+const askRetryWithFullBody = '이 전신 사진으로 다시 입혀 줘';
+// try_on이 전신 사진이 없어 실패했을 때의 관찰 글 앞부분(ask_registry.dart의 문장 그대로).
+const _noFullBodyObservation = '전신 사진이 선택돼 있지 않아';
+
+bool askNoFullBody(List<AskStep> steps) => steps.any((s) =>
+    s.action == 'try_on' && s.status == AskStepStatus.failed && (s.observation ?? '').startsWith(_noFullBodyObservation));
 
 // 첫 상태의 예시(v2 §2-G).
 const askExamples = [
@@ -68,9 +89,31 @@ class _AskScreenState extends State<AskScreen> {
 
   AskController get _c => widget.controller;
 
+  List<WardrobeItem> _fullBodies = const [];
+  bool _bodyPickerOpen = false;
+  AskTurn? _bodyPickedFor; // "다른 전신 사진으로"로 이미 다시 입혀 달라고 보낸 턴(한 번만)
+
+  Future<void> _loadFullBodies() async {
+    final load = widget.loadFullBodies;
+    if (load == null) return;
+    final items = await load();
+    if (mounted) setState(() => _fullBodies = items);
+  }
+
+  void _pickFullBody(AskTurn t, WardrobeItem item) {
+    if (_bodyPickedFor == t || !_c.canContinue || _c.isRunning) return;
+    setState(() {
+      _bodyPickedFor = t;
+      _bodyPickerOpen = false;
+    });
+    widget.onPickFullBody?.call(item);
+    _c.start(askRetryWithFullBody);
+  }
+
   @override
   void initState() {
     super.initState();
+    _loadFullBodies();
     // 첫 프레임 뒤에 — attach가 알리는 변경이 떠 있는 버튼의 빌드 중에 닿지 않게.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -313,7 +356,9 @@ class _AskScreenState extends State<AskScreen> {
           const _RevisingRow()
         else
           AskStepTile(step: s, showProgress: running && !_c.userTurn && !_c.isStopping),
+        if (s.action == 'try_on' && s.fitting?.autoPicked == true) const _AutoPickedNote(),
         if (s.fitting != null) AskFittingView(bytes: s.fitting!.bytes, url: s.fitting!.url, cacheKey: s.fitting!.cacheKey),
+        if (s.fitting != null && _fullBodies.length >= 2) ..._otherFullBody(t, last: last),
       ],
       if (waiting) const _ThinkingRow(text: '다음 단계를 고르는 중'),
       if (running && _c.isStopping) const _ThinkingRow(text: '멈추는 중'),
@@ -371,12 +416,66 @@ class _AskScreenState extends State<AskScreen> {
     );
   }
 
+  // 입혀 본 결과 아래 "다른 전신 사진으로" — 마지막 턴에서만 동작하고, 고르면 한 번만 보낸다.
+  List<Widget> _otherFullBody(AskTurn t, {required bool last}) {
+    final active = last && !_c.isRunning && _c.canContinue && _bodyPickedFor != t;
+    return [
+      Padding(
+        padding: const EdgeInsets.only(left: 24, bottom: 8),
+        child: OutlinedButton.icon(
+          key: const Key('ask-other-full-body'),
+          onPressed: active ? () => setState(() => _bodyPickerOpen = !_bodyPickerOpen) : null,
+          icon: const Icon(Icons.accessibility_new, size: 18),
+          label: const Text(askOtherFullBodyLabel),
+        ),
+      ),
+      if (active && _bodyPickerOpen)
+        Padding(
+          padding: const EdgeInsets.only(left: 24, bottom: 14),
+          child: Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final b in _fullBodies)
+              GestureDetector(
+                key: Key('ask-full-body-${b.id}'),
+                onTap: () => _pickFullBody(t, b),
+                child: AskItemThumb(id: b.id, imageUrl: b.imageUrl, cutoutImageUrl: b.cutoutImageUrl),
+              ),
+          ]),
+        ),
+    ];
+  }
+
+  Widget _noFullBodyCard() => _AskCard(
+        child: Column(
+          key: const Key('ask-no-full-body'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(askNoFullBodyTitle,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            const SizedBox(height: 4),
+            const Text('옷장에 전신 사진을 올리면 입혀 볼 수 있어요.',
+                style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: widget.onNavigate == null
+                  ? null
+                  : () {
+                      Navigator.of(context).pop();
+                      widget.onNavigate!(_wardrobeTab);
+                    },
+              icon: const Icon(Icons.checkroom_outlined, size: 18),
+              label: const Text('옷장으로'),
+            ),
+          ],
+        ),
+      );
+
   Widget _answerCard(AskTurn t, {required bool last}) {
     final o = t.outcome!;
     final combo = o.end == AskEnd.finished ? askCombo(o) : const <WardrobeItem>[];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (askNoFullBody(t.steps)) _noFullBodyCard(),
         AskAnswerBox(
           answer: o.answer,
           stopped: o.end != AskEnd.finished,
@@ -673,6 +772,17 @@ class AskStepTile extends StatelessWidget {
       ),
     );
   }
+}
+
+// try_on이 기본 전신 사진으로 입혔을 때 단계 아래 한 줄(화면에만).
+class _AutoPickedNote extends StatelessWidget {
+  const _AutoPickedNote();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+        padding: EdgeInsets.only(left: 24, bottom: 8),
+        child: Text(askAutoPickedNote, style: TextStyle(fontSize: 12.5, color: AppColors.textMuted)),
+      );
 }
 
 // 엔진이 finish를 한 번 돌려보낸 단계 — 모델의 생각 문장 없이 한 줄만.

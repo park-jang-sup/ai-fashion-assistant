@@ -220,6 +220,17 @@ class FirestoreService {
     return items.isEmpty ? null : items.first;
   }
 
+  // 이 계정의 전신 사진 전부(데모로 불러온 것 포함) — 전신 사진 기본값과 "다른 전신 사진으로"가 쓴다.
+  // 동등 조건만이라 복합 인덱스가 필요 없다.
+  static Future<List<WardrobeItem>> fullBodyItems(String uid) async {
+    final snapshot = await _db
+        .collection(_wardrobeCol)
+        .where('ownerUid', isEqualTo: uid)
+        .where('category', isEqualTo: '전신')
+        .get();
+    return snapshot.docs.map((d) => WardrobeItem.fromFirestore(d)).toList();
+  }
+
   // 데모 옷장 예시 일정(docs/task_demo_flow_v1.md 부분 B-2) — 이 일정과 이 일정용으로
   // 만들어진 추천을 지운다(둘 다 isDemo:true). "데모 옷장 비우기"가 옷과 함께 부른다.
   // 반환값은 지운 일정 수.

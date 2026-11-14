@@ -26,7 +26,9 @@ import 'services/ask_controller.dart';
 import 'services/ask_tools.dart';
 import 'services/background_agent.dart';
 import 'services/style_recommendations.dart';
+import 'services/firestore_service.dart';
 import 'services/fitting_job_controller.dart';
+import 'services/full_body_default.dart';
 import 'services/fitting_progress.dart';
 import 'services/notification_service.dart';
 import 'services/fcm_service.dart';
@@ -205,6 +207,9 @@ class _AppShellState extends State<AppShell> {
     '팔찌': null,
   };
   WardrobeItem? _fittingUserPhoto; // 전신 사진
+  // 지금 전신 사진이 앱이 고른 기본값인가(사용자가 직접 고르면 거짓) — 채팅의 단계 줄 안내에만 쓴다.
+  bool _fittingPhotoAuto = false;
+  final FullBodyLastUsedStore _fullBodyPrefs = const FullBodyPrefs();
 
   // AppShell(탭 전환에도 살아있는 레벨)에서 보관 → 다른 탭으로 이동해도
   // 진행 중인 AI 분석/가상 피팅 작업과 결과가 유지된다.
@@ -219,6 +224,7 @@ class _AppShellState extends State<AppShell> {
       hasUserPhoto: () => _fittingUserPhoto != null,
       busy: () => _fittingJob.isGeneratingFitting,
       run: _askTryOn,
+      ensureUserPhoto: _ensureFittingUserPhoto,
     ),
   );
   bool _askBubble = false;
@@ -242,6 +248,8 @@ class _AppShellState extends State<AppShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final guideUid = FirebaseAuth.instance.currentUser?.uid;
       if (mounted && guideUid != null) unawaited(UsageGuide.maybeShow(context, guideUid));
+      // 피팅룸에도 전신 사진 기본값이 미리 선택돼 보이게.
+      if (mounted) unawaited(_ensureFittingUserPhoto());
     });
     // 상태 지속성(복구) → 레벨 1 선제 추천 순으로 앱 진입 시 1회씩 실행한다.
     // 복구가 새 작업보다 우선이고, 둘 다 Gemini를 호출할 수 있어 동시에
@@ -318,14 +326,60 @@ class _AppShellState extends State<AppShell> {
     setState(() => _fittingItems[category] = null);
   }
 
-  // 피팅룸 인라인: 전신 사진 설정
+  // 피팅룸 인라인: 전신 사진 설정 — 사용자가 직접 고른 것은 이 계정이 마지막으로 쓴 사진이 된다.
   void _setFittingUserPhoto(WardrobeItem item) {
-    setState(() => _fittingUserPhoto = item);
+    setState(() {
+      _fittingUserPhoto = item;
+      _fittingPhotoAuto = false;
+    });
+    _rememberFullBody(item);
   }
 
   // 피팅룸 인라인: 전신 사진 초기화
   void _clearFittingUserPhoto() {
-    setState(() => _fittingUserPhoto = null);
+    setState(() {
+      _fittingUserPhoto = null;
+      _fittingPhotoAuto = false;
+    });
+  }
+
+  void _rememberFullBody(WardrobeItem item) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) unawaited(_fullBodyPrefs.save(uid, item.id));
+  }
+
+  // 전신 사진 기본값 — 선택이 없으면 이 계정이 마지막으로 쓴 것, 없으면 가장 최근에 등록한 것을
+  // 고른다. 등록된 전신 사진이 없으면 거짓(try_on은 지금처럼 실패한다).
+  Future<bool> _ensureFittingUserPhoto() async {
+    if (_fittingUserPhoto != null) return true;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
+    try {
+      final pick = pickDefaultFullBody(await FirestoreService.fullBodyItems(uid), await _fullBodyPrefs.load(uid));
+      if (pick == null || !mounted) return false;
+      if (_fittingUserPhoto != null) return true; // 기다리는 사이 사용자가 골랐다
+      setState(() {
+        _fittingUserPhoto = pick;
+        _fittingPhotoAuto = true;
+      });
+      return true;
+    } catch (e) {
+      debugPrint('[전신 사진] 기본값을 잡지 못함(무시): $e');
+      return false;
+    }
+  }
+
+  // "다른 전신 사진으로"(채팅) — 등록된 전신 사진 목록과 고르기.
+  Future<List<WardrobeItem>> _loadFullBodies() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return const [];
+    try {
+      final items = await FirestoreService.fullBodyItems(uid);
+      return items..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    } catch (e) {
+      debugPrint('[전신 사진] 목록을 불러오지 못함(무시): $e');
+      return const [];
+    }
   }
 
   // 피팅룸 결과 카드를 접었을 때 나타나는 플로팅 아이콘 탭 — 피팅룸 탭으로
@@ -357,11 +411,13 @@ class _AppShellState extends State<AppShell> {
     final job = _fittingJob;
     if (job.fittingError != null) return AskFittingOutcome(error: job.fittingError);
     if (job.fittingImage == null && job.fittingImageUrl == null) return const AskFittingOutcome(error: '결과 사진이 없어요');
+    _rememberFullBody(photo); // 입혀 본 전신 사진이 이 계정이 마지막으로 쓴 사진
     return AskFittingOutcome(
       shot: AskFittingShot(
         bytes: job.fittingImage,
         url: job.fittingImageUrl,
         cacheKey: fittingCacheKeyFor(photo.id, board.map((i) => i.id).toList()),
+        autoPicked: _fittingPhotoAuto,
       ),
       missingCategories: List.of(job.fittingMissingCategories),
     );
@@ -377,6 +433,8 @@ class _AppShellState extends State<AppShell> {
         controller: _ask,
         onOpenFittingRoom: _sendRecommendationToFittingRoom,
         onNavigate: (i) => setState(() => _tabIndex = i),
+        loadFullBodies: _loadFullBodies,
+        onPickFullBody: _setFittingUserPhoto,
       ),
     ));
   }
@@ -439,7 +497,12 @@ class _AppShellState extends State<AppShell> {
           onSelectItem: _sendToFittingRoom,
           // 데모 옷장 불러오기 직후 — 사용자가 이미 고른 전신 사진이 있으면 건드리지 않는다.
           onDemoFullBody: (item) {
-            if (_fittingUserPhoto == null) _setFittingUserPhoto(item);
+            if (_fittingUserPhoto == null) {
+              setState(() {
+                _fittingUserPhoto = item;
+                _fittingPhotoAuto = true; // 앱이 고른 것(데모 전신 사진)
+              });
+            }
           },
         );
       case 2:
