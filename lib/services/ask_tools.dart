@@ -715,6 +715,60 @@ class AskTools {
     return AskToolResult(_clip(lines.join('\n')), display: '옷장 ${wardrobe.length}벌을 요약했어요');
   }
 
+  // get_style_history {} — 최근 60일의 착장 기록과 추천 반응 요약(v2 §2-F-1).
+  Future<AskToolResult> getStyleHistory(Map<String, dynamic> args) async {
+    final from = today.subtract(const Duration(days: askHistoryDays));
+    final List<OutfitCalendarEntry> entries;
+    final List<RecommendationEntry> recs;
+    final List<WardrobeItem> wardrobe;
+    try {
+      entries = [for (final e in await data.calendar(from, today)) if (!e.isPlanned && e.itemIds.isNotEmpty) e]
+        ..sort((a, b) => b.date.compareTo(a.date));
+      recs = [for (final r in await data.recommendations(from, today)) if (r.userChoice != null) r];
+      wardrobe = await _loadWardrobe();
+    } catch (e) {
+      return AskToolResult('착장 기록을 불러오지 못했어요: $e', ok: false);
+    }
+    if (entries.isEmpty) {
+      return const AskToolResult('아직 착장 기록이 없어요', display: '아직 착장 기록이 없어요');
+    }
+    final byId = {for (final i in wardrobe) i.id: i};
+    final wearCount = <String, int>{};
+    final colors = <String, int>{};
+    final formals = <String, int>{};
+    for (final e in entries) {
+      for (final id in e.itemIds) {
+        final i = byId[id];
+        if (i == null || i.attributes == null) continue;
+        wearCount[id] = (wearCount[id] ?? 0) + 1;
+        colors[i.attributes!.color] = (colors[i.attributes!.color] ?? 0) + 1;
+        formals[i.attributes!.formality] = (formals[i.attributes!.formality] ?? 0) + 1;
+      }
+    }
+    final top = wearCount.entries.toList()
+      ..sort((a, b) => a.value != b.value ? b.value - a.value : book.numberOf(byId[a.key]!) - book.numberOf(byId[b.key]!));
+    final latestByTpo = <String, OutfitCalendarEntry>{};
+    for (final e in entries) {
+      latestByTpo.putIfAbsent(e.tpoTag, () => e);
+    }
+    final accepted = recs.where((r) => r.userChoice == RecommendationEntry.choiceAccepted).length;
+    final changed = recs.where((r) => r.userChoice == RecommendationEntry.choiceRejectedWithAlternative).length;
+    final clothes = [for (final i in wardrobe) if (i.attributes != null && isAskCategory(i.category)) i];
+    final unworn = [for (final i in clothes) if (!wearCount.containsKey(i.id)) i];
+    final lines = [
+      '최근 $askHistoryDays일 착장 기록 ${entries.length}건',
+      '자주 입은 옷: ${[for (final e in top.take(5)) '${_line(byId[e.key]!)} ${e.value}회'].join(', ')}',
+      '자주 입은 색: ${_counted(colors, max: 5)} / 격식: ${_counted(formals)}',
+      '상황별 가장 최근 착장: ${[
+        for (final e in latestByTpo.values)
+          '[${e.tpoTag}] ${askShortDate(e.date)} ${[for (final id in e.itemIds) if (byId[id] != null) '#${book.numberOf(byId[id]!)}'].join(' ')}',
+      ].join(', ')}',
+      '추천 반응: 그대로 입음 $accepted회, 다르게 입음 $changed회',
+      '$askHistoryDays일 동안 기록에 없는 옷 ${unworn.length}벌${unworn.isEmpty ? '' : ' — 예: ${unworn.take(5).map(_line).join(', ')}'}',
+    ];
+    return AskToolResult(_clip(lines.join('\n')), display: '최근 $askHistoryDays일 착장 기록 ${entries.length}건을 확인했어요');
+  }
+
   // 프롬프트용 프로필 한 줄(있는 항목만) — 없으면 null.
   Future<String?> profileLine() async {
     UserProfile? p;

@@ -39,6 +39,8 @@ class OutfitCalendarEntry {
   // calendar 필드를 제한하지 않는다. null이면 예전 경로.
   final String? createdVia;
   static const createdViaAsk = 'ask';
+  // 데모 옷장 불러오기가 넣은 예시 착장 기록(docs/task_agent_ask_v2.md §2-F) — 화면에 "예시"로 표시.
+  static const createdViaDemoExample = 'demo_example';
 
   const OutfitCalendarEntry({
     required this.id,

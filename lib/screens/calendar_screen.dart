@@ -597,6 +597,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   const Text('에이전트 추천에서 기록',
                       style: TextStyle(color: AppColors.blue, fontSize: 11)),
                 ],
+                if (entry.createdVia == OutfitCalendarEntry.createdViaDemoExample) ...[
+                  const SizedBox(height: 4),
+                  const Text('예시 — 데모 옷장의 예시 착장 기록',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                ],
               ],
             ),
           ),

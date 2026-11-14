@@ -337,6 +337,60 @@ class AgentPlanner {
     );
   }
 
+  // 데모용 예시 착장(docs/task_agent_ask_v2.md §2-F-3) — 데모 옷장을 불러오면 지난 14일 안에 착장 기록
+  // 6건을 넣어 "착장 기록 읽기" 도구가 바로 쓸 거리를 갖게 한다. 날짜는 오늘 기준 며칠 전(고정 날짜
+  // 없음), 상황은 섞고, 조합은 기존 매칭(날씨 없이)으로 만든다. 앞에서 쓴 옷은 recentItemIds로 넘겨
+  // 조합이 겹치지 않게 한다 — 같은 옷장이면 늘 같은 결과.
+  static const demoOutfitRecordPlan = [
+    (2, '출근'),
+    (4, '일상'),
+    (6, '데이트'),
+    (8, '모임'),
+    (11, '운동'),
+    (13, '일상'),
+  ];
+
+  @visibleForTesting
+  static List<OutfitCalendarEntry> demoOutfitRecordsFor(List<WardrobeItem> wardrobe, DateTime today) {
+    final usable = [for (final i in wardrobe) if (i.attributes != null && i.category != '전신') i]
+      ..sort((a, b) => a.id.compareTo(b.id));
+    final used = <String>{};
+    final day = DateTime(today.year, today.month, today.day);
+    final out = <OutfitCalendarEntry>[];
+    for (final (daysAgo, tpo) in demoOutfitRecordPlan) {
+      final m = matchForWeather(
+          wardrobe: usable, formalityHint: TpoTags.byLabel(tpo).formalityHint, recentItemIds: used, day: null);
+      if (m.match.candidates.isEmpty) continue;
+      final items = m.match.candidates.first.items;
+      used.addAll(items.map((i) => i.id));
+      out.add(OutfitCalendarEntry(
+        id: '',
+        date: DateTime(day.year, day.month, day.day - daysAgo),
+        tpoTag: tpo,
+        itemIds: [for (final i in items) i.id],
+        itemSummaries: [for (final i in items) '${i.category}: ${i.attributes?.color ?? ''}'],
+        status: OutfitCalendarEntry.statusRecorded,
+        createdAt: DateTime(day.year, day.month, day.day - daysAgo, 20),
+        isDemo: true,
+        createdVia: OutfitCalendarEntry.createdViaDemoExample,
+      ));
+    }
+    return out;
+  }
+
+  // 넣은 건수. 이미 예시 기록이 있으면(다시 불러온 경우) 넣지 않는다 — "데모 옷장 비우기"가 isDemo로 지운다.
+  static Future<int> addDemoOutfitRecords(String uid) async {
+    final today = _todayMidnight();
+    final recent = await FirestoreService.calendarEntriesForRange(uid, today.subtract(const Duration(days: 14)), today);
+    if (recent.any((e) => e.createdVia == OutfitCalendarEntry.createdViaDemoExample)) return 0;
+    final wardrobe = await FirestoreService.wardrobeStream(uid).first;
+    final records = demoOutfitRecordsFor(wardrobe, today);
+    for (final r in records) {
+      await FirestoreService.addCalendarEntry(uid, r);
+    }
+    return records.length;
+  }
+
   // 날씨를 넣은 조합 선택(docs/task_demo_flow_v1.md 부분 A·§2-5) — 순수 함수, 기기 안 계산.
   // 감점(0.3)만으로는 반팔·여름 상의나 더운 날 블레이저를 밀어내지 못했다(2026-11-14).
   // 기온대에 명백히 어긋나는 옷은 매칭 대상에서 빼고(대안이 있을 때만, findForTpo 바깥 —

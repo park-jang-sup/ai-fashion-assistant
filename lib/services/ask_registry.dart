@@ -141,10 +141,11 @@ final List<AskToolSpec> askToolRegistry = [
   AskToolSpec(
     name: 'preview_outfit',
     signature: '{"date":"YYYY-MM-DD","tpo":"상황 태그","count":1~5(선택),"style":"글자"(선택),'
-        '"keep":[옷 번호](선택),"exclude":[옷 번호](선택),"adjust":"더 따뜻하게|더 가볍게"(선택)}',
+        '"keep":[옷 번호](선택),"exclude":[옷 번호](선택),"adjust":"더 따뜻하게|더 가볍게"(선택),"unworn_first":true(선택)}',
     description: '그날 예보와 상황에 맞춘 코디 미리 보기. 저장하지 않는다. count는 서로 다른 조합 수(앞 조합의 상의·아우터를 빼고 다시 고른다). '
         'style은 상의·하의·아우터를 태그에 그 글자가 든 옷으로 좁힌다. keep은 그 종류를 그 옷으로 고정, exclude는 빼고 고른다. '
-        'adjust는 기온대를 한 단계 옮겨 고른다. 예보 범위 밖 날짜는 오늘 기온대로 고른다.',
+        'adjust는 기온대를 한 단계 옮겨 고른다. unworn_first가 참이면 종류마다 최근 60일 착장 기록에 없는 옷으로 좁힌다. '
+        '예보 범위 밖 날짜는 오늘 기온대로 고른다.',
     displayName: '코디 미리 보기',
     validate: (args) {
       final base = _validDateTpo(args);
@@ -158,6 +159,8 @@ final List<AskToolSpec> askToolRegistry = [
         if (v == null) continue;
         if (v is! List || v.any((x) => parseAskItemNumber(x) == null)) return '출력 오류: $k는 옷 번호 목록이에요(예: [12, 31])';
       }
+      final uw = args['unworn_first'];
+      if (uw != null && uw is! bool) return '출력 오류: unworn_first는 true 또는 false예요';
       final ad = args['adjust'];
       if (ad != null && ad != askAdjustWarmer && ad != askAdjustLighter) {
         return '출력 오류: adjust는 "$askAdjustWarmer" 또는 "$askAdjustLighter"예요';
@@ -166,6 +169,17 @@ final List<AskToolSpec> askToolRegistry = [
     },
     itemArgs: const ['keep', 'exclude'],
     run: (ctx, args) async => _done(await ctx.tools.previewOutfit(args)),
+  ),
+  AskToolSpec(
+    name: 'get_style_history',
+    signature: '{}',
+    description: '최근 60일 착장 기록과 추천 반응 요약. 자주 입은 옷 5벌, 자주 입은 색·격식, 상황별 가장 최근 착장, '
+        '추천을 그대로 입은 횟수와 다르게 입은 횟수, 60일 동안 기록에 없는 옷의 수와 예시.',
+    displayName: '착장 기록 확인',
+    validate: (args) => null,
+    dedupe: true,
+    dedupeMessage: askRepeatMessage,
+    run: (ctx, args) async => _done(await ctx.tools.getStyleHistory(args)),
   ),
   AskToolSpec(
     name: 'add_plan',

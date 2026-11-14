@@ -934,6 +934,12 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         } catch (e) {
           debugPrint('[DEMO] 예시 일정 추가 실패(무시): $e');
         }
+        // 예시 착장 기록 6건(docs/task_agent_ask_v2.md §2-F-3) — 실패해도 불러오기는 성공으로 둔다.
+        try {
+          await AgentPlanner.addDemoOutfitRecords(uid);
+        } catch (e) {
+          debugPrint('[DEMO] 예시 착장 기록 추가 실패(무시): $e');
+        }
       }
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
