@@ -54,7 +54,7 @@ void main() {
         ],
       );
       final r = await askTools(f).getCalendar({'from': '2026-11-16', 'to': '2026-11-22'});
-      expect(r.observation, contains('2026-11-17(화) [데이트] 예정 — 준비된 추천: 상의 블랙 맨투맨·코튼(캐주얼)'));
+      expect(r.observation, contains('2026-11-17(화) [데이트] 예정 — 준비된 추천: #7 상의 블랙 맨투맨·코튼(캐주얼)'));
       expect(r.observation, contains('80점'));
       expect(r.observation, contains('2026-11-16(월) [일상] 기록 — 착장 기록됨'));
       expect(r.items.map((i) => i.id), ['t1', 'p2']);
@@ -165,9 +165,9 @@ void main() {
       expect(r.items, isNotEmpty);
       expect(f.writes, isEmpty);
     });
-    test('예보 범위 밖·예보 실패면 날씨 없이', () async {
+    test('예보 범위 밖은 오늘 기온대 기준(v2 §2-C), 예보 실패면 날씨 없이', () async {
       expect((await askTools(FakeAskData(snap: askSnapshot())).previewOutfit({'date': '2026-11-30', 'tpo': '일상'})).observation,
-          contains('예보 범위 밖이라 날씨 없이'));
+          contains('예보 범위 밖이라 오늘 기온대 기준'));
       expect((await askTools(FakeAskData()).previewOutfit({'date': '2026-11-17', 'tpo': '일상'})).observation,
           contains('예보를 불러오지 못해 날씨 없이'));
     });

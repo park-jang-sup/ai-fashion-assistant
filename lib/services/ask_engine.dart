@@ -84,8 +84,9 @@ class AskOutcome {
   const AskOutcome(this.end, this.answer, this.steps, this.modelCalls, {this.plannedDate});
 }
 
-// 출력 규약 검증(순수) — 맞으면 null, 아니면 모델에 돌려줄 오류 글.
-String? validateAskReply(Map<String, dynamic> json) {
+// 출력 규약 검증(순수) — 맞으면 null, 아니면 모델에 돌려줄 오류 글. knownItem이 있으면 옷 번호 인자가
+// 이 대화에서 보여 준 번호인지도 본다(v2 §2-C).
+String? validateAskReply(Map<String, dynamic> json, {bool Function(int number)? knownItem}) {
   final thought = json['thought'];
   final action = json['action'];
   final args = json['args'] ?? const <String, dynamic>{};
@@ -94,7 +95,15 @@ String? validateAskReply(Map<String, dynamic> json) {
     return '출력 오류: action은 ${askActions.join('·')} 중 하나여야 해요(받은 값: $action)';
   }
   if (args is! Map) return '출력 오류: args는 객체여야 해요';
-  return askToolSpec(action)!.validate(args);
+  final spec = askToolSpec(action)!;
+  final error = spec.validate(args);
+  if (error != null || knownItem == null) return error;
+  for (final k in spec.itemArgs) {
+    for (final n in askNumberList(args[k])) {
+      if (!knownItem(n)) return '출력 오류: 이 대화에서 보여 준 적 없는 옷 번호예요(#$n)';
+    }
+  }
+  return null;
 }
 
 class AskEngine {
@@ -191,7 +200,7 @@ class AskEngine {
       if (_cancelled) return end(AskEnd.cancelled, '요청을 멈췄어요');
       final latency = watch.elapsed - t0;
 
-      final error = validateAskReply(reply.json);
+      final error = validateAskReply(reply.json, knownItem: tools.book.has);
       if (error != null) {
         invalidStreak++;
         steps.add(AskStep(

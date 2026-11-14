@@ -80,10 +80,75 @@ class AskToolResult {
   final String observation;
   final String? display;
   final List<WardrobeItem> items;
+  // preview_outfit이 여러 조합을 낸 경우 전부(첫 조합이 items).
+  final List<List<WardrobeItem>> combos;
   final bool ok;
   // add_plan이 실제로 쓴 경우만 — 확인 카드·캘린더 이동용.
   final DateTime? plannedDate;
-  const AskToolResult(this.observation, {this.display, this.items = const [], this.ok = true, this.plannedDate});
+  const AskToolResult(this.observation,
+      {this.display, this.items = const [], this.combos = const [], this.ok = true, this.plannedDate});
+}
+
+// preview_outfit 인자(v2 §2-C).
+const askPreviewMaxCount = 5;
+const askAdjustWarmer = '더 따뜻하게';
+const askAdjustLighter = '더 가볍게';
+const askHistoryDays = 60; // 착장 기록을 보는 기간(v2 §2-F)
+
+// 옷 번호 목록 인자 — 형식이 틀린 값은 버린다(검증은 등록부가 먼저 한다).
+List<int> askNumberList(Object? v) =>
+    v is List ? [for (final x in v) parseAskItemNumber(x)].whereType<int>().toList() : const [];
+
+// 기온대를 한 단계 옮긴다 — 더 따뜻하게 = 더 추운 날의 기준으로.
+TempBand askShiftBand(TempBand b, {required bool warmer}) {
+  const order = [TempBand.hot, TempBand.mild, TempBand.cool, TempBand.cold];
+  final i = order.indexOf(b) + (warmer ? 1 : -1);
+  return order[i.clamp(0, order.length - 1)];
+}
+
+// 그 기온대를 대표하는 최고기온(tempBandFor의 경계 25·18·10 사이) — 기온대 규칙을 그대로 쓰려고 넣는다.
+double askBandTemp(TempBand b) => switch (b) {
+      TempBand.hot => 27,
+      TempBand.mild => 21,
+      TempBand.cool => 13,
+      TempBand.cold => 5,
+    };
+
+// 옷 번호 — 처음 옷장을 읽을 때 등록 순(같으면 id 순)으로 1부터 매기고, 그 뒤에 생긴 옷은 뒤에
+// 붙인다. 같은 옷장이면 늘 같은 번호(프로브가 재현할 수 있게).
+class AskItemBook {
+  final _byId = <String, int>{};
+  final _byNumber = <int, WardrobeItem>{};
+
+  void seed(List<WardrobeItem> wardrobe) {
+    final fresh = [for (final i in wardrobe) if (!_byId.containsKey(i.id)) i]
+      ..sort((a, b) {
+        final c = a.createdAt.compareTo(b.createdAt);
+        return c != 0 ? c : a.id.compareTo(b.id);
+      });
+    for (final i in fresh) {
+      numberOf(i);
+    }
+    for (final i in wardrobe) {
+      _byNumber[_byId[i.id]!] = i; // 속성이 바뀌었으면 최신으로
+    }
+  }
+
+  int numberOf(WardrobeItem i) => _byId.putIfAbsent(i.id, () {
+        final n = _byId.length + 1;
+        _byNumber[n] = i;
+        return n;
+      });
+
+  WardrobeItem? item(int number) => _byNumber[number];
+  bool has(int number) => _byNumber.containsKey(number);
+}
+
+// 옷 번호 인자 — 12, "12", "#12" 모두 받는다. 형식이 틀리면 null.
+int? parseAskItemNumber(Object? v) {
+  if (v is int) return v;
+  if (v is String) return int.tryParse(v.trim().replaceFirst('#', ''));
+  return null;
 }
 
 // 화면용 한 줄이 없는 실패(인자 오류 등)를 사용자 말로.
@@ -155,6 +220,17 @@ class AskTools {
 
   DateTime get today => _midnight(now());
 
+  // 옷 번호(v2 §2-C) — 대화 안에서만 쓰는 짧은 번호와 실제 옷의 대응. AskTools 하나가 대화 하나다.
+  final book = AskItemBook();
+
+  Future<List<WardrobeItem>> _loadWardrobe() async {
+    final w = await data.wardrobe();
+    book.seed(w);
+    return w;
+  }
+
+  String _line(WardrobeItem i) => '#${book.numberOf(i)} ${_itemLine(i)}';
+
   // get_calendar(from, to) — 날짜별 일정(상황, 예정/기록)과 그 날짜에 준비된 추천 요약.
   Future<AskToolResult> getCalendar(Map<String, dynamic> args) async {
     final from = parseAskDate(args['from']);
@@ -164,7 +240,7 @@ class AskTools {
     try {
       final entries = await data.calendar(from!, to!);
       final recs = (await data.recommendations(from, to)).where((r) => !r.dismissed && r.targetDate != null);
-      final wardrobe = {for (final i in await data.wardrobe()) i.id: i};
+      final wardrobe = {for (final i in await _loadWardrobe()) i.id: i};
       final span = from == to ? askShortDate(from) : '${askShortDate(from)}~${askShortDate(to)}';
       if (entries.isEmpty) {
         return AskToolResult('${askDateKey(from)}~${askDateKey(to)} 일정 없음', display: '$span 일정 없음');
@@ -185,7 +261,7 @@ class AskTools {
         } else {
           final recItems = rec.itemIds.map((id) => wardrobe[id]).whereType<WardrobeItem>().toList();
           items.addAll(recItems);
-          recText = '준비된 추천: ${recItems.map(_itemLine).join(', ')}'
+          recText = '준비된 추천: ${recItems.map(_line).join(', ')}'
               '${rec.colorScore != null ? ' · ${rec.colorScore}점' : ''}'
               '${rec.weatherNote != null ? ' · ${rec.weatherNote}' : ''}';
         }
@@ -247,7 +323,7 @@ class AskTools {
     }
     final List<WardrobeItem> wardrobe;
     try {
-      wardrobe = (await data.wardrobe()).where((i) => i.attributes != null).toList();
+      wardrobe = (await _loadWardrobe()).where((i) => i.attributes != null).toList();
     } catch (e) {
       return AskToolResult('옷장을 불러오지 못했어요: $e', ok: false);
     }
@@ -288,7 +364,7 @@ class AskTools {
     }
     final shown = hits.take(8).toList();
     final list = '일치 ${hits.length}벌${hits.length > 8 ? '(앞 8벌)' : ''}:\n'
-        '${[for (var i = 0; i < shown.length; i++) '${i + 1}. ${_itemLine(shown[i])}'].join('\n')}';
+        '${[for (var i = 0; i < shown.length; i++) '- ${_line(shown[i])}'].join('\n')}';
     // category만 준 조회는 앞 8벌 밖을 다시 찾지 않게 그 종류 전체의 요약을 함께 준다.
     final summary = kw == null ? '\n${_categorySummary(category as String, hits)}' : '';
     return AskToolResult(_clip(list + summary), display: '$what ${hits.length}벌을 찾았어요', items: shown);
@@ -329,7 +405,9 @@ class AskTools {
     ].join('\n');
   }
 
-  // preview_outfit(date, tpo) — 일일 추천과 같은 matchForWeather 1순위. 모델 호출 없음, 저장 없음.
+  // preview_outfit(date, tpo, count?, style?, keep?, exclude?, adjust?, unworn_first?) — 일일 추천과 같은
+  // matchForWeather. 새 인자(v2 §2-C)는 조합 로직·점수를 건드리지 않고 넘기는 옷 목록을 거르는 방식으로만
+  // 구현한다(adjust는 그 기온대를 대표하는 기온을 넣어 기존 기온대 규칙을 그대로 쓴다). 저장 없음.
   Future<AskToolResult> previewOutfit(Map<String, dynamic> args) async {
     final date = parseAskDate(args['date']);
     final tpo = args['tpo'];
@@ -337,44 +415,149 @@ class AskTools {
     if (!isAskTpo(tpo)) {
       return AskToolResult('인자 오류: tpo는 ${TpoTags.all.map((t) => t.label).join('·')} 중 하나예요', ok: false);
     }
-    final List<WardrobeItem> wardrobe;
+    final count = (args['count'] is int ? args['count'] as int : 1).clamp(1, askPreviewMaxCount);
+    final List<WardrobeItem> all;
     try {
-      wardrobe = (await data.wardrobe()).where((i) => i.attributes != null).toList();
+      all = (await _loadWardrobe()).where((i) => i.attributes != null && isAskCategory(i.category)).toList();
     } catch (e) {
       return AskToolResult('옷장을 불러오지 못했어요: $e', ok: false);
     }
-    if (wardrobe.length < 2) return const AskToolResult('옷장에 옷이 부족해 조합을 만들 수 없어요', ok: false);
+    if (all.length < 2) return const AskToolResult('옷장에 옷이 부족해 조합을 만들 수 없어요', ok: false);
+    final notes = <String>[];
+
+    // 거르기 1 — exclude: 빼고 고를 옷.
+    final excluded = {for (final n in askNumberList(args['exclude'])) book.item(n)?.id}.whereType<String>().toSet();
+    var pool = [for (final i in all) if (!excluded.contains(i.id)) i];
+    // 거르기 2 — keep: 그 종류는 그 옷으로 고정.
+    final kept = [for (final n in askNumberList(args['keep'])) book.item(n)].whereType<WardrobeItem>().toList();
+    final keptCats = {for (final k in kept) k.category};
+    pool = [for (final i in pool) if (!keptCats.contains(i.category)) i, ...kept];
+    // 거르기 3 — style: 상의·하의·아우터 각각 태그에 그 글자가 든 옷이 있으면 그 옷들로 좁힌다.
+    final style = args['style'] is String ? (args['style'] as String).trim() : '';
+    if (style.isNotEmpty) {
+      final narrowed = <String>[];
+      for (final c in const ['상의', '하의', '아우터']) {
+        if (keptCats.contains(c)) continue;
+        final hit = [for (final i in pool) if (i.category == c && i.attributes!.tags.any((t) => t.contains(style))) i];
+        if (hit.isEmpty) continue;
+        pool = [for (final i in pool) if (i.category != c) i, ...hit];
+        narrowed.add('$c ${hit.length}벌');
+      }
+      notes.add(narrowed.isEmpty ? "스타일 '$style': 태그가 맞는 옷이 없어 좁히지 않았어요" : "스타일 '$style'로 좁힘: ${narrowed.join(', ')}");
+    }
+    // 거르기 4 — unworn_first: 종류마다 최근 60일 착장 기록에 없는 옷으로(그런 옷이 있는 종류만).
+    if (args['unworn_first'] == true) {
+      final worn = await _wornItemIds();
+      final narrowed = <String>[];
+      for (final c in askCategories) {
+        if (keptCats.contains(c)) continue;
+        final unworn = [for (final i in pool) if (i.category == c && !worn.contains(i.id)) i];
+        final inCat = pool.where((i) => i.category == c).length;
+        if (unworn.isEmpty || unworn.length == inCat) continue;
+        pool = [for (final i in pool) if (i.category != c) i, ...unworn];
+        narrowed.add('$c ${unworn.length}벌');
+      }
+      notes.add(narrowed.isEmpty ? '최근 60일에 입지 않은 옷으로 좁힐 종류가 없었어요' : '최근 60일에 입지 않은 옷으로 좁힘: ${narrowed.join(', ')}');
+    }
+
+    // 날씨 — 예보 범위 밖이면 오늘 예보의 기온대를 대신 쓴다. adjust는 기온대를 한 단계 옮긴다.
     final snapshot = await _safeWeather();
-    final day = snapshot?.forDate(date);
+    var day = snapshot?.forDate(date);
+    var outOfRange = false;
+    if (day == null && snapshot != null) {
+      final todayW = snapshot.forDate(today);
+      if (todayW != null) {
+        day = DailyWeather(
+            date: date, maxTempC: todayW.maxTempC, minTempC: todayW.minTempC, precipitationProbability: 0);
+        outOfRange = true;
+        notes.add('예보 범위 밖이라 오늘 기온대 기준');
+      }
+    }
+    final adjust = args['adjust'];
+    if (day != null && (adjust == askAdjustWarmer || adjust == askAdjustLighter)) {
+      final from = tempBandFor(day.maxTempC);
+      final to = askShiftBand(from, warmer: adjust == askAdjustWarmer);
+      if (to == from) {
+        notes.add('$adjust: 이미 ${_bandLabel(from)} 기준이라 더 옮기지 않았어요');
+      } else {
+        final delta = askBandTemp(to) - day.maxTempC;
+        day = DailyWeather(
+            date: day.date,
+            maxTempC: day.maxTempC + delta,
+            minTempC: day.minTempC + delta,
+            precipitationProbability: day.precipitationProbability);
+        notes.add('$adjust: ${_bandLabel(from)} → ${_bandLabel(to)} 기준으로 골랐어요');
+      }
+    } else if (adjust != null && day == null) {
+      notes.add('예보가 없어 $adjust는 적용하지 못했어요');
+    }
+
     final formality = TpoTags.byLabel(tpo as String).formalityHint;
     final recent = await _safeRecent();
-    final m = AgentPlanner.matchForWeather(
-        wardrobe: wardrobe, formalityHint: formality, recentItemIds: recent, day: day);
-    if (m.match.candidates.isEmpty) {
-      return AskToolResult('조합을 만들지 못했어요 — ${m.match.shortfall ?? '옷장이 부족해요'}', ok: false);
-    }
-    final top = m.match.candidates.first.items;
-    final note = day == null
-        ? null
-        : buildWeatherNote(
+    final combos = <List<WardrobeItem>>[];
+    final lines = <String>[];
+    var weatherText = '';
+    var fallback = false;
+    var used = <String>{}; // 앞 조합의 상의·아우터(다음 조합에서 뺀다)
+    for (var n = 0; n < count; n++) {
+      final w = [for (final i in pool) if (!used.contains(i.id) || keptCats.contains(i.category)) i];
+      if (w.length < 2) break;
+      final m = AgentPlanner.matchForWeather(wardrobe: w, formalityHint: formality, recentItemIds: recent, day: day);
+      if (m.match.candidates.isEmpty) {
+        if (n == 0) return AskToolResult('조합을 만들지 못했어요 — ${m.match.shortfall ?? '옷장이 부족해요'}', ok: false);
+        break;
+      }
+      var top = List.of(m.match.candidates.first.items);
+      // 지정한 옷은 기온대 규칙으로 빼지 않는다 — 걸러졌으면 그 종류 자리에 다시 넣는다.
+      for (final k in kept) {
+        if (top.any((i) => i.id == k.id)) continue;
+        final at = top.indexWhere((i) => i.category == k.category);
+        if (at >= 0) {
+          top[at] = k;
+        } else {
+          top.add(k);
+        }
+      }
+      final sig = (top.map((i) => i.id).toList()..sort()).join(',');
+      if (combos.any((c) => (c.map((i) => i.id).toList()..sort()).join(',') == sig)) break;
+      combos.add(top);
+      if (n == 0) {
+        fallback = m.match.isFallback;
+        if (day != null) {
+          weatherText = buildWeatherNote(
             ctx: weatherContextFor(day),
             baselineTop: m.baseline!.candidates.first.items,
             weatherTop: top,
             finalItems: top,
-            wardrobe: wardrobe,
+            wardrobe: w,
             removedIds: (m.fellBack || m.formalityOverride) ? const {} : m.filter!.removedIds,
             isAssumed: snapshot!.isAssumed,
             formalityHint: formality,
             coldOuterRuleApplied: !m.fellBack && !m.formalityOverride && m.filter!.coldOuterRuleApplied,
-          );
-    final weatherText = day == null
-        ? (snapshot == null ? '예보를 불러오지 못해 날씨 없이 골랐어요' : '예보 범위 밖이라 날씨 없이 골랐어요')
-        : note!;
+          ) ??
+              '';
+        } else {
+          weatherText = snapshot == null ? '예보를 불러오지 못해 날씨 없이 골랐어요' : '예보 범위 밖이라 날씨 없이 골랐어요';
+        }
+      }
+      used = {...used, for (final i in top) if (i.category == '상의' || i.category == '아우터') i.id};
+      lines.add(count == 1 ? top.map(_line).join(', ') : '조합 ${n + 1}: ${top.map(_line).join(', ')}');
+    }
+    if (outOfRange) weatherText = '$weatherText(오늘 기온대 기준)';
+    final head = '${askDateLabel(date)} [$tpo] 미리 보기(저장 안 함)'
+        '${count > 1 ? ' — 요청 $count개 중 ${combos.length}개' : ''}:';
     return AskToolResult(
-      _clip('${askDateLabel(date)} [$tpo] 미리 보기(저장 안 함): ${top.map(_itemLine).join(', ')}\n'
-          '날씨: $weatherText\n격식 차선: ${m.match.isFallback ? '예 — 일정 격식에 딱 맞는 조합이 없어요' : '아니요'}'),
-      display: '${askShortDate(date)} [$tpo] 코디: ${top.map(askShortItem).join(', ')}',
-      items: top,
+      _clip([
+        if (count == 1) '$head ${lines.first}' else ...[head, ...lines],
+        '날씨: $weatherText',
+        '격식 차선: ${fallback ? '예 — 일정 격식에 딱 맞는 조합이 없어요' : '아니요'}',
+        ...notes,
+      ].join('\n')),
+      display: combos.length == 1
+          ? '${askShortDate(date)} [$tpo] 코디: ${combos.first.map(askShortItem).join(', ')}'
+          : '${askShortDate(date)} [$tpo] 코디 ${combos.length}가지',
+      items: combos.first,
+      combos: combos,
     );
   }
 
@@ -415,10 +598,10 @@ class AskTools {
         return AskToolResult('${askDateLabel(date)} [$tpo] 일정을 등록했어요. 코디는 준비하지 못했어요 — 옷장에 맞는 조합이 없거나 평가에 실패했어요',
             display: '${askShortDate(date)} $tpo 일정을 등록했어요', plannedDate: date);
       }
-      final wardrobe = {for (final i in await data.wardrobe()) i.id: i};
+      final wardrobe = {for (final i in await _loadWardrobe()) i.id: i};
       final recItems = rec.itemIds.map((id) => wardrobe[id]).whereType<WardrobeItem>().toList();
       return AskToolResult(
-        _clip('${askDateLabel(date)} [$tpo] 일정을 등록하고 코디를 준비했어요: ${recItems.map(_itemLine).join(', ')}'
+        _clip('${askDateLabel(date)} [$tpo] 일정을 등록하고 코디를 준비했어요: ${recItems.map(_line).join(', ')}'
             '${rec.colorScore != null ? ' · ${rec.colorScore}점' : ''}'
             '${rec.weatherNote != null ? '\n날씨: ${rec.weatherNote}' : ''}'),
         display: '${askShortDate(date)} $tpo 일정을 등록하고 코디를 준비했어요',
@@ -434,7 +617,7 @@ class AskTools {
   Future<AskToolResult> getWardrobeProfile(Map<String, dynamic> args) async {
     final List<WardrobeItem> wardrobe;
     try {
-      wardrobe = (await data.wardrobe()).where((i) => i.attributes != null && isAskCategory(i.category)).toList();
+      wardrobe = (await _loadWardrobe()).where((i) => i.attributes != null && isAskCategory(i.category)).toList();
     } catch (e) {
       return AskToolResult('옷장을 불러오지 못했어요: $e', ok: false);
     }
@@ -468,7 +651,7 @@ class AskTools {
     final heavy = [for (final i in byCat['아우터']!) if (isHeavyOuter(i)) i];
     lines.add(heavy.isEmpty
         ? '한겨울용 아우터: 없음'
-        : '한겨울용 아우터 ${heavy.length}벌: ${heavy.take(askWinterListMax).map(_itemLine).join(', ')}');
+        : '한겨울용 아우터 ${heavy.length}벌: ${heavy.take(askWinterListMax).map(_line).join(', ')}');
     // 빈 부분(계산) — 오늘 기온대에 맞는 옷이 3벌 미만인 종류, 격식별로 0벌인 종류(액세서리 제외).
     final day = (await _safeWeather())?.forDate(today);
     final ctx = day == null ? null : weatherContextFor(day, wardrobe: wardrobe);
@@ -510,6 +693,16 @@ class AskTools {
       if (p.preferredStyles.isNotEmpty) '선호 스타일 ${p.preferredStyles.join('·')}',
     ];
     return parts.isEmpty ? null : parts.join(' · ');
+  }
+
+  // 최근 60일 착장 기록에 나온 옷 id.
+  Future<Set<String>> _wornItemIds() async {
+    try {
+      final entries = await data.calendar(today.subtract(const Duration(days: askHistoryDays)), today);
+      return {for (final e in entries) if (!e.isPlanned) ...e.itemIds};
+    } catch (_) {
+      return const {};
+    }
   }
 
   Future<WeatherSnapshot?> _safeWeather() async {

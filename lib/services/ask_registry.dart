@@ -45,6 +45,7 @@ class AskToolSpec {
   final int? limitPerRequest; // 한 턴(사용자 말 하나)에서 실행 상한(null = 없음)
   final String? limitMessage; // 상한에 걸렸을 때 관찰(모델용 — 화면에는 askDisplayBlocked)
   final bool dedupe; // 같은 인자의 반복은 실행하지 않는다
+  final List<String> itemArgs; // 옷 번호 목록을 받는 인자 — 엔진이 대화에 있는 번호인지 본다
   final String? dedupeMessage;
   final bool writes; // 데이터를 쓰는가
   final bool needsConfirm; // 쓰기 전에 사용자 확인을 받는가
@@ -59,6 +60,7 @@ class AskToolSpec {
     this.limitMessage,
     this.dedupe = false,
     this.dedupeMessage,
+    this.itemArgs = const [],
     this.writes = false,
     this.needsConfirm = false,
     this.run,
@@ -133,10 +135,31 @@ final List<AskToolSpec> askToolRegistry = [
   ),
   AskToolSpec(
     name: 'preview_outfit',
-    signature: _dateTpo,
-    description: '그날 예보와 상황에 맞춘 코디 미리 보기. 저장하지 않는다.',
+    signature: '{"date":"YYYY-MM-DD","tpo":"상황 태그","count":1~5(선택),"style":"글자"(선택),'
+        '"keep":[옷 번호](선택),"exclude":[옷 번호](선택),"adjust":"더 따뜻하게|더 가볍게"(선택)}',
+    description: '그날 예보와 상황에 맞춘 코디 미리 보기. 저장하지 않는다. count는 서로 다른 조합 수(앞 조합의 상의·아우터를 빼고 다시 고른다). '
+        'style은 상의·하의·아우터를 태그에 그 글자가 든 옷으로 좁힌다. keep은 그 종류를 그 옷으로 고정, exclude는 빼고 고른다. '
+        'adjust는 기온대를 한 단계 옮겨 고른다. 예보 범위 밖 날짜는 오늘 기온대로 고른다.',
     displayName: '코디 미리 보기',
-    validate: _validDateTpo,
+    validate: (args) {
+      final base = _validDateTpo(args);
+      if (base != null) return base;
+      final c = args['count'];
+      if (c != null && (c is! int || c < 1 || c > askPreviewMaxCount)) return '출력 오류: count는 1~$askPreviewMaxCount의 정수예요';
+      final st = args['style'];
+      if (st != null && (st is! String || st.trim().isEmpty)) return '출력 오류: style은 글자여야 해요';
+      for (final k in const ['keep', 'exclude']) {
+        final v = args[k];
+        if (v == null) continue;
+        if (v is! List || v.any((x) => parseAskItemNumber(x) == null)) return '출력 오류: $k는 옷 번호 목록이에요(예: [12, 31])';
+      }
+      final ad = args['adjust'];
+      if (ad != null && ad != askAdjustWarmer && ad != askAdjustLighter) {
+        return '출력 오류: adjust는 "$askAdjustWarmer" 또는 "$askAdjustLighter"예요';
+      }
+      return null;
+    },
+    itemArgs: const ['keep', 'exclude'],
     run: (ctx, args) async => _done(await ctx.tools.previewOutfit(args)),
   ),
   AskToolSpec(
