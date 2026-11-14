@@ -196,11 +196,14 @@ class AskTools {
     }
     if (wardrobe.isEmpty) return const AskToolResult('옷장이 비어 있어요', ok: false);
     if (category == null && keyword == null) {
+      // 옷 종류(askCategories)만 센다 — "전신"(전신 사진) 같은 옷이 아닌 문서는 총수에 넣지 않는다.
       final counts = <String, int>{};
-      for (final i in wardrobe) {
+      for (final i in wardrobe.where((i) => isAskCategory(i.category))) {
         counts[i.category] = (counts[i.category] ?? 0) + 1;
       }
-      return AskToolResult('옷장 ${wardrobe.length}벌 — '
+      final total = counts.values.fold(0, (a, b) => a + b);
+      if (total == 0) return const AskToolResult('옷장이 비어 있어요', ok: false);
+      return AskToolResult('옷장 $total벌 — '
           '${[for (final c in askCategories) if (counts[c] != null) '$c ${counts[c]}'].join(', ')}');
     }
     final kw = (keyword as String?)?.trim();

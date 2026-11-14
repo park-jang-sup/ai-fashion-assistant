@@ -125,8 +125,10 @@ function searchWardrobe(args) {
   if (!w.length) return {observation: "옷장이 비어 있어요", ok: false};
   if (category == null && keyword == null) {
     const counts = {};
-    for (const i of w) counts[i.category] = (counts[i.category] ?? 0) + 1;
-    return {observation: `옷장 ${w.length}벌 — ${D.categories.filter((c) => counts[c] != null).map((c) => `${c} ${counts[c]}`).join(", ")}`, ok: true};
+    for (const i of w) if (D.categories.includes(i.category)) counts[i.category] = (counts[i.category] ?? 0) + 1;
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    if (total === 0) return {observation: "옷장이 비어 있어요", ok: false};
+    return {observation: `옷장 ${total}벌 — ${D.categories.filter((c) => counts[c] != null).map((c) => `${c} ${counts[c]}`).join(", ")}`, ok: true};
   }
   const kw = keyword?.trim();
   const hits = w.filter((i) => {

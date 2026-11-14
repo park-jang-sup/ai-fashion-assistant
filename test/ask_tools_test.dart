@@ -82,6 +82,13 @@ void main() {
       final r = await askTools(FakeAskData()).searchWardrobe({});
       expect(r.observation, '옷장 8벌 — 상의 2, 하의 2, 아우터 2, 신발 1, 액세서리 1');
     });
+    test('인자 없는 조회의 총수는 종류별 벌수의 합 — "전신"(전신 사진)은 넣지 않는다', () async {
+      final items = [...askWardrobe, askW('b1', '전신', tags: ['전신사진']), askW('b2', '전신')];
+      final r = await askTools(FakeAskData(items: items)).searchWardrobe({});
+      expect(r.observation, '옷장 8벌 — 상의 2, 하의 2, 아우터 2, 신발 1, 액세서리 1');
+      final onlyPhotos = await askTools(FakeAskData(items: [askW('b1', '전신')])).searchWardrobe({});
+      expect(onlyPhotos.observation, '옷장이 비어 있어요');
+    });
     test('종류·키워드로 찾고 최대 8벌', () async {
       final r = await askTools(FakeAskData()).searchWardrobe({'category': '아우터', 'keyword': '퀼팅안감'});
       expect(r.observation, contains('일치 1벌'));
