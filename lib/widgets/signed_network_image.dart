@@ -51,6 +51,13 @@ class SignedNetworkImage extends StatefulWidget {
   State<SignedNetworkImage> createState() => _SignedNetworkImageState();
 }
 
+// 받아 둔 서명 주소 목록에 원하는 번호(누끼)가 없어 서버에 다시 받은 문서 — 같은 문서는 한 번만
+// 다시 받는다(위젯이 새로 만들어질 때마다 반복 요청하지 않게, 앱이 떠 있는 동안 기억).
+final Set<String> _refetchedForIndex = {};
+
+@visibleForTesting
+void resetSignedImageRefetchForTest() => _refetchedForIndex.clear();
+
 class _SignedNetworkImageState extends State<SignedNetworkImage> {
   String? _resolvedUrl;
   // A-6 — 서명 해석이 최종 실패했다(재시도까지 소진). Phase C 이후에는
@@ -102,14 +109,25 @@ class _SignedNetworkImageState extends State<SignedNetworkImage> {
   }
 
   Future<void> _resolve() async {
-    final urls = await ImageUrlResolver.resolve(
+    var urls = await ImageUrlResolver.resolve(
       collection: widget.collection,
       id: widget.id,
     );
     if (!mounted) return;
-    if (urls != null && widget.urlIndex < urls.length) {
+    // 방어(2026-11-15, 등록 직후 빈 사진 — 원인은 확정하지 못함): 받아 둔 목록이 누끼가 생기기
+    // 전의 것이라 원하는 번호가 없으면, 그 목록을 버리고 서버에 한 번 다시 받는다. 위젯이 새로
+    // 만들어지는 경로(didUpdateWidget을 거치지 않음)에서는 위의 무효화가 일어나지 않는다.
+    // 다시 받아도 없으면 아래의 폴백 그대로.
+    final key = '${widget.collection}/${widget.id}';
+    if (urls != null && widget.urlIndex >= urls.length && _refetchedForIndex.add(key)) {
+      ImageUrlResolver.invalidate(widget.id);
+      urls = await ImageUrlResolver.resolve(collection: widget.collection, id: widget.id);
+      if (!mounted) return;
+    }
+    final got = urls;
+    if (got != null && widget.urlIndex < got.length) {
       setState(() {
-        _resolvedUrl = urls[widget.urlIndex];
+        _resolvedUrl = got[widget.urlIndex];
         _resolveFailed = false;
       });
     } else {
