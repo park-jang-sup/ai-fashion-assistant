@@ -42,6 +42,10 @@ void main() {
     expect(UsageGuide.pages[0].body, contains('데모 옷장을 불러오면 내일 예시 일정이 함께 들어가요'));
   });
 
+  test('4쪽 — AI에게 부탁하기 한 문장(docs/task_agent_ask_v1.md §2-5)', () {
+    expect(UsageGuide.pages[3].body, contains("홈의 'AI에게 부탁하기'에 말로 부탁할 수도 있어요"));
+  });
+
   test('다섯 쪽, 지시서 순서', () {
     expect(UsageGuide.pages.map((p) => p.title).toList(), [
       '내 옷장을 아는 AI 비서',

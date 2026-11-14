@@ -4,11 +4,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
+import '../models/agent_log_entry.dart';
 import '../models/wardrobe_item.dart';
+import '../services/ask_activity_log.dart';
 import '../services/ask_data_source.dart';
 import '../services/ask_engine.dart';
 import '../services/ask_prompt.dart';
 import '../services/ask_tools.dart';
+import '../services/firestore_service.dart';
 import '../services/gemini_service.dart';
 import '../widgets/agent_mascot.dart';
 import '../widgets/signed_network_image.dart';
@@ -23,8 +26,15 @@ class AskScreen extends StatefulWidget {
   // 테스트용 주입 — 없으면 로그인한 사용자의 Firestore 자료와 GeminiService.callAgentStep을 쓴다.
   final AskTools? tools;
   final AskModelCall? callModel;
+  final void Function(AgentLogEntry entry)? logSink;
   const AskScreen(
-      {super.key, required this.request, this.onOpenFittingRoom, this.onNavigate, this.tools, this.callModel});
+      {super.key,
+      required this.request,
+      this.onOpenFittingRoom,
+      this.onNavigate,
+      this.tools,
+      this.callModel,
+      this.logSink});
 
   @override
   State<AskScreen> createState() => _AskScreenState();
@@ -107,6 +117,13 @@ class _AskScreenState extends State<AskScreen> {
       setState(() => _outcome = const AskOutcome(AskEnd.error, '로그인한 뒤에 부탁할 수 있어요', [], 0));
       return;
     }
+    // 활동 내역 — 한 요청은 같은 relatedDocId로 묶는다.
+    final log = AskActivityLog(
+      write: widget.logSink ??
+          (uid == null ? (_) {} : (e) => unawaited(FirestoreService.addAgentLogSilently(uid, e))),
+      relatedId: 'ask_${DateTime.now().millisecondsSinceEpoch}',
+    );
+    log.started(request);
     final engine = AskEngine(
       tools: widget.tools ?? AskTools(FirestoreAskDataSource(uid!)),
       callModel: widget.callModel ??
@@ -135,11 +152,13 @@ class _AskScreenState extends State<AskScreen> {
         return c.future;
       },
       onUpdate: (steps) {
+        log.steps(steps);
         if (mounted && id == _runId) setState(() => _steps = List.of(steps));
       },
     );
     _engine = engine;
     final outcome = await engine.run(request);
+    log.ended(outcome); // 화면을 떠나 멈춘 요청도 "멈춤"으로 남긴다
     if (!mounted || id != _runId) return;
     setState(() {
       _outcome = outcome;

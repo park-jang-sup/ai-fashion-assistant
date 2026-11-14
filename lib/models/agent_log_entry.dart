@@ -26,6 +26,10 @@ class AgentLogEntry {
   // 남긴다 — §6-2 참고.
   static const typeCadenceSignalDetected = 'cadence_signal_detected';
   static const typeCadenceAdjusted = 'cadence_adjusted';
+  // AI에게 부탁하기(docs/task_agent_ask_v1.md §2-5) — 요청 시작, 도구 한 줄, 답의 첫 문장.
+  static const typeAskRequested = 'ask_requested';
+  static const typeAskStep = 'ask_step';
+  static const typeAskAnswered = 'ask_answered';
 
   final String id;
   final DateTime? createdAt; // 읽을 때만 채워짐(쓸 때는 서버 타임스탬프 사용)

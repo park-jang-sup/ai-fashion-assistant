@@ -1,6 +1,7 @@
 // AI에게 부탁하기 전용 화면(docs/task_agent_ask_v1.md §2-5) — 가짜 모델·가짜 자료로 화면 흐름 확인.
 import 'dart:async';
 
+import 'package:ai_fashion_assistant/models/agent_log_entry.dart';
 import 'package:ai_fashion_assistant/screens/ask_screen.dart';
 import 'package:ai_fashion_assistant/services/ask_engine.dart';
 import 'package:flutter/material.dart';
@@ -77,7 +78,9 @@ void main() {
   testWidgets('확인 카드에서 뒤로 나가면 등록하지 않고 멈춘다', (tester) async {
     final data = FakeAskData(snap: askSnapshot(), prepareResult: false);
     final model = _Model(_plan);
-    await tester.pumpWidget(_host(AskScreen(request: 'x', tools: askTools(data), callModel: model.call)));
+    final logs = <AgentLogEntry>[];
+    await tester.pumpWidget(
+        _host(AskScreen(request: 'x', tools: askTools(data), callModel: model.call, logSink: logs.add)));
     await _open(tester);
     expect(find.text('등록하기'), findsOneWidget);
     await tester.pageBack();
@@ -85,6 +88,10 @@ void main() {
     expect(find.text('열기'), findsOneWidget);
     expect(data.writes, isEmpty);
     expect(model.calls, 2); // 확인 뒤의 호출(finish)은 하지 않았다
+    // 활동 내역: 요청 문장 → 도구 줄 → 멈춤, 모두 같은 묶음.
+    expect(logs.first.message, 'AI에게 부탁: x');
+    expect(logs.last.message, startsWith('AI에게 부탁 멈춤'));
+    expect(logs.map((e) => e.relatedDocId).toSet().length, 1);
   });
 
   testWidgets('질문 카드에 답하면 이어서 진행한다', (tester) async {
