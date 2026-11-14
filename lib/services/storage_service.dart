@@ -75,11 +75,19 @@ class StorageService {
   }
 
   // 온디바이스 배경 제거 결과(투명 PNG)를 업로드한다. 원본과 별도 경로에
-  // 저장해 원본은 항상 보존되도록 한다.
-  static Future<({String url, String path})> uploadWardrobeCutout(Uint8List pngBytes) async {
+  // 저장해 원본은 항상 보존되도록 한다. ownerUid를 커스텀 메타데이터에 싣는다
+  // (uploadWardrobeImage와 같은 방식) — 보안 최소 조치의 storage.rules가 세
+  // 경로 모두 새 파일에 ownerUid == 업로더 uid를 요구한다.
+  static Future<({String url, String path})> uploadWardrobeCutout(
+    Uint8List pngBytes, {
+    required String ownerUid,
+  }) async {
     final fileName = '${_randomFileStem()}.png';
     final ref = _storage.ref().child('$_cutoutFolder/$fileName');
-    await ref.putData(pngBytes, SettableMetadata(contentType: 'image/png'));
+    await ref.putData(
+      pngBytes,
+      SettableMetadata(contentType: 'image/png', customMetadata: {'ownerUid': ownerUid}),
+    );
     final url = await ref.getDownloadURL();
     return (url: url, path: ref.fullPath);
   }
@@ -99,10 +107,17 @@ class StorageService {
   // signed_url_policy.ts가 fitting_cache에 대해 하는 것과 동일하게
   // 문서 id(=cacheKey)로도 유도 가능하지만, 호출부가 이미 들고 있는
   // ref.fullPath를 그대로 반환해 유도 규칙을 두 곳에 중복하지 않는다.
+  // ownerUid는 uploadWardrobeCutout과 같은 이유로 싣는다.
   static Future<({String url, String path})> uploadFittingResult(
-      Uint8List bytes, String cacheKey) async {
+    Uint8List bytes,
+    String cacheKey, {
+    required String ownerUid,
+  }) async {
     final ref = _storage.ref().child('$_fittingResultsFolder/$cacheKey.jpg');
-    await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+    await ref.putData(
+      bytes,
+      SettableMetadata(contentType: 'image/jpeg', customMetadata: {'ownerUid': ownerUid}),
+    );
     final url = await ref.getDownloadURL();
     return (url: url, path: ref.fullPath);
   }

@@ -682,7 +682,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
       String? cutoutImageUrl;
       String? cutoutPath;
       if (cutoutBytes != null) {
-        final cutout = await StorageService.uploadWardrobeCutout(cutoutBytes);
+        final cutout = await StorageService.uploadWardrobeCutout(cutoutBytes, ownerUid: ownerUid);
         cutoutImageUrl = cutout.url;
         cutoutPath = cutout.path;
       }

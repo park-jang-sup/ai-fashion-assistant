@@ -363,17 +363,17 @@ class FittingJobController extends ChangeNotifier {
       // fitting_cache의 경로는 문서 id(=cacheKey) 자체에서 결정론적으로
       // 나온다(signed_url_policy.ts와 동일 규칙) — path 필드를 따로
       // 저장할 필요가 없어 .url만 쓴다.
-      final imageUrl = (await StorageService.uploadFittingResult(bytes, cacheKey)).url;
-      // fitting_cache의 create 규칙이 ownerUid == request.auth.uid를 요구한다.
-      // uid가 없으면 캐시 문서 저장만 건너뛴다(폴백 = 아무것도 하지 않음) —
-      // 방금 만든 이미지는 fittingImageUrl로는 계속 반영되어 화면·스크랩에 쓰인다.
+      // 업로드에 소유 표시(ownerUid)를 싣고, fitting_cache의 create 규칙도
+      // ownerUid == request.auth.uid를 요구한다. uid가 없으면(로그인 전) Storage
+      // 규칙이 인증을 요구해 업로드부터 막히므로 캐시 저장 전체를 건너뛴다 —
+      // 방금 만든 이미지는 메모리 바이트로 화면에 계속 보인다.
       final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid != null) {
-        await FirestoreService.cacheFittingResult(cacheKey, imageUrl, uid);
-        // fitting_cache 문서가 실제로 쓰였을 때만 채운다 — 아니면 서명
-        // 대상 문서가 없어 ImageUrlResolver가 매번 not-found 폴백만 반복한다.
-        fittingCacheKey = cacheKey;
-      }
+      if (uid == null) return;
+      final imageUrl = (await StorageService.uploadFittingResult(bytes, cacheKey, ownerUid: uid)).url;
+      await FirestoreService.cacheFittingResult(cacheKey, imageUrl, uid);
+      // fitting_cache 문서가 실제로 쓰였을 때만 채운다 — 아니면 서명
+      // 대상 문서가 없어 ImageUrlResolver가 매번 not-found 폴백만 반복한다.
+      fittingCacheKey = cacheKey;
       fittingImageUrl = imageUrl;
       notifyListeners();
       // fittingCacheKey(인스턴스 필드)는 방금 위에서 uid != null일 때만
