@@ -621,6 +621,41 @@ class GeminiService {
   };
 
   @visibleForTesting
+  // ── AI에게 부탁하기 한 단계(docs/task_agent_ask_v1.md §2-1) — 얇은 통로 ──
+  // 루프 엔진(ask_engine.dart)이 단계마다 부른다. 기존 텍스트 프록시(_callProxyText)와
+  // JSON 파서(_parseJsonObject)를 그대로 쓰고, 대체 모델 정책도 withTextModelFallback
+  // 그대로다(시간 초과·503/429·JSON 파싱 실패면 text-fallback으로 한 번). 다른 호출의
+  // 프롬프트·설정·파서는 건드리지 않는다. 요청은 contents 1개·text part 1개.
+  static const Map<String, dynamic> agentStepGenerationConfig = {
+    'responseMimeType': 'application/json',
+    'temperature': 0.2,
+    'maxOutputTokens': 800,
+    'thinkingConfig': {'thinkingBudget': 0},
+  };
+
+  static Future<({Map<String, dynamic> json, String model})> callAgentStep(
+    String prompt, {
+    Duration timeout = const Duration(seconds: 20),
+  }) =>
+      withTextModelFallback((model) async {
+        final responseBody = await _callProxyText(
+          model: model,
+          requestBody: {
+            'contents': [
+              {
+                'parts': [
+                  {'text': prompt}
+                ]
+              }
+            ],
+            'generationConfig': agentStepGenerationConfig,
+          },
+          category: 'agent_ask',
+          timeout: timeout,
+        );
+        return (json: _parseJsonObject(_extractTextFromResponse(responseBody)), model: model);
+      });
+
   static const Map<String, dynamic> weeklyPlanGenerationConfig = {
     // 계획은 창의성보다 제약 준수가 중요하므로 온도를 낮춘다.
     'temperature': 0.4,
