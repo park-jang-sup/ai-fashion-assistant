@@ -96,6 +96,49 @@ void main() {
       expect((await askTools(FakeAskData(items: const [])).searchWardrobe({})).observation, '옷장이 비어 있어요');
       expect((await askTools(FakeAskData()).searchWardrobe({'keyword': '패딩'})).observation, contains('일치하는 옷 없음'));
     });
+    test('category만 주면 그 종류 전체 요약 — 앞 8벌 밖의 한겨울용도 보인다', () async {
+      final outers = [
+        for (var i = 0; i < 10; i++) askW('n$i', '아우터', tags: ['바람막이', '나일론', '간절기'], day: 20 + i),
+        askW('w1', '아우터', color: '퍼플', tags: ['후드', '캔버스', '겨울', '양털안감'], day: 1),
+        askW('w2', '아우터', color: '카키', tags: ['코듀로이', '퀼팅안감', '워크자켓', '가을/겨울'], day: 2),
+      ];
+      final r = await askTools(FakeAskData(items: outers)).searchWardrobe({'category': '아우터'});
+      final o = r.observation;
+      expect(o, contains('일치 12벌(앞 8벌)'));
+      expect(o, isNot(contains('1. 아우터 퍼플'))); // 목록 8벌에는 없지만
+      expect(o, contains('아우터 12벌 요약'));
+      expect(o, contains('계절·두께 태그: 간절기 10, 가을/겨울 1, 겨울 1, 양털안감 1, 퀼팅안감 1'));
+      expect(o, contains('종류·소재 태그(2벌 이상): 나일론 10, 바람막이 10'));
+      // 최근 등록 먼저(w2가 w1보다 나중에 등록).
+      expect(o, contains('옷 2벌:\n- 카키 코듀로이·퀼팅안감·워크자켓·가을/겨울(캐주얼)\n- 퍼플 후드·캔버스·겨울·양털안감(캐주얼)'));
+      expect(o.length, lessThanOrEqualTo(askObservationMaxChars));
+      // 키워드가 있으면 요약을 붙이지 않는다.
+      expect((await askTools(FakeAskData(items: outers)).searchWardrobe({'category': '아우터', 'keyword': '겨울'})).observation,
+          isNot(contains('요약')));
+      final none = await askTools(FakeAskData()).searchWardrobe({'category': '신발'});
+      expect(none.observation, contains('옷: 없음'));
+    });
+    test('요약이 길어도 1,500자 안', () async {
+      final many = [
+        for (var i = 0; i < 60; i++)
+          askW('m$i', '상의', tags: ['태그$i', '겨울', '가을겨울소재$i', '긴태그이름입니다$i'], day: 1 + i % 28),
+      ];
+      final r = await askTools(FakeAskData(items: many)).searchWardrobe({'category': '상의'});
+      expect(r.observation.length, lessThanOrEqualTo(askObservationMaxChars));
+    });
+    test('한 글자 검색어는 태그·색과 완전히 같을 때만, 두 글자 이상은 부분 일치', () async {
+      final items = [
+        askW('a', '상의', color: '네이비', tags: ['반팔']),
+        askW('b', '상의', tags: ['울', '니트']),
+        askW('c', '상의', tags: ['울혼방']),
+        askW('d', '아우터', tags: ['비', '방수']),
+      ];
+      final t = askTools(FakeAskData(items: items));
+      expect((await t.searchWardrobe({'keyword': '비'})).observation, contains('일치 1벌'));
+      expect((await t.searchWardrobe({'keyword': '울'})).observation, contains('일치 1벌'));
+      expect((await t.searchWardrobe({'keyword': '울혼'})).observation, contains('일치 1벌'));
+      expect((await t.searchWardrobe({'keyword': '네이'})).observation, contains('일치 1벌'));
+    });
   });
 
   group('preview_outfit — 저장 없음', () {

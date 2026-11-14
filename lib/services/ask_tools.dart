@@ -25,6 +25,14 @@ const askPlanMaxDaysAhead = 60;
 // 예보 범위 — 오늘 포함 7일(WeatherService, forecast_days 7).
 const askForecastDays = 7;
 const askCategories = ['상의', '하의', '아우터', '신발', '액세서리'];
+// category만 준 search_wardrobe의 요약(프로브 T6 run3) — 계절·두께 태그. 한겨울용은 weather_fit의
+// heavyOuterTags 그대로.
+const askSeasonTags = {
+  '봄', '여름', '가을', '겨울', '봄가을', '간절기', '가을/겨울', '가을겨울', '사계절', '여름아우터', '양털안감', '퀼팅안감',
+};
+const askSummaryTagMin = 2; // 종류·소재 태그는 2벌 이상인 것만
+const askSummaryTagMax = 12;
+const askWinterListMax = 8;
 
 // 사용자 본인의 데이터 — 앱은 FirestoreAskDataSource, 테스트는 가짜.
 abstract class AskDataSource {
@@ -200,6 +208,8 @@ class AskTools {
       if (category != null && i.category != category) return false;
       if (kw == null) return true;
       final a = i.attributes!;
+      // 한 글자 검색어는 태그·색과 완전히 같을 때만("비"가 "네이비"에 걸리지 않게), 두 글자 이상은 부분 일치.
+      if (kw.length == 1) return [a.color, ...a.tags].any((t) => t.trim() == kw);
       return [i.category, i.subCategory ?? '', a.color, a.style, a.formality, ...a.tags].any((t) => t.contains(kw));
     }
     // 최근 등록 먼저, 같으면 id 순 — 같은 입력이면 늘 같은 순서(프로브가 같은 규칙으로 재현한다).
@@ -210,11 +220,46 @@ class AskTools {
       });
     if (hits.isEmpty) return AskToolResult('일치하는 옷 없음(${category ?? '전체'}${kw != null ? ', "$kw"' : ''})');
     final shown = hits.take(8).toList();
-    return AskToolResult(
-      _clip('일치 ${hits.length}벌${hits.length > 8 ? '(앞 8벌)' : ''}:\n'
-          '${[for (var i = 0; i < shown.length; i++) '${i + 1}. ${_itemLine(shown[i])}'].join('\n')}'),
-      items: shown,
-    );
+    final list = '일치 ${hits.length}벌${hits.length > 8 ? '(앞 8벌)' : ''}:\n'
+        '${[for (var i = 0; i < shown.length; i++) '${i + 1}. ${_itemLine(shown[i])}'].join('\n')}';
+    // category만 준 조회는 앞 8벌 밖을 다시 찾지 않게 그 종류 전체의 요약을 함께 준다.
+    final summary = kw == null ? '\n${_categorySummary(category as String, hits)}' : '';
+    return AskToolResult(_clip(list + summary), items: shown);
+  }
+
+  // 태그별 벌수는 많은 순, 같으면 글자 순(프로브가 같은 규칙으로 재현한다).
+  static String _counted(Map<String, int> counts, {int min = 1, int? max}) {
+    final e = counts.entries.where((e) => e.value >= min).toList()
+      ..sort((a, b) => a.value != b.value ? b.value - a.value : a.key.compareTo(b.key));
+    return [for (final x in max == null ? e : e.take(max)) '${x.key} ${x.value}'].join(', ');
+  }
+
+  static String _categorySummary(String category, List<WardrobeItem> items) {
+    final season = <String, int>{};
+    final kind = <String, int>{};
+    for (final i in items) {
+      for (final t in {for (final t in i.attributes!.tags) t.trim()}) {
+        if (t.isEmpty || t == category) continue;
+        final m = askSeasonTags.contains(t) || heavyOuterTags.contains(t) ? season : kind;
+        m[t] = (m[t] ?? 0) + 1;
+      }
+    }
+    final winter = [
+      for (final i in items)
+        if (i.attributes!.tags.any((t) => heavyOuterTags.contains(t.trim()))) i,
+    ];
+    final heavy = heavyOuterTags.join('·');
+    final kinds = _counted(kind, min: askSummaryTagMin, max: askSummaryTagMax);
+    return [
+      '$category ${items.length}벌 요약',
+      '계절·두께 태그: ${season.isEmpty ? '없음' : _counted(season)}',
+      '종류·소재 태그($askSummaryTagMin벌 이상): ${kinds.isEmpty ? '없음' : kinds}',
+      if (winter.isEmpty)
+        '한겨울용 태그($heavy) 옷: 없음'
+      else
+        '한겨울용 태그($heavy) 옷 ${winter.length}벌${winter.length > askWinterListMax ? '(앞 $askWinterListMax벌)' : ''}:\n'
+            '${[for (final i in winter.take(askWinterListMax)) '- ${i.attributes!.color} ${i.attributes!.tags.join('·')}(${i.attributes!.formality})'].join('\n')}',
+    ].join('\n');
   }
 
   // preview_outfit(date, tpo) — 일일 추천과 같은 matchForWeather 1순위. 모델 호출 없음, 저장 없음.

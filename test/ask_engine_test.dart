@@ -104,12 +104,28 @@ void main() {
     expect((await bad.engine.run('x')).end, AskEnd.invalidOutput);
   });
 
+  test('search_wardrobe는 요청 하나에 2회까지 실행 — 3회째는 실행하지 않고 호출 수에는 든다', () async {
+    final e = _engine([
+      _a('search_wardrobe'),
+      _a('search_wardrobe', {'category': '아우터'}),
+      _a('search_wardrobe', {'keyword': '패딩'}),
+      _a('search_wardrobe', {'keyword': '코트'}),
+      _a('finish', {'answer': '퀼팅안감 아우터가 있어요'}),
+    ]);
+    final o = await e.engine.run('겨울 아우터');
+    expect(o.end, AskEnd.finished);
+    expect(o.modelCalls, 5);
+    expect([for (final s in o.steps.take(4)) s.observation!.split('\n').first],
+        ['옷장 8벌 — 상의 2, 하의 2, 아우터 2, 신발 1, 액세서리 1', '일치 2벌:', askWardrobeSearchLimitMessage, askWardrobeSearchLimitMessage]);
+    expect(e.model.prompts[3], contains(askWardrobeSearchLimitMessage));
+  });
+
   test('모델 호출 6회 상한 — finish가 없으면 여기까지 확인했어요', () async {
     final e = _engine([for (var i = 0; i < 10; i++) _a('search_wardrobe')]);
     final o = await e.engine.run('x');
     expect(o.end, AskEnd.maxSteps);
     expect(o.modelCalls, askMaxModelCalls);
-    expect(o.answer, startsWith('여기까지 확인했어요 — 옷장 8벌'));
+    expect(o.answer, '여기까지 확인했어요 — $askWardrobeSearchLimitMessage');
     // 네 번째 호출 뒤부터 남은 호출 수를 알린다(5번째 요청에 2회, 6번째에 1회).
     expect([for (final p in e.model.prompts) RegExp(r'LEFT:(\d)').firstMatch(p)?.group(1)],
         [null, null, null, null, '2', '1']);

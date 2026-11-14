@@ -15,6 +15,7 @@ import 'package:ai_fashion_assistant/services/ask_engine.dart';
 import 'package:ai_fashion_assistant/services/ask_prompt.dart';
 import 'package:ai_fashion_assistant/services/ask_tools.dart';
 import 'package:ai_fashion_assistant/services/gemini_service.dart';
+import 'package:ai_fashion_assistant/services/weather_fit.dart';
 import 'package:ai_fashion_assistant/services/weather_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -190,7 +191,7 @@ void main() {
     // search_wardrobe는 키워드가 자유라 표 대신 프로브가 같은 규칙으로 계산한다 — 대조용 표본.
     final searchSamples = <Map<String, dynamic>>[];
     for (final c in [null, ...askCategories]) {
-      for (final kw in [null, '겨울', '아우터', '패딩', '코트', '니트', '가을겨울', '후드', '반팔', '블레이저', '울', '퀼팅안감', '블랙']) {
+      for (final kw in [null, '겨울', '아우터', '패딩', '코트', '니트', '가을겨울', '후드', '반팔', '블레이저', '울', '퀼팅안감', '블랙', '비', '봄', '퀼팅', '스웨이드']) {
         final args = {if (c != null) 'category': c, if (kw != null) 'keyword': kw};
         final r = await tools.searchWardrobe(args);
         searchSamples.add({'args': args, 'observation': r.observation, 'ok': r.ok});
@@ -232,6 +233,13 @@ void main() {
           },
       ],
       'remainingNoticeAfter': askRemainingNoticeAfter,
+      'maxWardrobeSearches': askMaxWardrobeSearches,
+      'wardrobeSearchLimitMessage': askWardrobeSearchLimitMessage,
+      'seasonTags': askSeasonTags.toList(),
+      'heavyTags': heavyOuterTags.toList(),
+      'summaryTagMin': askSummaryTagMin,
+      'summaryTagMax': askSummaryTagMax,
+      'winterListMax': askWinterListMax,
       // 두 번째는 네 번 부른 뒤의 요청(단계 기록 끝에 "남은 호출 2회").
       'promptChecks': [
         for (final (steps, left) in [(checkSteps, null), ([...checkSteps, ...checkSteps], 2)])

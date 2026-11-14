@@ -46,6 +46,9 @@ typedef AskPromptBuilder = String Function({
 
 // 이 횟수만큼 부른 뒤부터 프롬프트 단계 기록 끝에 남은 호출 수를 알린다(프로브 T6 다시 실행).
 const askRemainingNoticeAfter = 4;
+// 요청 하나에서 search_wardrobe를 실행하는 상한(프로브 T6 run3, 사용자 결정).
+const askMaxWardrobeSearches = 2;
+const askWardrobeSearchLimitMessage = '옷장은 이미 두 번 조회했어요. 얻은 결과로 답하세요';
 
 enum AskStepStatus { running, done, failed }
 
@@ -146,6 +149,7 @@ class AskEngine {
     var calls = 0;
     var invalidStreak = 0;
     var askUsed = false;
+    var searches = 0;
     var planBlocked = false; // 취소했거나 이미 실행함 — 다시 실행하지 않는다
     DateTime? plannedDate;
 
@@ -229,7 +233,13 @@ class AskEngine {
         case 'get_weather':
           result = await tools.getWeather(args);
         case 'search_wardrobe':
-          result = await tools.searchWardrobe(args);
+          // 같은 요청에서 옷장 조회를 되풀이하지 않게 2회까지만 실행한다(호출 횟수에는 들어간다).
+          if (searches >= askMaxWardrobeSearches) {
+            result = const AskToolResult(askWardrobeSearchLimitMessage, ok: false);
+          } else {
+            searches++;
+            result = await tools.searchWardrobe(args);
+          }
         case 'preview_outfit':
           result = await tools.previewOutfit(args);
         case 'ask_user':
