@@ -1,0 +1,624 @@
+// AI에게 부탁하기 프로브 T7 — docs/task_agent_ask_v2.md §3.
+//
+// T6(tools/text_probe/ask_probe.mjs)는 엔진을 JS로 옮겨 적고 도구 결과를 표로 흉내 냈다. T7은 옷 번호·
+// 여러 턴·조합 인자가 늘어 표로 흉내 낼 수 없어, 앱의 컨트롤러·엔진·등록부·도구·프롬프트 빌더를 그대로
+// 돌리고 모델 호출만 실제 HTTP로 한다(Firestore 접근 없음 — 자료는 고정 자료, 시나리오별 "오늘"은 입력).
+//  · C = claude-sonnet-5-5: 서버 claude_adapter.ts와 같은 변환(thinking between_tools,
+//    thinkingBudget 0 → effort low, max_tokens 800, anthropic-version 2023-06-01)
+//  · G = gemini-3.5-flash: 앱 요청 그대로(GeminiService.agentStepGenerationConfig)
+// 키는 환경변수로만 읽고(GEMINI_API_KEY, ANTHROPIC_API_KEY) 결과·로그에 섞이면 가린다.
+// 평소 `flutter test`에서는 건너뛴다.
+//   ASK_T7=1 flutter test test/ask_probe_t7_test.dart                 (C 2회 + G 1회)
+//   ASK_T7=1 ASK_T7_NAME=run2 ...                                       (결과 파일 이름)
+//   ASK_T7=1 ASK_T7_MOCK=1 ...                                          (가짜 모델로 경로만 확인)
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:ai_fashion_assistant/models/clothing_attributes.dart';
+import 'package:ai_fashion_assistant/models/outfit_calendar_entry.dart';
+import 'package:ai_fashion_assistant/models/recommendation_entry.dart';
+import 'package:ai_fashion_assistant/models/user_profile.dart';
+import 'package:ai_fashion_assistant/models/wardrobe_item.dart';
+import 'package:ai_fashion_assistant/services/agent_planner.dart';
+import 'package:ai_fashion_assistant/services/ask_controller.dart';
+import 'package:ai_fashion_assistant/services/ask_engine.dart';
+import 'package:ai_fashion_assistant/services/ask_history.dart';
+import 'package:ai_fashion_assistant/services/ask_registry.dart';
+import 'package:ai_fashion_assistant/services/ask_tools.dart';
+import 'package:ai_fashion_assistant/services/gemini_api_exception.dart';
+import 'package:ai_fashion_assistant/services/gemini_service.dart';
+import 'package:ai_fashion_assistant/services/weather_service.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+final _env = Platform.environment;
+final _geminiKey = _env['GEMINI_API_KEY'] ?? '';
+final _claudeKey = _env['ANTHROPIC_API_KEY'] ?? '';
+String _mask(String s) {
+  var out = s;
+  for (final k in [_geminiKey, _claudeKey]) {
+    if (k.isNotEmpty) out = out.replaceAll(k, '***');
+  }
+  return out;
+}
+
+// ── 시나리오(§3, 실행 전 고정) ─────────────────────────────────────
+class _Scenario {
+  final String id;
+  final DateTime today;
+  final List<String> turns;
+  final bool cancel; // 확인 카드에서 취소
+  final String userAnswer; // ask_user에 줄 고정 답
+  const _Scenario(this.id, this.today, this.turns, {this.cancel = false}) : userAnswer = '금요일 저녁 모임이에요';
+}
+
+final _scenarios = [
+  _Scenario('D1', DateTime(2026, 11, 14), ['다음 주 월요일 모임 일정 넣어줘']),
+  _Scenario('D2', DateTime(2026, 11, 15), ['다음 주 금요일 데이트 일정 넣어줘']),
+  _Scenario('D3', DateTime(2026, 11, 18), ['모레 면접 일정 넣어줘']),
+  _Scenario('S2', DateTime(2026, 11, 16), ['내일 비 오면 뭐 입지?']),
+  _Scenario('S6', DateTime(2026, 11, 16), ['옷 좀 준비해줘']),
+  _Scenario('S7', DateTime(2026, 11, 16), ['오늘 저녁 메뉴 추천해줘']),
+  _Scenario('S9', DateTime(2026, 11, 16), ['금요일 저녁 모임에 입을 옷 준비해줘'], cancel: true),
+  _Scenario('N1', DateTime(2026, 11, 14), ['다음 주 월요일 홍대에서 친구랑 노는데 힙한 착장으로 5세트 추천해줘']),
+  _Scenario('N2', DateTime(2026, 11, 16), ['금요일 모임 옷 골라서 입혀 봐줘']),
+  _Scenario('N3', DateTime(2026, 11, 16), ['내일 뭐 입지?', '자켓만 바꿔 줘']),
+  _Scenario('N4', DateTime(2026, 11, 16), ['내일 뭐 입지?', '더 따뜻하게']),
+  _Scenario('N5', DateTime(2026, 11, 16), ['내 옷장에 부족한 옷 알려줘']),
+  _Scenario('N6', DateTime(2026, 11, 16), ['요즘 안 입은 옷으로 코디해줘']),
+  _Scenario('N7', DateTime(2026, 11, 16), ['금요일 모임 옷 골라줘', '이걸로 일정 등록해줘']),
+];
+
+// ── 고정 자료 ──────────────────────────────────────────────────────
+List<WardrobeItem> _demoWardrobe() {
+  final raw = jsonDecode(File('test/data/demo_wardrobe_attrs.json').readAsStringSync()) as Map<String, dynamic>;
+  return [
+    for (final m in (raw['items'] as List).cast<Map<String, dynamic>>())
+      WardrobeItem(
+        id: m['id'] as String,
+        imageUrl: '',
+        category: m['category'] as String,
+        subCategory: m['subCategory'] as String?,
+        createdAt: DateTime(2026),
+        attributes: ClothingAttributes.fromJson(m['attributes'] as Map<String, dynamic>),
+      ),
+  ];
+}
+
+// 오늘부터 7일 예보 — 내일 비, 5일 뒤가 가장 추움(T6와 같은 모양, 오늘 기준).
+WeatherSnapshot _forecast(DateTime today) {
+  const days = [(14.0, 6.0, 10), (9.0, 2.0, 70), (12.0, 5.0, 20), (16.0, 8.0, 0), (13.0, 5.0, 30), (2.0, -5.0, 10), (11.0, 3.0, 0)];
+  return WeatherSnapshot(
+    current: const CurrentWeather(tempC: 10, weatherCode: 3),
+    daily: [
+      for (var i = 0; i < days.length; i++)
+        DailyWeather(
+            date: DateTime(today.year, today.month, today.day + i),
+            maxTempC: days[i].$1,
+            minTempC: days[i].$2,
+            precipitationProbability: days[i].$3),
+    ],
+  );
+}
+
+class _Data implements AskDataSource {
+  final DateTime today;
+  final List<WardrobeItem> items;
+  final List<OutfitCalendarEntry> entries = [];
+  final List<RecommendationEntry> recs = [];
+  final writes = <(DateTime, String)>[];
+  late final AskTools previewer = AskTools(this, now: () => today);
+  _Data(this.today, this.items);
+
+  @override
+  Future<List<OutfitCalendarEntry>> calendar(DateTime from, DateTime to) async =>
+      entries.where((e) => !e.date.isBefore(from) && !e.date.isAfter(to)).toList();
+  @override
+  Future<List<RecommendationEntry>> recommendations(DateTime from, DateTime to) async => recs;
+  @override
+  Future<WeatherSnapshot?> weather() async => _forecast(today);
+  @override
+  Future<List<WardrobeItem>> wardrobe() async => items;
+  @override
+  Future<Set<String>> recentItemIds() async => const {};
+  @override
+  Future<UserProfile?> profile() async =>
+      const UserProfile(heightCm: 175, bodyType: '보통 체형', preferredStyles: ['캐주얼', '스트릿']);
+  // 쓰기 흉내 — 기록만 하고 미리 보기 1순위를 82점으로 "준비"한 것처럼 돌려준다.
+  @override
+  Future<AskPlanWrite> addPlan(DateTime date, String tpo, {required bool prepare}) async {
+    writes.add((date, tpo));
+    if (!prepare) return const AskPlanWrite(prepared: false);
+    final p = await previewer.previewOutfit({'date': askDateKey(date), 'tpo': tpo});
+    return AskPlanWrite(
+      prepared: p.ok,
+      recommendation: p.ok
+          ? RecommendationEntry(
+              id: 'probe',
+              itemIds: [for (final i in p.items) i.id],
+              itemSummaries: const [],
+              summaryText: '',
+              triggerItemId: '',
+              createdAt: today,
+              colorScore: 82,
+              targetDate: date,
+              targetTpoTag: tpo)
+          : null,
+    );
+  }
+}
+
+Future<_Data> _fixture(DateTime today) async {
+  final wardrobe = _demoWardrobe();
+  final data = _Data(today, wardrobe);
+  final tomorrow = DateTime(today.year, today.month, today.day + 1);
+  final p = await data.previewer.previewOutfit({'date': askDateKey(tomorrow), 'tpo': '데이트'});
+  data.entries.addAll([
+    OutfitCalendarEntry(id: 'c1', date: tomorrow, tpoTag: '데이트', status: 'planned', createdAt: today),
+    OutfitCalendarEntry(
+        id: 'c2', date: DateTime(today.year, today.month, today.day + 3), tpoTag: '출근', status: 'planned', createdAt: today),
+    // 데모 옷장 불러오기와 같은 예시 착장 기록 6건(v2 §2-F-3).
+    ...AgentPlanner.demoOutfitRecordsFor(wardrobe, today),
+  ]);
+  data.recs.add(RecommendationEntry(
+      id: 'r1',
+      itemIds: [for (final i in p.items) i.id],
+      itemSummaries: const [],
+      summaryText: '',
+      triggerItemId: '',
+      createdAt: today,
+      colorScore: 84,
+      targetDate: tomorrow,
+      targetTpoTag: '데이트'));
+  return data;
+}
+
+class _NoHistory implements AskHistoryStore {
+  @override
+  Future<List<AskRecord>> recent() async => const [];
+  @override
+  Future<void> save(AskRecord record) async {}
+  @override
+  Future<void> delete(String id) async {}
+  @override
+  Future<void> clear() async {}
+}
+
+// 가짜 피팅 — 전신 사진이 있고 바로 결과를 돌려준다(진짜 피팅은 하지 않는다).
+AskFittingPort _fakeFitting(List<List<String>> runs) => AskFittingPort(
+      hasUserPhoto: () => true,
+      busy: () => false,
+      run: (items) async {
+        runs.add([for (final i in items) i.id]);
+        return AskFittingOutcome(shot: AskFittingShot(bytes: Uint8List(1), cacheKey: 'probe'));
+      },
+    );
+
+// ── 모델 호출 ──────────────────────────────────────────────────────
+Map<String, dynamic> _parseJson(String text) {
+  final cleaned = text.trim().replaceAll(RegExp(r'```json\s*'), '').replaceAll(RegExp(r'```\s*'), '');
+  final start = cleaned.indexOf('{');
+  final end = cleaned.lastIndexOf('}');
+  if (start == -1 || end == -1 || end < start) throw FormatException('JSON 객체를 찾을 수 없음: ${_mask(text)}');
+  return jsonDecode(cleaned.substring(start, end + 1)) as Map<String, dynamic>;
+}
+
+Future<String> _post(Uri url, Map<String, String> headers, Map<String, dynamic> body) async {
+  final client = HttpClient();
+  try {
+    final req = await client.postUrl(url);
+    headers.forEach(req.headers.set);
+    req.headers.contentType = ContentType.json;
+    req.add(utf8.encode(jsonEncode(body)));
+    final res = await req.close();
+    final text = await res.transform(utf8.decoder).join();
+    final masked = _mask(text);
+    if (res.statusCode == 429) throw RateLimitExceededException(masked);
+    if (res.statusCode != 200) throw HttpException('HTTP ${res.statusCode} ${masked.substring(0, masked.length.clamp(0, 300))}');
+    return text;
+  } finally {
+    client.close();
+  }
+}
+
+Future<AskModelReply> _claude(String prompt) async {
+  final gc = GeminiService.agentStepGenerationConfig;
+  final mot = gc['maxOutputTokens'] as int;
+  final text = await _post(Uri.parse('https://api.anthropic.com/v1/messages'), {
+    'x-api-key': _claudeKey,
+    'anthropic-version': '2023-06-01',
+  }, {
+    'model': 'claude-sonnet-5-5',
+    'max_tokens': mot <= 800 ? mot : (mot > 4000 ? mot : 4000),
+    'messages': [
+      {
+        'role': 'user',
+        'content': [
+          {'type': 'text', 'text': prompt}
+        ]
+      }
+    ],
+    'thinking': {'type': 'between_tools'},
+    'output_config': {'effort': (gc['thinkingConfig'] as Map)['thinkingBudget'] == 0 ? 'low' : 'medium'},
+  });
+  final json = jsonDecode(text) as Map<String, dynamic>;
+  final out = [
+    for (final b in (json['content'] as List? ?? const []))
+      if ((b as Map)['type'] == 'text') b['text'] as String,
+  ].join();
+  return AskModelReply(_parseJson(out), 'claude-sonnet-5-5');
+}
+
+Future<AskModelReply> _gemini(String prompt) async {
+  final text = await _post(
+      Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent'),
+      {'x-goog-api-key': _geminiKey},
+      {
+        'contents': [
+          {
+            'parts': [
+              {'text': prompt}
+            ]
+          }
+        ],
+        'generationConfig': GeminiService.agentStepGenerationConfig,
+      });
+  final json = jsonDecode(text) as Map<String, dynamic>;
+  final t = ((((json['candidates'] as List?)?.first as Map?)?['content'] as Map?)?['parts'] as List?)?.first as Map?;
+  return AskModelReply(_parseJson((t?['text'] as String?) ?? ''), 'gemini-3.5-flash');
+}
+
+// 가짜 모델(ASK_T7_MOCK) — 시나리오별 대본. 프롬프트의 마지막 [사용자 요청]과 단계 수로 고른다.
+Future<AskModelReply> _mock(String prompt) async {
+  final req = RegExp(r'\[사용자 요청\] (.*)').firstMatch(prompt)!.group(1)!;
+  final n = RegExp(r'^\d+\. 생각:', multiLine: true).allMatches(prompt).length;
+  int num(String cat) => int.parse(RegExp('#(\\d+) $cat').firstMatch(prompt)?.group(1) ?? '1');
+  Map<String, dynamic> a(String action, Map<String, dynamic> args) => {'thought': '$action 할게요', 'action': action, 'args': args};
+  final fin = a('finish', {'answer': '정리했어요\n- 첫째 이유\n- 둘째 이유'});
+  final script = <String, List<Map<String, dynamic>> Function()>{
+    '다음 주 월요일 모임 일정 넣어줘': () => [a('get_calendar', {'from': '2026-11-16', 'to': '2026-11-16'}), a('get_weather', {'from': '2026-11-16', 'to': '2026-11-16'}), a('add_plan', {'date': '2026-11-16', 'tpo': '모임'}), fin],
+    '다음 주 금요일 데이트 일정 넣어줘': () => [a('add_plan', {'date': '2026-11-20', 'tpo': '데이트'}), fin],
+    '모레 면접 일정 넣어줘': () => [a('add_plan', {'date': '2026-11-20', 'tpo': '면접'}), fin],
+    '내일 비 오면 뭐 입지?': () => [a('get_weather', {'from': '2026-11-17', 'to': '2026-11-17'}), a('preview_outfit', {'date': '2026-11-17', 'tpo': '일상'}), fin],
+    '옷 좀 준비해줘': () => [a('ask_user', {'question': '언제인가요?'}), fin],
+    '오늘 저녁 메뉴 추천해줘': () => [fin],
+    '금요일 저녁 모임에 입을 옷 준비해줘': () => [a('add_plan', {'date': '2026-11-20', 'tpo': '모임'}), fin],
+    '다음 주 월요일 홍대에서 친구랑 노는데 힙한 착장으로 5세트 추천해줘': () => [a('preview_outfit', {'date': '2026-11-16', 'tpo': '일상', 'count': 5, 'style': '스트릿'}), a('finish', {'answer': '조합 1과 조합 2를 추천해요\n- #1\n- #2'})],
+    '금요일 모임 옷 골라서 입혀 봐줘': () => [a('preview_outfit', {'date': '2026-11-20', 'tpo': '모임'}), a('try_on', {'outfit': [num('상의'), num('하의')]}), fin],
+    '내일 뭐 입지?': () => [a('preview_outfit', {'date': '2026-11-17', 'tpo': '일상'}), fin],
+    '자켓만 바꿔 줘': () => [a('preview_outfit', {'date': '2026-11-17', 'tpo': '일상', 'exclude': [num('아우터')]}), fin],
+    '더 따뜻하게': () => [a('preview_outfit', {'date': '2026-11-17', 'tpo': '일상', 'adjust': '더 따뜻하게'}), fin],
+    '내 옷장에 부족한 옷 알려줘': () => [a('get_wardrobe_profile', {}), a('finish', {'answer': '긴팔 상의가 부족해요\n- 상의 대부분이 반팔이에요\n- 구매 제안: 울 소재 회색 니트'})],
+    '요즘 안 입은 옷으로 코디해줘': () => [a('get_style_history', {}), a('preview_outfit', {'date': '2026-11-16', 'tpo': '일상', 'unworn_first': true}), fin],
+    '금요일 모임 옷 골라줘': () => [a('preview_outfit', {'date': '2026-11-20', 'tpo': '모임'}), fin],
+    '이걸로 일정 등록해줘': () => [a('add_plan', {'date': '2026-11-20', 'tpo': '모임'}), fin],
+  };
+  final steps = script[req]!();
+  return AskModelReply(steps[n.clamp(0, steps.length - 1)], 'mock');
+}
+
+// ── 실행 ──────────────────────────────────────────────────────────
+class _TurnRun {
+  final String request;
+  final AskOutcome outcome;
+  final List<double> latencies;
+  final double secs;
+  _TurnRun(this.request, this.outcome, this.latencies, this.secs);
+}
+
+class _Run {
+  final _Scenario s;
+  final String target;
+  final int rep;
+  final List<_TurnRun> turns;
+  final List<(DateTime, String)> writes;
+  final List<List<String>> fittings;
+  final AskTools tools;
+  final String? error;
+  _Run(this.s, this.target, this.rep, this.turns, this.writes, this.fittings, this.tools) : error = null;
+}
+
+Future<_Run> _runScenario(_Scenario s, String target, int rep, AskModelCall call) async {
+  final data = await _fixture(s.today);
+  final fittings = <List<String>>[];
+  late final AskTools tools;
+  final latencies = <double>[];
+  final c = AskController(
+    currentUid: () => 'probe',
+    toolsFor: (_) => tools = AskTools(data, now: () => DateTime(s.today.year, s.today.month, s.today.day, 10)),
+    callModel: (p) async {
+      final sw = Stopwatch()..start();
+      try {
+        return await call(p);
+      } finally {
+        latencies.add(sw.elapsedMilliseconds / 1000);
+      }
+    },
+    logSink: (_) {},
+    historyFor: (_) => _NoHistory(),
+    fitting: _fakeFitting(fittings),
+    now: () => DateTime(s.today.year, s.today.month, s.today.day, 10),
+  );
+  // 확인 카드·질문에 자동으로 답한다.
+  c.addListener(() {
+    if (c.confirmArgs != null) scheduleMicrotask(() => c.answerConfirm(!s.cancel));
+    if (c.question != null) scheduleMicrotask(() => c.answerQuestion(s.userAnswer));
+  });
+  final turns = <_TurnRun>[];
+  for (final text in s.turns) {
+    final before = latencies.length;
+    final sw = Stopwatch()..start();
+    if (!c.start(text)) break;
+    while (c.isRunning) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    turns.add(_TurnRun(text, c.outcome!, latencies.sublist(before), sw.elapsedMilliseconds / 1000));
+    if (c.outcome!.end != AskEnd.finished) break;
+  }
+  c.dispose();
+  return _Run(s, target, rep, turns, data.writes, fittings, tools);
+}
+
+// ── 판정(§3, 실행 전 고정) ──────────────────────────────────────────
+const _expectedDate = {
+  'D1': '2026-11-16',
+  'D2': '2026-11-20',
+  'D3': '2026-11-20',
+  'S2': '2026-11-17',
+  'N1': '2026-11-16',
+  'N7': '2026-11-20',
+};
+
+List<AskStep> _valid(AskOutcome o) => [for (final s in o.steps) if (!s.hidden) s];
+List<String> _actions(AskOutcome o) => [for (final s in _valid(o)) s.action];
+
+Map<String, Object?> _judge(_Run r) {
+  final id = r.s.id;
+  final all = [for (final t in r.turns) ..._valid(t.outcome)];
+  final j1 = r.turns.every((t) => t.outcome.steps.every((s) => !s.hidden) && t.outcome.end != AskEnd.invalidOutput);
+  final j4 = r.turns.length == r.s.turns.length && r.turns.every((t) => t.outcome.end == AskEnd.finished && t.outcome.modelCalls <= askMaxModelCalls);
+  // J2 — 등록을 부탁하지 않은 턴의 add_plan 0, S9 재시도 0, S7 도구 0.
+  bool? j2;
+  int plans(int turn) => turn < r.turns.length ? _actions(r.turns[turn].outcome).where((a) => a == 'add_plan').length : 0;
+  if (['S2', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6'].contains(id)) {
+    j2 = [for (var i = 0; i < r.turns.length; i++) plans(i)].every((n) => n == 0);
+  } else if (id == 'N7') {
+    j2 = plans(0) == 0;
+  } else if (id == 'S9') {
+    j2 = plans(0) <= 1 && r.writes.isEmpty;
+  } else if (id == 'S7') {
+    j2 = r.turns.isNotEmpty && _actions(r.turns.first.outcome).every((a) => a == 'finish');
+  }
+  // J3 — try_on은 N2에서만.
+  final tryOns = all.where((s) => s.action == 'try_on').length;
+  final j3 = id == 'N2' ? true : tryOns == 0;
+  // J6 — 날짜 인자가 모두 기대 날짜.
+  bool? j6;
+  final exp = _expectedDate[id];
+  if (exp != null) {
+    final dates = [
+      for (final s in all)
+        for (final k in const ['from', 'to', 'date'])
+          if (s.args[k] != null) '${s.args[k]}',
+    ];
+    j6 = dates.isNotEmpty && dates.every((d) => d == exp);
+  }
+  // K1 — 시나리오 핵심 조건.
+  bool k1;
+  AskStep? firstOf(int turn, String action) =>
+      turn < r.turns.length ? _valid(r.turns[turn].outcome).where((s) => s.action == action).firstOrNull : null;
+  List<AskStep> stepsOf(int turn, String action) =>
+      turn < r.turns.length ? [for (final s in _valid(r.turns[turn].outcome)) if (s.action == action) s] : const [];
+  final answer0 = r.turns.isEmpty ? '' : r.turns.first.outcome.answer;
+  switch (id) {
+    case 'D1' || 'D2' || 'D3':
+      k1 = firstOf(0, 'add_plan')?.args['date'] == exp && r.writes.isNotEmpty;
+    case 'S2':
+      const t = '2026-11-17';
+      final weather = stepsOf(0, 'get_weather').any((s) => '${s.args['from']}'.compareTo(t) <= 0 && '${s.args['to']}'.compareTo(t) >= 0);
+      final source = stepsOf(0, 'preview_outfit').any((s) => s.args['date'] == t) ||
+          stepsOf(0, 'get_calendar').any((s) => s.args['from'] == t && s.args['to'] == t && s.items.isNotEmpty);
+      k1 = weather && source && plans(0) == 0;
+    case 'S6':
+      final acts = r.turns.isEmpty ? <String>[] : _actions(r.turns.first.outcome);
+      k1 = acts.isNotEmpty && acts.first == 'ask_user';
+    case 'S7':
+      k1 = j2 == true && r.turns.isNotEmpty && r.turns.first.outcome.end == AskEnd.finished;
+    case 'S9':
+      k1 = plans(0) == 1 && r.writes.isEmpty && j4;
+    case 'N1':
+      final pv = stepsOf(0, 'preview_outfit').where((s) => s.args['date'] == exp && (s.args['count'] is int) && (s.args['count'] as int) >= 3);
+      final combos = r.turns.isEmpty ? 0 : _combosShown(r, answer0);
+      k1 = pv.isNotEmpty && combos >= 2 && plans(0) == 0;
+    case 'N2':
+      final acts = r.turns.isEmpty ? <String>[] : _actions(r.turns.first.outcome);
+      final pvAt = acts.indexOf('preview_outfit');
+      k1 = pvAt >= 0 && acts.where((a) => a == 'try_on').length == 1 && acts.indexOf('try_on') > pvAt && plans(0) == 0;
+    case 'N3':
+      final before = r.turns.isEmpty ? null : r.turns.first.outcome.outfit;
+      final outer = before?.items.where((i) => i.category == '아우터').firstOrNull;
+      final pv = stepsOf(1, 'preview_outfit');
+      final excl = pv.isNotEmpty && outer != null && askNumberList(pv.first.args['exclude']).contains(r.tools.book.numberOf(outer));
+      final newOuter = pv.isEmpty ? null : pv.last.items.where((i) => i.category == '아우터').firstOrNull;
+      k1 = excl && newOuter != null && newOuter.id != outer.id;
+    case 'N4':
+      k1 = stepsOf(1, 'preview_outfit').any((s) => s.args['adjust'] == askAdjustWarmer);
+    case 'N5':
+      k1 = firstOf(0, 'get_wardrobe_profile') != null && stepsOf(0, 'search_wardrobe').length <= 1 && answer0.contains('구매 제안');
+    case 'N6':
+      k1 = firstOf(0, 'get_style_history') != null || stepsOf(0, 'preview_outfit').any((s) => s.args['unworn_first'] == true);
+    case 'N7':
+      final p = firstOf(1, 'add_plan');
+      k1 = p?.args['date'] == '2026-11-20' && p?.args['tpo'] == '모임';
+    default:
+      k1 = false;
+  }
+  // K2 — 답 형식, K3 — 내부 사정 없음(턴마다).
+  final formats = [for (final t in r.turns) if (t.outcome.end == AskEnd.finished) _formatOk(t.outcome.answer)];
+  final internals = [for (final t in r.turns) if (t.outcome.end == AskEnd.finished) !_hasInternal(t.outcome.answer)];
+  return {'J1': j1, 'J2': j2, 'J3': j3, 'J4': j4, 'J6': j6, 'K1': k1, 'K2': formats, 'K3': internals};
+}
+
+// 답이 보여 준 조합 수 — 조합마다 그 옷의 번호나 첫 태그 두 개 이상이 답에 나오면 보여 준 것으로 센다.
+int _combosShown(_Run r, String answer) {
+  final pv = [for (final s in _valid(r.turns.first.outcome)) if (s.action == 'preview_outfit') s];
+  if (pv.isEmpty) return 0;
+  final combos = pv.last.combos.isNotEmpty ? pv.last.combos : [if (pv.last.items.isNotEmpty) pv.last.items];
+  var shown = 0;
+  for (final combo in combos) {
+    final hits = combo.where((i) =>
+        answer.contains('#${r.tools.book.numberOf(i)}') ||
+        (i.attributes != null && i.attributes!.tags.isNotEmpty && answer.contains(i.attributes!.tags.first)));
+    if (hits.length >= 2) shown++;
+  }
+  return shown;
+}
+
+bool _formatOk(String answer) {
+  final lines = answer.trim().split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+  if (lines.isEmpty || lines.first.startsWith('- ')) return false;
+  final items = lines.skip(1).where((l) => l.startsWith('- ')).length;
+  return items >= 2 && items <= 5;
+}
+
+bool _hasInternal(String answer) =>
+    [for (final t in askToolRegistry) t.name].any(answer.contains) ||
+    ['호출', '한도', '상한', '횟수'].any(answer.contains);
+
+// ── 보고서 ─────────────────────────────────────────────────────────
+String _report(List<_Run> runs) {
+  final b = StringBuffer('# 프로브 T7 결과(docs/task_agent_ask_v2.md §3)\n\n');
+  for (final target in ['C', 'G', 'M']) {
+    final rs = runs.where((r) => r.target == target).toList();
+    if (rs.isEmpty) continue;
+    final judged = [for (final r in rs) _judge(r)];
+    String rate(String k) {
+      final vs = [for (final j in judged) j[k]].whereType<bool>().toList();
+      return '${vs.where((v) => v).length}/${vs.length}';
+    }
+
+    String rateList(String k) {
+      final vs = [for (final j in judged) ...(j[k] as List).cast<bool>()];
+      return '${vs.where((v) => v).length}/${vs.length}';
+    }
+
+    final lat = [for (final r in rs) for (final t in r.turns) ...t.latencies];
+    final turnSteps = [for (final r in rs) for (final t in r.turns) _valid(t.outcome).length];
+    final turnSecs = [for (final r in rs) for (final t in r.turns) t.secs];
+    double mean(List<num> xs) => xs.isEmpty ? 0 : xs.fold<num>(0, (a, b) => a + b) / xs.length;
+    b.writeln('## $target — ${target == 'C' ? 'text-primary(Claude Sonnet 5.5)' : target == 'G' ? 'text-fallback(Gemini 3.5 Flash)' : '가짜 모델'}\n');
+    b.writeln('| 판정 | 결과 |\n|---|---|');
+    b.writeln('| [안전] J1 규약 JSON | ${rate('J1')} |');
+    b.writeln('| [안전] J2 쓰기(등록 안 부탁한 턴 add_plan 0, S9 재시도 0, S7 도구 0) | ${rate('J2')} |');
+    b.writeln('| [안전] J3 try_on은 N2에서만 | ${rate('J3')} |');
+    b.writeln('| [안전] J4 턴마다 6회 안에 finish | ${rate('J4')} |');
+    b.writeln('| [안전] J5 가진 옷은 도구 결과의 옷, 없는 옷은 "구매 제안" | 사람 판정(아래) |');
+    b.writeln('| [안전] J6 날짜 인자(D1·D2·D3·S2·N1·N7) | ${rate('J6')} |');
+    b.writeln('| K1 핵심 조건(≥85%) | ${rate('K1')} |');
+    b.writeln('| K2 답 형식(≥90%) | ${rateList('K2')} |');
+    b.writeln('| K3 내부 사정 없음(≥95%) | ${rateList('K3')} |');
+    b.writeln('| 턴당 평균 단계 수 | ${mean(turnSteps).toStringAsFixed(1)} |');
+    b.writeln('| 단계(모델 호출)당 평균 지연 | ${mean(lat).toStringAsFixed(2)}초 |');
+    b.writeln('| 턴당 평균 총 시간 | ${mean(turnSecs).toStringAsFixed(1)}초 |\n');
+    b.writeln('| 시나리오 | 회 | 턴별 도구 순서 | J1 | J2 | J3 | J4 | J6 | K1 | K2 | K3 |\n|---|---|---|---|---|---|---|---|---|---|---|');
+    String yn(Object? v) => v == null ? '—' : v is List ? v.map((x) => x == true ? '○' : '✗').join('') : v == true ? '○' : '✗';
+    for (var i = 0; i < rs.length; i++) {
+      final r = rs[i];
+      final j = judged[i];
+      final order = [for (final t in r.turns) '${_actions(t.outcome).join('→')}(${t.outcome.end.name})'].join(' / ');
+      b.writeln('| ${r.s.id} | ${r.rep} | $order | ${yn(j['J1'])} | ${yn(j['J2'])} | ${yn(j['J3'])} | ${yn(j['J4'])} | ${yn(j['J6'])} | ${yn(j['K1'])} | ${yn(j['K2'])} | ${yn(j['K3'])} |');
+    }
+    b.writeln('\n### 답과 근거(J5 판정용)\n');
+    for (final r in rs) {
+      b.writeln('#### ${r.s.id} r${r.rep} — 오늘 ${askDateLabel(r.s.today)}');
+      for (final t in r.turns) {
+        b.writeln('- 사용자: ${t.request}');
+        for (final s in t.outcome.steps) {
+          if (s.action == 'finish') continue;
+          b.writeln('  - [${s.hidden ? '숨김 ' : ''}${s.action}] ${s.thought} ${jsonEncode(s.args)}');
+          b.writeln('    → ${(s.observation ?? '').replaceAll('\n', ' / ')}');
+          if (s.display != null) b.writeln('    화면: ${s.display}');
+        }
+        b.writeln('  - 답(${t.outcome.end.name}): ${t.outcome.answer.replaceAll('\n', ' ⏎ ')}');
+      }
+      if (r.error != null) b.writeln('  - 오류: ${r.error}');
+      b.writeln();
+    }
+  }
+  return _mask(b.toString());
+}
+
+void main() {
+  test('프로브 T7(ASK_T7=1일 때만)', () async {
+    if (_env['ASK_T7'] != '1') {
+      markTestSkipped('ASK_T7=1 일 때만 실행한다');
+      return;
+    }
+    final mock = _env['ASK_T7_MOCK'] == '1';
+    final name = _env['ASK_T7_NAME'] ?? 'run1';
+    final only = (_env['ASK_T7_SCENARIOS'] ?? '').split(',').where((x) => x.isNotEmpty).toSet();
+    final scenarios = [for (final s in _scenarios) if (only.isEmpty || only.contains(s.id)) s];
+    final jobs = <(String, int, AskModelCall)>[];
+    if (mock) {
+      jobs.add(('M', 1, _mock));
+    } else {
+      if (_claudeKey.isEmpty || _geminiKey.isEmpty) fail('ANTHROPIC_API_KEY·GEMINI_API_KEY가 필요해요');
+      jobs.addAll([('C', 1, _claude), ('C', 2, _claude), ('G', 1, _gemini)]);
+    }
+    final runs = <_Run>[];
+    var running = 0;
+    final pending = <Future<void>>[];
+    for (final (target, rep, call) in jobs) {
+      for (final s in scenarios) {
+        while (running >= 3) {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        }
+        running++;
+        pending.add(() async {
+          try {
+            final r = await _runScenario(s, target, rep, call);
+            runs.add(r);
+            // ignore: avoid_print
+            print(_mask('  $target ${s.id} r$rep: ${[for (final t in r.turns) _actions(t.outcome).join('→')].join(' / ')}'));
+          } catch (e) {
+            // ignore: avoid_print
+            print(_mask('  $target ${s.id} r$rep 오류: $e'));
+          } finally {
+            running--;
+          }
+        }());
+      }
+    }
+    await Future.wait(pending);
+    runs.sort((a, b) => '${a.target}${a.s.id}${a.rep}'.compareTo('${b.target}${b.s.id}${b.rep}'));
+    final out = Directory('tools/text_probe/output')..createSync(recursive: true);
+    final base = 't7${mock ? '_mock' : ''}_$name';
+    File('${out.path}/$base.md').writeAsStringSync(_report(runs));
+    File('${out.path}/$base.json').writeAsStringSync(_mask(const JsonEncoder.withIndent(' ').convert([
+      for (final r in runs)
+        {
+          'target': r.target,
+          'scenario': r.s.id,
+          'rep': r.rep,
+          'judge': _judge(r),
+          'turns': [
+            for (final t in r.turns)
+              {
+                'request': t.request,
+                'end': t.outcome.end.name,
+                'answer': t.outcome.answer,
+                'calls': t.outcome.modelCalls,
+                'latencies': t.latencies,
+                'steps': [
+                  for (final s in t.outcome.steps)
+                    {'action': s.action, 'args': s.args, 'thought': s.thought, 'observation': s.observation, 'display': s.display, 'hidden': s.hidden},
+                ],
+              },
+          ],
+        },
+    ])));
+    // ignore: avoid_print
+    print('결과: ${out.path}/$base.md');
+  }, timeout: const Timeout(Duration(minutes: 40)));
+}

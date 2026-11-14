@@ -60,6 +60,8 @@ class AskStep {
   final bool hidden;
   // try_on 결과 사진(v2 §2-E).
   AskFittingShot? fitting;
+  // preview_outfit이 여러 조합을 낸 경우 전부(첫 조합이 items).
+  List<List<WardrobeItem>> combos = const [];
   AskStepStatus status;
   final String? model;
   final Duration? latency;
@@ -308,6 +310,7 @@ class AskEngine {
       step.display = result.display ?? (result.ok ? null : askDisplayFailed);
       step.items = result.items;
       step.fitting = result.fitting;
+      step.combos = result.combos;
       step.status = result.ok ? AskStepStatus.done : AskStepStatus.failed;
       onUpdate?.call(steps);
     }
