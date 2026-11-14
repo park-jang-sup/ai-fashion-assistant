@@ -68,6 +68,11 @@ async function main() {
   await check('I-W4', '옷 사진: 새로 올리기, demo 표시를 직접 달기', 'DENY', () => put(alice, 'wardrobe_images/new4.jpg', {ownerUid: 'alice', demo: 'true'}));
   await check('I-W5', '옷 사진: 10MB 넘는 파일', 'DENY', () => put(alice, 'wardrobe_images/big.jpg', {ownerUid: 'alice'}, BIG));
   await check('I-W6', '옷 사진: 이미지가 아닌 파일', 'DENY', () => put(alice, 'wardrobe_images/x.txt', {ownerUid: 'alice'}, JPG, 'text/plain'));
+  // 앱(uploadWardrobeImage)이 싣는 메타데이터 그대로 올리고, 바로 getDownloadURL — 업로드 직후 읽기
+  await check('I-W7', '옷 사진: 앱과 같은 메타데이터(wardrobeDocId·ownerUid·category)로 올리기', 'ALLOW',
+      () => put(alice, 'wardrobe_images/app.jpg', {wardrobeDocId: 'doc1', ownerUid: 'alice', category: '상의'}));
+  await check('I-R7', '옷 사진: 올린 직후 본인 읽기(getDownloadURL)', 'ALLOW', () => alice.ref('wardrobe_images/app.jpg').getDownloadURL());
+  await check('I-R8', '옷 사진: 방금 올린 파일 — 다른 계정 읽기', 'DENY', () => bob.ref('wardrobe_images/app.jpg').getDownloadURL());
   await check('I-U1', '옷 사진: 주인이 자기 파일 덮어쓰기', 'ALLOW', () => put(alice, 'wardrobe_images/own.jpg', {ownerUid: 'alice'}));
   await check('I-U2', '옷 사진: 다른 계정이 남의 파일 덮어쓰기(자기 uid로)', 'DENY', () => put(bob, 'wardrobe_images/own.jpg', {ownerUid: 'bob'}));
   await check('I-U3', '옷 사진: 다른 계정이 데모 파일 덮어쓰기', 'DENY', () => put(bob, 'wardrobe_images/demo.jpg', {ownerUid: 'bob'}));
