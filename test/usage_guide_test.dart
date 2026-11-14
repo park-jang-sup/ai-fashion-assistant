@@ -43,7 +43,7 @@ void main() {
   });
 
   test('4쪽 — AI에게 부탁하기 한 문장(docs/task_agent_ask_v1.md §2-5)', () {
-    expect(UsageGuide.pages[3].body, contains("홈의 'AI에게 부탁하기'에 말로 부탁할 수도 있어요"));
+    expect(UsageGuide.pages[3].body, contains('화면의 AI 비서 버튼을 눌러 말로 부탁할 수도 있어요'));
   });
 
   test('다섯 쪽, 지시서 순서', () {

@@ -208,6 +208,7 @@ class AskTools {
     }
     final kw = (keyword as String?)?.trim();
     bool matches(WardrobeItem i) {
+      if (!isAskCategory(i.category)) return false; // "전신"(전신 사진) 같은 옷이 아닌 문서는 빼고 찾는다
       if (category != null && i.category != category) return false;
       if (kw == null) return true;
       final a = i.attributes!;

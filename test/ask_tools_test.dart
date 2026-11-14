@@ -89,6 +89,13 @@ void main() {
       final onlyPhotos = await askTools(FakeAskData(items: [askW('b1', '전신')])).searchWardrobe({});
       expect(onlyPhotos.observation, '옷장이 비어 있어요');
     });
+    test('키워드 조회에서도 "전신"(전신 사진)은 빼고 찾는다(§10 D)', () async {
+      final items = [...askWardrobe, askW('b1', '전신', tags: ['올블랙', '겨울']), askW('b2', '전신', color: '블랙')];
+      final t = askTools(FakeAskData(items: items));
+      expect((await t.searchWardrobe({'keyword': '겨울'})).observation, isNot(contains('전신')));
+      expect((await t.searchWardrobe({'keyword': '블랙'})).observation, contains('일치 5벌')); // t1·p1·o2·s1·a1 — 전신 b2는 빠짐
+      expect((await t.searchWardrobe({'keyword': '올블랙'})).observation, contains('일치하는 옷 없음'));
+    });
     test('종류·키워드로 찾고 최대 8벌', () async {
       final r = await askTools(FakeAskData()).searchWardrobe({'category': '아우터', 'keyword': '퀼팅안감'});
       expect(r.observation, contains('일치 1벌'));

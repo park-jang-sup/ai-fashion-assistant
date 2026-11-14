@@ -12,117 +12,9 @@ import '../services/agent_planner.dart';
 import '../services/firestore_service.dart';
 import '../services/weather_fit.dart';
 import '../services/weather_service.dart';
-import '../widgets/agent_mascot.dart';
 import '../widgets/calendar_record_sheet.dart';
 import '../widgets/expandable_text.dart';
 import '../widgets/signed_network_image.dart';
-import 'ask_screen.dart';
-
-// ── AI에게 부탁하기 카드: 한 줄 입력 + 가로로 넘기는 예시 버튼. 누르면 전용 화면이 열리고 바로 시작한다.
-const _askExamples = [
-  '금요일 저녁 모임에 입을 옷 준비해줘',
-  '내일 비 오면 뭐 입지?',
-  '겨울 아우터 뭐 있는지 보고 가장 추운 날 입을 것 골라줘',
-];
-
-class _AskCard extends StatefulWidget {
-  final ValueChanged<List<WardrobeItem>> onOpenFittingRoom;
-  final ValueChanged<int> onNavigate;
-  const _AskCard({required this.onOpenFittingRoom, required this.onNavigate});
-
-  @override
-  State<_AskCard> createState() => _AskCardState();
-}
-
-class _AskCardState extends State<_AskCard> {
-  final _ctl = TextEditingController();
-
-  @override
-  void dispose() {
-    _ctl.dispose();
-    super.dispose();
-  }
-
-  void _open(String request) {
-    final text = request.trim();
-    if (text.isEmpty) return;
-    FocusScope.of(context).unfocus();
-    _ctl.clear();
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => AskScreen(
-        request: text,
-        onOpenFittingRoom: widget.onOpenFittingRoom,
-        onNavigate: widget.onNavigate,
-      ),
-    ));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      decoration: BoxDecoration(
-        color: AppColors.blueVeryPale,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const AgentMascot(size: 36),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextField(
-                controller: _ctl,
-                textInputAction: TextInputAction.send,
-                onSubmitted: _open,
-                style: const TextStyle(fontSize: 14),
-                decoration: InputDecoration(
-                  isDense: true,
-                  hintText: 'AI에게 부탁하기',
-                  hintStyle: const TextStyle(color: AppColors.textPlaceholder, fontSize: 14),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  suffixIcon: IconButton(
-                    tooltip: '부탁하기',
-                    icon: const Icon(Icons.send, size: 18, color: AppColors.blue),
-                    onPressed: () => _open(_ctl.text),
-                  ),
-                ),
-              ),
-            ),
-          ]),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(children: [
-              for (final e in _askExamples)
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: ActionChip(
-                    label: Text(e, style: const TextStyle(fontSize: 12.5)),
-                    backgroundColor: Colors.white,
-                    side: const BorderSide(color: AppColors.border),
-                    onPressed: () => _open(e),
-                  ),
-                ),
-            ]),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ── 홈 화면: "DOT." 레퍼런스 디자인에 맞춰 단순화한 버전.
 // 인사/날씨 히어로, 액션 그리드, 최근 착장 레일, AI 팁 배너를 하나의
@@ -164,10 +56,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 const _WeatherRow(),
-                const SizedBox(height: 16),
-                // AI에게 부탁하기(docs/task_agent_ask_v1.md §2-5) — 추천 카드가 첫 화면에서 밀리지 않게 낮게.
-                _AskCard(onOpenFittingRoom: onOpenFittingRoom, onNavigate: onNavigate),
-                const SizedBox(height: 24),
+                const SizedBox(height: 30),
                 // 제목은 추천이 가리키는 일정 날짜에 따라 바뀌므로 카드 안에서 그린다.
                 _RecommendationCard(onOpenFittingRoom: onOpenFittingRoom, onNavigate: onNavigate),
                 const SizedBox(height: 32),

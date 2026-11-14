@@ -132,6 +132,7 @@ function searchWardrobe(args) {
   }
   const kw = keyword?.trim();
   const hits = w.filter((i) => {
+    if (!D.categories.includes(i.category)) return false;
     if (category != null && i.category !== category) return false;
     if (kw == null) return true;
     const a = i.attributes;
