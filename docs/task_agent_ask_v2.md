@@ -296,3 +296,28 @@ v1 실기기 확인(2026-11-14)에서 나온 문제와 요청이다.
 | 10 | 맞음 | `textLimit: 60`, `maxTotalTextChars: 30_000`, tools/functionCall 차단 |
 
 참고: 테스트와 프로브 고정 자료는 "오늘"을 입력으로 넣어 고정한다. 앱 코드와 프롬프트는 매번 기기의 현재 날짜로 날짜표를 만든다(§8).
+
+### 2026-11-14 §2-0 하네스 구조 정리
+
+도구 등록부 `lib/services/ask_registry.dart`를 만들고, 프롬프트의 [도구] 절·출력 검증(`validateAskReply`)·엔진의 요청당 상한과 확인 처리·화면과 활동 내역의 도구 이름을 모두 여기서 나오게 했다. 옮긴 직후(새 도구를 넣기 전) 에이전트 프롬프트 골든 2개가 글자 하나 다르지 않고, 기존 테스트 430건이 그대로 통과하며, 프로브 재현 대조(프롬프트·옷장 검색 표본 102/102)도 그대로임을 확인하고 커밋했다. 등록부 테스트 2건 추가. 걸린 시간 1시간 안.
+
+하네스 구성 요약(이 시점 — A~F를 얹은 뒤 갱신한다)
+
+| 층 | 구현 위치 |
+|---|---|
+| 맥락 구성 | `ask_prompt.dart`(오늘, 상황 태그, [도구] 절은 등록부에서, 규칙, 요청, 단계 기록, 남은 호출) |
+| 도구 등록부 | `ask_registry.dart`(`AskToolSpec`: 이름·인자 형식·설명·검증·화면 이름·요청당 상한과 안내·쓰기·확인 필요·실행 함수) |
+| 루프 | `ask_engine.dart`(모델 호출 → 출력 검증 → 등록부의 실행 함수 → 관찰 붙이기, 6회 상한, 단계 20초·전체 90초, 대체 모델은 `GeminiService.callAgentStep`의 `withTextModelFallback`) |
+| 안전장치 | 엔진: 등록부 상한 강제, 형식 오류 연속 2회 종료, 사용자 차례 시계 멈춤. 도구: 날짜 범위·인자 검증(`ask_tools.dart`). 확인 카드(`add_plan`)와 [멈추기](`ask_controller.dart`) |
+| 기억 | 요청 안: 단계 기록(프롬프트). 요청 밖: 지난 부탁(`ask_history.dart`), 착장 기록·추천 반응(앱 데이터) |
+| 평가 | 가짜 모델 단위 테스트(`test/ask_*`), 프로브 사전 고정 기준(`tools/text_probe/ask_probe.mjs`) |
+
+| 도구 | 인자 | 요청당 상한 | 쓰기 |
+|---|---|---|---|
+| get_calendar | from, to | — | 아니요 |
+| get_weather | from, to | — | 아니요 |
+| search_wardrobe | category?, keyword? | 2 | 아니요 |
+| preview_outfit | date, tpo | — | 아니요 |
+| add_plan | date, tpo | 1(확인 카드까지 간 실행) | 예(확인 후) |
+| ask_user | question | 1 | 아니요 |
+| finish | answer | — | — |

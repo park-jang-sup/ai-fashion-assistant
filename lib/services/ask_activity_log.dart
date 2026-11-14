@@ -4,15 +4,7 @@
 // 화면에서 묶음이 나뉠 수 있다(§1-9, 사용자 결정). 쓰기는 기존 addAgentLogSilently(실패 무시).
 import '../models/agent_log_entry.dart';
 import 'ask_engine.dart';
-
-const _stepNames = {
-  'get_calendar': '일정 확인',
-  'get_weather': '예보 확인',
-  'search_wardrobe': '옷장 조회',
-  'preview_outfit': '코디 미리 보기',
-  'add_plan': '일정 등록',
-  'ask_user': '질문',
-};
+import 'ask_registry.dart';
 
 const _lineMax = 100;
 
@@ -44,7 +36,7 @@ class AskActivityLog {
   void steps(List<AskStep> steps) {
     for (var i = 0; i < steps.length; i++) {
       final s = steps[i];
-      final name = _stepNames[s.action];
+      final name = askToolDisplayName(s.action);
       if (name == null || s.observation == null || _logged.contains(i)) continue;
       _logged.add(i);
       final detail = s.action == 'ask_user' ? '${s.args['question'] ?? ''}' : s.observation!;

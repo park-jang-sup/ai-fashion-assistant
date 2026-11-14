@@ -5,6 +5,7 @@ import '../models/wardrobe_item.dart';
 import '../services/ask_controller.dart';
 import '../services/ask_engine.dart';
 import '../services/ask_history.dart';
+import '../services/ask_registry.dart';
 import '../services/ask_tools.dart';
 import '../widgets/agent_mascot.dart';
 import '../widgets/signed_network_image.dart';
@@ -30,15 +31,8 @@ const askExamples = [
   '겨울 아우터 뭐 있는지 보고 가장 추운 날 입을 것 골라줘',
 ];
 
-const _toolNames = {
-  'get_calendar': '일정 확인',
-  'get_weather': '예보 확인',
-  'search_wardrobe': '옷장 조회',
-  'preview_outfit': '코디 미리 보기',
-  'add_plan': '일정 등록',
-  'ask_user': '질문',
-  '-': '답 읽기 실패',
-};
+// 도구의 화면 이름은 도구 등록부에서 — 읽지 못한 출력만 여기서 이름을 붙인다.
+String _toolName(String action) => action == '-' ? '답 읽기 실패' : askToolDisplayName(action) ?? action;
 
 const _toolIcons = {
   'get_calendar': Icons.event_outlined,
@@ -487,7 +481,7 @@ class AskStepTile extends StatelessWidget {
                 size: 18, color: failed ? AppColors.textMuted : AppColors.blue),
             const SizedBox(width: 6),
             Flexible(
-              child: Text(_toolNames[step.action] ?? step.action,
+              child: Text(_toolName(step.action),
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,

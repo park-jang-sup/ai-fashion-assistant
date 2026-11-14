@@ -14,18 +14,14 @@
 import 'dart:async';
 
 import '../models/wardrobe_item.dart';
+import 'ask_registry.dart';
 import 'ask_tools.dart';
+
+export 'ask_registry.dart' show askMaxWardrobeSearches, askWardrobeSearchLimitMessage;
 import 'gemini_api_exception.dart';
 
-const askActions = [
-  'get_calendar',
-  'get_weather',
-  'search_wardrobe',
-  'preview_outfit',
-  'add_plan',
-  'ask_user',
-  'finish',
-];
+// 도구 이름 목록 — 도구 등록부(ask_registry.dart)의 순서 그대로.
+final askActions = [for (final t in askToolRegistry) t.name];
 const askMaxModelCalls = 6;
 const askStepTimeout = Duration(seconds: 20);
 const askTotalTimeout = Duration(seconds: 90);
@@ -46,9 +42,6 @@ typedef AskPromptBuilder = String Function({
 
 // 이 횟수만큼 부른 뒤부터 프롬프트 단계 기록 끝에 남은 호출 수를 알린다(프로브 T6 다시 실행).
 const askRemainingNoticeAfter = 4;
-// 요청 하나에서 search_wardrobe를 실행하는 상한(프로브 T6 run3, 사용자 결정).
-const askMaxWardrobeSearches = 2;
-const askWardrobeSearchLimitMessage = '옷장은 이미 두 번 조회했어요. 얻은 결과로 답하세요';
 
 enum AskStepStatus { running, done, failed }
 
@@ -94,26 +87,7 @@ String? validateAskReply(Map<String, dynamic> json) {
     return '출력 오류: action은 ${askActions.join('·')} 중 하나여야 해요(받은 값: $action)';
   }
   if (args is! Map) return '출력 오류: args는 객체여야 해요';
-  String? needDate(String key) => parseAskDate(args[key]) == null ? '출력 오류: $key는 YYYY-MM-DD 형식이어야 해요' : null;
-  switch (action) {
-    case 'get_calendar' || 'get_weather':
-      return needDate('from') ?? needDate('to');
-    case 'preview_outfit' || 'add_plan':
-      return needDate('date') ?? (isAskTpo(args['tpo']) ? null : '출력 오류: tpo는 상황 태그 9개 중 하나여야 해요');
-    case 'search_wardrobe':
-      final c = args['category'];
-      final k = args['keyword'];
-      if (c != null && !isAskCategory(c)) return '출력 오류: category는 ${askCategories.join('·')} 중 하나예요';
-      if (k != null && (k is! String || k.trim().isEmpty)) return '출력 오류: keyword는 글자여야 해요';
-      return null;
-    case 'ask_user':
-      final q = args['question'];
-      return q is String && q.trim().isNotEmpty ? null : '출력 오류: ask_user에는 question이 필요해요';
-    case 'finish':
-      final a = args['answer'];
-      return a is String && a.trim().isNotEmpty ? null : '출력 오류: finish에는 answer가 필요해요';
-  }
-  return null;
+  return askToolSpec(action)!.validate(args);
 }
 
 class AskEngine {
@@ -148,10 +122,23 @@ class AskEngine {
     final watch = Stopwatch()..start();
     var calls = 0;
     var invalidStreak = 0;
-    var askUsed = false;
-    var searches = 0;
-    var planBlocked = false; // 취소했거나 이미 실행함 — 다시 실행하지 않는다
+    final executed = <String, int>{}; // 도구별 실행 횟수(등록부의 요청당 상한과 비교)
     DateTime? plannedDate;
+    final ctx = AskRunContext(
+      tools: tools,
+      confirmPlan: confirmPlan,
+      askUser: askUser,
+      // 사용자 차례에서 기다리는 시간은 요청 전체 시한에 세지 않는다(v1 §10).
+      waitForUser: <T>(Future<T> Function() wait) async {
+        watch.stop();
+        try {
+          return await wait();
+        } finally {
+          watch.start();
+        }
+      },
+      isCancelled: () => _cancelled,
+    );
 
     AskOutcome end(AskEnd e, String answer) => AskOutcome(e, answer, steps, calls, plannedDate: plannedDate);
     String lastObservation() =>
@@ -226,56 +213,22 @@ class AskEngine {
         return end(AskEnd.finished, (args['answer'] as String).trim());
       }
 
-      AskToolResult result;
-      switch (action) {
-        case 'get_calendar':
-          result = await tools.getCalendar(args);
-        case 'get_weather':
-          result = await tools.getWeather(args);
-        case 'search_wardrobe':
-          // 같은 요청에서 옷장 조회를 되풀이하지 않게 2회까지만 실행한다(호출 횟수에는 들어간다).
-          if (searches >= askMaxWardrobeSearches) {
-            result = const AskToolResult(askWardrobeSearchLimitMessage, ok: false);
-          } else {
-            searches++;
-            result = await tools.searchWardrobe(args);
-          }
-        case 'preview_outfit':
-          result = await tools.previewOutfit(args);
-        case 'ask_user':
-          if (askUsed) {
-            result = const AskToolResult('질문은 요청 하나에 한 번만 할 수 있어요 — 지금까지 확인한 것으로 답해 주세요', ok: false);
-          } else {
-            askUsed = true;
-            // 사용자 차례에서 기다리는 시간은 요청 전체 시한에 세지 않는다(§10).
-            watch.stop();
-            final answer = await askUser((args['question'] as String).trim());
-            watch.start();
-            if (_cancelled || answer == null) return end(AskEnd.cancelled, '요청을 멈췄어요');
-            result = AskToolResult('사용자의 답: $answer');
-          }
-        case 'add_plan':
-          final invalid = tools.validatePlan(args);
-          if (planBlocked) {
-            result = const AskToolResult('이 요청에서는 일정 등록을 다시 실행하지 않아요', ok: false);
-          } else if (invalid != null) {
-            result = AskToolResult(invalid, ok: false);
-          } else {
-            final date = parseAskDate(args['date'])!;
-            watch.stop();
-            final confirmed = await confirmPlan(date, args['tpo'] as String);
-            watch.start();
-            if (_cancelled) return end(AskEnd.cancelled, '요청을 멈췄어요'); // 확인 없이 떠나면 쓰지 않는다
-            planBlocked = true;
-            if (!confirmed) {
-              result = const AskToolResult('사용자가 취소함 — 일정을 등록하지 않았어요', ok: false);
-            } else {
-              result = await tools.addPlan(args);
-              plannedDate = result.plannedDate ?? plannedDate;
-            }
-          }
-        default:
-          result = AskToolResult('모르는 도구: $action', ok: false);
+      // 도구 실행 — 등록부의 요청당 상한을 엔진이 강제한다(모델의 말이 아니라).
+      final spec = askToolSpec(action)!;
+      final AskToolResult result;
+      final limit = spec.limitPerRequest;
+      if (limit != null && (executed[action] ?? 0) >= limit) {
+        result = AskToolResult(spec.limitMessage!, ok: false);
+      } else {
+        final AskRunResult r;
+        try {
+          r = await spec.run!(ctx, args);
+        } on AskCancelled {
+          return end(AskEnd.cancelled, '요청을 멈췄어요');
+        }
+        if (r.counted) executed[action] = (executed[action] ?? 0) + 1;
+        result = r.result;
+        if (spec.writes) plannedDate = result.plannedDate ?? plannedDate;
       }
       if (_cancelled) return end(AskEnd.cancelled, '요청을 멈췄어요');
       step.observation = result.observation;
