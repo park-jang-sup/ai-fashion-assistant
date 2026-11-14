@@ -3,6 +3,7 @@
 // 오늘 날짜·사용자 요청·지금까지의 단계 기록을 모두 담는다. 서버 상한(전체 30,000자)을 넘지
 // 않게, 넘으면 오래된 관찰부터 줄인다.
 import '../constants/tpo_tags.dart';
+import 'ask_dates.dart';
 import 'ask_engine.dart';
 import 'ask_registry.dart';
 import 'ask_tools.dart';
@@ -22,7 +23,8 @@ String _rulesSection() => '''
 - add_plan은 사용자가 일정 등록이나 코디 준비를 부탁했을 때만 쓴다. 묻기만 한 요청에는 쓰지 않는다.
 - 준비·등록 요청에는 add_plan 전에 get_calendar(그 날짜에 일정이 이미 있는지)와 get_weather를 둘 다 확인한다. 날짜와 상황이 요청에 분명히 있어도 확인한다.
 - "사용자가 취소함" 결과가 나오면 add_plan을 다시 쓰지 않고 finish한다.
-- "금요일", "내일", "다음 주 수요일" 같은 날짜는 오늘 날짜를 기준으로 YYYY-MM-DD로 풀어 쓴다. "다음 주"는 오늘이 속한 주(월~일)의 다음 주다.
+- 날짜 표현("내일", "모레", "다음 주 월요일", "금요일" 등)은 직접 계산하지 말고 [날짜표]에서 찾아 그 줄의 날짜를 쓴다. 주를 말하지 않은 요일은 표에서 오늘부터 가장 가까운 그 요일이다.
+- 표에 없는 날짜(14일 밖, 기념일 이름 등)는 표를 기준으로 세고, 확실하지 않으면 ask_user로 날짜를 묻는다.
 - 날짜나 상황을 알 수 없으면 ask_user를 한 번 쓴다.
 - 옷·일정·날씨와 무관한 요청은 도구를 쓰지 않고 finish로 할 수 있는 일을 안내한다.
 - 같은 도구를 같은 목적으로 두 번 넘게 부르지 않는다. 결과가 부족해도 얻은 것으로 답한다.
@@ -43,6 +45,7 @@ String buildAskPrompt(
   String assemble(List<String> stepLines) => [
         '너는 사용자의 옷장·일정·날씨 예보를 도구로 확인해 코디를 돕는 비서다.',
         '[오늘] ${askDateLabel(today)}',
+        '[날짜표] 오늘부터 $askDateTableDays일. 한 주는 월요일부터 일요일까지다.\n${buildAskDateTable(today)}',
         _tpoSection(),
         _toolsSection(),
         _rulesSection(),

@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../models/wardrobe_item.dart';
 import '../services/ask_controller.dart';
+import '../services/ask_dates.dart';
 import '../services/ask_engine.dart';
 import '../services/ask_history.dart';
 import '../services/ask_registry.dart';
-import '../services/ask_tools.dart';
 import '../widgets/agent_mascot.dart';
 import '../widgets/signed_network_image.dart';
 
@@ -255,7 +255,7 @@ class _AskScreenState extends State<AskScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${askDateLabel(date)} [$tpo] 일정을 등록할까요?',
+          Text('${askDateCardLabel(date, _c.today)} [$tpo] 일정을 등록할까요?',
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           const SizedBox(height: 4),
           const Text('등록하면 캘린더에 예정으로 들어가고, 예보가 있으면 코디도 준비해요.',

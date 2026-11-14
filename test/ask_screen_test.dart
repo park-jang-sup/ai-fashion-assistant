@@ -155,7 +155,7 @@ void main() {
     expect(_dot, findsOneWidget); // 사용자 차례 → 점
     expect(t.model.calls, 2);
     await _openScreen(tester);
-    expect(find.text('2026-11-20(금) [모임] 일정을 등록할까요?'), findsOneWidget);
+    expect(find.text('11/20(금) · 이번 주 금요일 [모임] 일정을 등록할까요?'), findsOneWidget);
     await tester.tap(find.text('등록하기'));
     await tester.pumpAndSettle();
     expect(t.data.writes.length, 1);

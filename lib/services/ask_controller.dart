@@ -77,6 +77,7 @@ class AskController extends ChangeNotifier {
   bool get isStopping => _stopping;
   bool get userTurn => isRunning && (_confirmArgs != null || _question != null);
   List<AskRecord>? get history => _history;
+  DateTime get today => _now();
 
   AskButtonState get buttonState {
     if (userTurn) return AskButtonState.attention;
