@@ -23,6 +23,7 @@ import 'services/agent_planner.dart';
 import 'services/agent_sweeper.dart';
 import 'services/ask_bubble_prefs.dart';
 import 'services/ask_controller.dart';
+import 'services/ask_tools.dart';
 import 'services/background_agent.dart';
 import 'services/style_recommendations.dart';
 import 'services/fitting_job_controller.dart';
@@ -211,7 +212,15 @@ class _AppShellState extends State<AppShell> {
 
   // AI에게 부탁하기(docs/task_agent_ask_v1.md §10) — 진행 상태도 같은 레벨에서 보관해 전용 화면을
   // 닫아도 부탁이 이어진다. 말풍선은 한 번 누르기 전까지 앱을 열 때 잠깐 보여 준다.
-  final AskController _ask = AskController();
+  late final AskController _ask = AskController(
+    // 가상 피팅 도구(try_on, docs/task_agent_ask_v2.md §2-E) — 피팅룸과 같은 경로(코디보드 →
+    // FittingJobController.generateFitting)를 쓴다. 전신 사진은 지금 선택된 것.
+    fitting: AskFittingPort(
+      hasUserPhoto: () => _fittingUserPhoto != null,
+      busy: () => _fittingJob.isGeneratingFitting,
+      run: _askTryOn,
+    ),
+  );
   bool _askBubble = false;
   Timer? _askBubbleTimer;
 
@@ -326,6 +335,36 @@ class _AppShellState extends State<AppShell> {
     setState(() {
       _tabIndex = 2;
     });
+  }
+
+  // try_on — 코디보드를 그 조합으로 바꾸고(탭은 옮기지 않는다) 피팅을 실행한 뒤 결과를 돌려준다.
+  Future<AskFittingOutcome> _askTryOn(List<WardrobeItem> items) async {
+    final photo = _fittingUserPhoto;
+    if (photo == null) return const AskFittingOutcome(error: '전신 사진이 선택돼 있지 않아요');
+    if (mounted) {
+      setState(() {
+        for (final k in _fittingItems.keys.toList()) {
+          _fittingItems[k] = null;
+        }
+        for (final item in items) {
+          final slot = _boardSlotKeyFor(item);
+          if (slot != null && _fittingItems.containsKey(slot)) _fittingItems[slot] = item;
+        }
+      });
+    }
+    final board = _fittingItems.values.whereType<WardrobeItem>().toList();
+    await _fittingJob.generateFitting(userPhoto: photo, clothingItems: board);
+    final job = _fittingJob;
+    if (job.fittingError != null) return AskFittingOutcome(error: job.fittingError);
+    if (job.fittingImage == null && job.fittingImageUrl == null) return const AskFittingOutcome(error: '결과 사진이 없어요');
+    return AskFittingOutcome(
+      shot: AskFittingShot(
+        bytes: job.fittingImage,
+        url: job.fittingImageUrl,
+        cacheKey: fittingCacheKeyFor(photo.id, board.map((i) => i.id).toList()),
+      ),
+      missingCategories: List.of(job.fittingMissingCategories),
+    );
   }
 
   void _openAsk() {

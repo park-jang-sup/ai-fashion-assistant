@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
@@ -8,6 +10,7 @@ import '../services/ask_engine.dart';
 import '../services/ask_history.dart';
 import '../services/ask_registry.dart';
 import '../widgets/agent_mascot.dart';
+import '../widgets/full_screen_image_viewer.dart';
 import '../widgets/signed_network_image.dart';
 
 // AI에게 부탁하기 전용 화면(docs/task_agent_ask_v1.md §2-5·§10). 진행 상태는 앱 수준의
@@ -264,7 +267,10 @@ class _AskScreenState extends State<AskScreen> {
       const SizedBox(height: 16),
       // 진행 표시는 실제로 진행 중일 때만 — 사용자 차례(확인·질문), 멈추는 중, 끝난 뒤에는 멈춘다
       // (멈춘 요청의 마지막 단계는 실행 중 상태로 남을 수 있다).
-      for (final s in visible) AskStepTile(step: s, showProgress: running && !_c.userTurn && !_c.isStopping),
+      for (final s in visible) ...[
+        AskStepTile(step: s, showProgress: running && !_c.userTurn && !_c.isStopping),
+        if (s.fitting != null) AskFittingView(bytes: s.fitting!.bytes, url: s.fitting!.url, cacheKey: s.fitting!.cacheKey),
+      ],
       if (waiting) const _ThinkingRow(text: '다음 단계를 고르는 중'),
       if (running && _c.isStopping) const _ThinkingRow(text: '멈추는 중'),
       if (running && _c.confirmArgs != null) _confirmCard(_c.confirmArgs!),
@@ -397,6 +403,8 @@ class AskRecordScreen extends StatelessWidget {
                       observation: s.summary.isEmpty ? null : s.summary,
                       status: s.action == '-' ? AskStepStatus.failed : AskStepStatus.done),
                 ),
+              if (record.turns[i].fittingCacheKey != null || record.turns[i].fittingImageUrl != null)
+                AskFittingView(url: record.turns[i].fittingImageUrl, cacheKey: record.turns[i].fittingCacheKey),
               AskAnswerBox(
                 answer: record.turns[i].answer,
                 stopped: !record.turns[i].finished,
@@ -595,6 +603,48 @@ class AskItemThumb extends StatelessWidget {
         fit: BoxFit.contain,
         placeholder: (_, __) => const SizedBox.shrink(),
         errorWidget: (_, __, ___) => const Icon(Icons.image_not_supported_outlined, color: AppColors.textDisabled),
+      ),
+    );
+  }
+}
+
+// 가상 피팅 결과 사진(v2 §2-E) — 대화 안에 보여 주고, 누르면 크게 본다. 새로 만든 것은 bytes,
+// 캐시·기록에서 온 것은 서명 URL(fitting_cache)로 그린다.
+class AskFittingView extends StatelessWidget {
+  final Uint8List? bytes;
+  final String? url;
+  final String? cacheKey;
+  const AskFittingView({super.key, this.bytes, this.url, this.cacheKey});
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget image = bytes != null
+        ? Image.memory(bytes!, fit: BoxFit.cover)
+        : SignedNetworkImage(
+            collection: 'fitting_cache',
+            id: cacheKey ?? '',
+            fallbackUrl: url ?? '',
+            fit: BoxFit.cover,
+            placeholder: (_, __) => const ColoredBox(color: AppColors.background),
+            errorWidget: (_, __, ___) =>
+                const Center(child: Icon(Icons.image_not_supported_outlined, color: AppColors.textDisabled)),
+          );
+    return Padding(
+      padding: const EdgeInsets.only(left: 24, bottom: 14),
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => FullScreenImageViewer(
+            imageBytes: bytes,
+            imageUrl: url,
+            label: '입혀 본 모습',
+            signedCollection: bytes == null && cacheKey != null ? 'fitting_cache' : null,
+            signedId: bytes == null ? cacheKey : null,
+          ),
+        )),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(width: 160, height: 220, child: image),
+        ),
       ),
     );
   }

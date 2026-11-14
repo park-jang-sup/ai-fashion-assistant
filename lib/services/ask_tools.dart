@@ -8,6 +8,8 @@
 // 모두 로그인한 사용자 본인의 데이터만 다룬다(AskDataSource). 읽기 도구는 저장하지 않고,
 // 쓰기는 add_plan 하나뿐이며 엔진이 사용자 확인을 받은 뒤에만 부른다. 도구가 실패해도
 // (예보 조회 실패, 옷장이 비어 있음 등) 예외를 올리지 않고 실패 사실을 관찰로 돌려준다.
+import 'dart:typed_data';
+
 import '../constants/tpo_tags.dart';
 import '../models/outfit_calendar_entry.dart';
 import '../models/recommendation_entry.dart';
@@ -85,9 +87,42 @@ class AskToolResult {
   final bool ok;
   // add_plan이 실제로 쓴 경우만 — 확인 카드·캘린더 이동용.
   final DateTime? plannedDate;
+  // try_on 결과 사진(v2 §2-E).
+  final AskFittingShot? fitting;
   const AskToolResult(this.observation,
-      {this.display, this.items = const [], this.combos = const [], this.ok = true, this.plannedDate});
+      {this.display,
+      this.items = const [],
+      this.combos = const [],
+      this.ok = true,
+      this.plannedDate,
+      this.fitting});
 }
+
+// 가상 피팅 결과 사진 — 새로 만든 것은 bytes, 캐시에서 온 것은 url. cacheKey로 다시 볼 수 있다.
+class AskFittingShot {
+  final Uint8List? bytes;
+  final String? url;
+  final String? cacheKey;
+  const AskFittingShot({this.bytes, this.url, this.cacheKey});
+}
+
+class AskFittingOutcome {
+  final AskFittingShot? shot;
+  final String? error; // 사용자 안내 문구(FittingJobController.fittingError)
+  final List<String> missingCategories;
+  const AskFittingOutcome({this.shot, this.error, this.missingCategories = const []});
+}
+
+// 앱의 가상 피팅 경로(FittingJobController.generateFitting) — AppShell이 넘긴다. 테스트·프로브는 가짜.
+class AskFittingPort {
+  final bool Function() hasUserPhoto; // 지금 선택된 전신 사진이 있는가
+  final bool Function() busy; // 다른 피팅이 진행 중인가
+  // 그 조합을 코디보드에 올리고 피팅을 실행한다.
+  final Future<AskFittingOutcome> Function(List<WardrobeItem> items) run;
+  const AskFittingPort({required this.hasUserPhoto, required this.busy, required this.run});
+}
+
+const askTryOnWait = Duration(seconds: 120);
 
 // preview_outfit 인자(v2 §2-C).
 const askPreviewMaxCount = 5;

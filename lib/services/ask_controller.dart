@@ -32,6 +32,10 @@ const askMaxTurns = 10;
 // 답 카드의 사진 — 이 턴에 마지막으로 나온 조합.
 List<WardrobeItem> askCombo(List<AskStep> steps) => askOutfitOf(steps)?.items ?? const [];
 
+// 이 턴의 가상 피팅 결과 사진(마지막 것).
+AskFittingShot? askFittingOf(List<AskStep> steps) =>
+    [for (final s in steps) if (s.fitting != null) s.fitting!].lastOrNull;
+
 // 대화의 턴 하나.
 class AskTurn {
   final String request;
@@ -49,6 +53,8 @@ class AskController extends ChangeNotifier {
   final void Function(AgentLogEntry entry)? logSink;
   final AskHistoryStore Function(String uid)? historyFor;
   final DateTime Function() _now;
+  // 앱의 가상 피팅 경로(AppShell이 넘긴다) — try_on이 쓴다.
+  final AskFittingPort? fitting;
 
   AskController({
     String? Function()? currentUid,
@@ -56,6 +62,7 @@ class AskController extends ChangeNotifier {
     this.callModel,
     this.logSink,
     this.historyFor,
+    this.fitting,
     DateTime Function()? now,
   })  : _uid = currentUid ?? (() => FirebaseAuth.instance.currentUser?.uid),
         _now = now ?? DateTime.now;
@@ -178,6 +185,7 @@ class AskController extends ChangeNotifier {
             return AskModelReply(r.json, r.model);
           },
       buildPrompt: buildAskPrompt,
+      fitting: fitting,
       confirmPlan: (date, tpo) {
         if (!current()) return Future.value(false);
         final c = Completer<bool>();
@@ -209,7 +217,10 @@ class AskController extends ChangeNotifier {
     // 대화 내역 — 대화 전체를 같은 id로 갈아 끼운다(멈춘 대화도 남긴다).
     final record = AskRecord(id: conversationId, turns: [
       for (final t in (current() ? _turns : [turn]))
-        if (t.outcome != null) AskRecordTurn.fromOutcome(t.request, t.outcome!, askCombo(t.outcome!.steps), t.createdAt),
+        if (t.outcome != null)
+          AskRecordTurn.fromOutcome(t.request, t.outcome!, askCombo(t.outcome!.steps), t.createdAt,
+              fittingImageUrl: askFittingOf(t.outcome!.steps)?.url,
+              fittingCacheKey: askFittingOf(t.outcome!.steps)?.cacheKey),
     ]);
     unawaited(_save(uid, record));
     if (!current()) return;

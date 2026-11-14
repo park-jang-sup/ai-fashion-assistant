@@ -21,9 +21,9 @@ void main() {
       expect(t.run == null, t.name == 'finish', reason: t.name);
       expect(t.limitPerRequest == null, t.limitMessage == null, reason: t.name);
     }
-    // 모델 출력으로 실행되는 쓰기는 확인을 받는 add_plan뿐이다.
-    expect([for (final t in askToolRegistry) if (t.writes) t.name], ['add_plan']);
-    expect([for (final t in askToolRegistry) if (t.writes) t.needsConfirm], [true]);
+    // 모델 출력으로 실행되는 쓰기는 add_plan(확인 후)과 try_on(가상 피팅의 기존 저장)뿐이다(v2 §8).
+    expect([for (final t in askToolRegistry) if (t.writes) t.name], ['add_plan', 'try_on']);
+    expect([for (final t in askToolRegistry) if (t.writes) t.needsConfirm], [true, false]);
     expect(askToolSpec('search_wardrobe')!.limitPerRequest, askMaxWardrobeSearches);
   });
 }

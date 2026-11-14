@@ -3,6 +3,9 @@
 // 프롬프트의 [도구] 절(ask_prompt.dart), 출력 검증(validateAskReply), 엔진의 한도·확인 처리
 // (ask_engine.dart), 화면·활동 내역의 도구 이름이 모두 여기서 나온다 — 도구를 더하거나 고칠 때 이
 // 파일만 바꾼다.
+import 'dart:async';
+
+import '../models/wardrobe_item.dart';
 import 'ask_tools.dart';
 
 // 엔진이 도구 실행에 넘기는 것. 사용자 차례(확인·질문)를 기다리는 동안은 waitForUser로 감싸 요청
@@ -13,7 +16,9 @@ class AskRunContext {
   final Future<String?> Function(String question) askUser;
   final Future<T> Function<T>(Future<T> Function() wait) waitForUser;
   final bool Function() isCancelled;
+  final AskFittingPort? fitting; // 가상 피팅 경로(없으면 try_on을 쓸 수 없다)
   const AskRunContext({
+    this.fitting,
     required this.tools,
     required this.confirmPlan,
     required this.askUser,
@@ -186,6 +191,66 @@ final List<AskToolSpec> askToolRegistry = [
     },
   ),
   AskToolSpec(
+    name: 'try_on',
+    signature: '{"outfit":[옷 번호]}',
+    description: '그 조합을 코디보드에 올리고 지금 선택된 전신 사진에 가상 피팅한다(10~20초). 사용자가 입은 모습을 보여 달라고 했을 때만 쓴다. 한 턴에 한 번.',
+    displayName: '입혀 보기',
+    validate: (args) {
+      final v = args['outfit'];
+      if (v is! List || v.isEmpty || v.any((x) => parseAskItemNumber(x) == null)) {
+        return '출력 오류: outfit은 옷 번호 목록이에요(예: [12, 31, 7])';
+      }
+      return null;
+    },
+    itemArgs: const ['outfit'],
+    limitPerRequest: 1,
+    limitMessage: '입혀 보기는 한 턴에 한 번이에요. 이미 한 결과로 답하세요',
+    writes: true, // 가상 피팅의 기존 저장(캐시·히스토리) — 확인 카드는 띄우지 않는다(사용자가 직접 부탁, 되돌릴 수 없는 변경 아님)
+    run: (ctx, args) async {
+      final port = ctx.fitting;
+      if (port == null) {
+        return const AskRunResult(AskToolResult('이 기기에서는 입혀 보기를 쓸 수 없어요', display: '입혀 보기를 쓸 수 없어요', ok: false));
+      }
+      final items = [for (final n in askNumberList(args['outfit'])) ctx.tools.book.item(n)].whereType<WardrobeItem>().toList();
+      if (!port.hasUserPhoto()) {
+        return const AskRunResult(AskToolResult(
+            '전신 사진이 선택돼 있지 않아 입혀 보지 못했어요 — 피팅룸에서 전신 사진을 고르면 입혀 볼 수 있어요',
+            display: '전신 사진이 없어 입혀 보지 못했어요',
+            ok: false));
+      }
+      if (port.busy()) {
+        return const AskRunResult(AskToolResult('다른 가상 피팅이 진행 중이라 실행하지 않았어요 — 끝난 뒤에 다시 부탁할 수 있어요',
+            display: '다른 피팅이 진행 중이라 기다리지 않았어요', ok: false));
+      }
+      final AskFittingOutcome out;
+      try {
+        // 피팅을 기다리는 시간(최대 120초)은 단계·전체 시한에 세지 않는다.
+        out = await ctx.waitForUser(() => port.run(items).timeout(askTryOnWait));
+      } on TimeoutException {
+        return const AskRunResult(AskToolResult('입혀 보기가 오래 걸려 기다리지 않고 넘어갔어요 — 코디보드에는 올려 두었어요',
+            display: '입혀 보기가 오래 걸려 넘어갔어요', ok: false));
+      }
+      if (ctx.isCancelled()) throw const AskCancelled();
+      final error = out.error;
+      if (error != null || out.shot == null) {
+        final limited = error != null && _looksRateLimited(error);
+        return AskRunResult(AskToolResult(
+            limited
+                ? '가상 피팅은 시간당 6번까지라 지금은 입혀 볼 수 없어요 — 코디보드에는 올려 두었어요'
+                : '입혀 보지 못했어요(${error ?? '결과 없음'}) — 코디보드에는 올려 두었어요. 다시 시도하지 않는다',
+            display: limited ? '입혀 보기 한도에 걸렸어요' : '입혀 보지 못했어요',
+            ok: false));
+      }
+      final missing = out.missingCategories.isEmpty ? '' : ' 다만 ${out.missingCategories.join('·')}는 입히지 못했어요.';
+      return AskRunResult(AskToolResult(
+        '입혀 봤어요: ${items.map(ctx.tools.describe).join(', ')}. 코디보드에도 올려 두었어요.$missing',
+        display: '입혀 봤어요 — 코디보드에도 올렸어요',
+        items: items,
+        fitting: out.shot,
+      ));
+    },
+  ),
+  AskToolSpec(
     name: 'ask_user',
     signature: '{"question":"한 문장"}',
     description: '사용자에게 되묻는다. 요청 하나에 한 번까지.',
@@ -224,3 +289,7 @@ String? askToolDisplayName(String action) => action == 'finish' ? null : _byName
 // 프롬프트의 [도구] 절.
 String askToolsPromptSection() =>
     '[도구] 한 단계에 하나만 고른다.\n${[for (final t in askToolRegistry) t.promptLine].join('\n')}';
+
+// 피팅 실패 문구가 호출량 상한 때문인지(서버 문구가 바뀔 수 있어 넓게 본다).
+bool _looksRateLimited(String error) =>
+    ['호출량', '시간당', '한도', '상한', 'resource-exhausted', '429'].any(error.contains);

@@ -58,6 +58,8 @@ class AskStep {
   String? display;
   // 형식 오류처럼 사용자에게 보이지 않는 단계.
   final bool hidden;
+  // try_on 결과 사진(v2 §2-E).
+  AskFittingShot? fitting;
   AskStepStatus status;
   final String? model;
   final Duration? latency;
@@ -150,6 +152,7 @@ class AskEngine {
   final void Function(List<AskStep> steps)? onUpdate;
   final Duration stepTimeout;
   final Duration totalTimeout;
+  final AskFittingPort? fitting; // 가상 피팅 경로(try_on)
 
   AskEngine({
     required this.tools,
@@ -160,6 +163,7 @@ class AskEngine {
     this.onUpdate,
     this.stepTimeout = askStepTimeout,
     this.totalTimeout = askTotalTimeout,
+    this.fitting,
   });
 
   bool _cancelled = false;
@@ -190,6 +194,7 @@ class AskEngine {
         }
       },
       isCancelled: () => _cancelled,
+      fitting: fitting,
     );
 
     AskOutcome end(AskEnd e, String answer) =>
@@ -302,6 +307,7 @@ class AskEngine {
       step.observation = result.observation;
       step.display = result.display ?? (result.ok ? null : askDisplayFailed);
       step.items = result.items;
+      step.fitting = result.fitting;
       step.status = result.ok ? AskStepStatus.done : AskStepStatus.failed;
       onUpdate?.call(steps);
     }
