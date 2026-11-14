@@ -247,7 +247,10 @@ class AskEngine {
             result = const AskToolResult('질문은 요청 하나에 한 번만 할 수 있어요 — 지금까지 확인한 것으로 답해 주세요', ok: false);
           } else {
             askUsed = true;
+            // 사용자 차례에서 기다리는 시간은 요청 전체 시한에 세지 않는다(§10).
+            watch.stop();
             final answer = await askUser((args['question'] as String).trim());
+            watch.start();
             if (_cancelled || answer == null) return end(AskEnd.cancelled, '요청을 멈췄어요');
             result = AskToolResult('사용자의 답: $answer');
           }
@@ -259,7 +262,9 @@ class AskEngine {
             result = AskToolResult(invalid, ok: false);
           } else {
             final date = parseAskDate(args['date'])!;
+            watch.stop();
             final confirmed = await confirmPlan(date, args['tpo'] as String);
+            watch.start();
             if (_cancelled) return end(AskEnd.cancelled, '요청을 멈췄어요'); // 확인 없이 떠나면 쓰지 않는다
             planBlocked = true;
             if (!confirmed) {

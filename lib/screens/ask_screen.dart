@@ -1,46 +1,34 @@
-import 'dart:async';
-
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
-import '../models/agent_log_entry.dart';
 import '../models/wardrobe_item.dart';
-import '../services/ask_activity_log.dart';
-import '../services/ask_data_source.dart';
+import '../services/ask_controller.dart';
 import '../services/ask_engine.dart';
-import '../services/ask_prompt.dart';
+import '../services/ask_history.dart';
 import '../services/ask_tools.dart';
-import '../services/firestore_service.dart';
-import '../services/gemini_service.dart';
 import '../widgets/agent_mascot.dart';
 import '../widgets/signed_network_image.dart';
 
-// AI에게 부탁하기 전용 화면(docs/task_agent_ask_v1.md §2-5). 열리면 바로 요청을 시작하고,
-// 단계마다 도구 이름·생각·결과를 보여 준다. 일정 등록은 확인 카드에서 사용자가 누른 뒤에만
-// 실행된다. 뒤로 나가면 진행 중인 요청을 멈춘다(확인 대기 중이면 등록하지 않음).
+// AI에게 부탁하기 전용 화면(docs/task_agent_ask_v1.md §2-5·§10). 진행 상태는 앱 수준의
+// AskController가 갖고, 이 화면은 그것을 보여 주기만 한다 — 닫아도 부탁은 이어지고, 떠 있는 버튼을
+// 누르면 같은 대화가 다시 열린다. 첫 상태는 인사말 + 예시 + 입력 + 지난 부탁.
 class AskScreen extends StatefulWidget {
-  final String request;
+  final AskController controller;
   final ValueChanged<List<WardrobeItem>>? onOpenFittingRoom;
   final ValueChanged<int>? onNavigate;
-  // 테스트용 주입 — 없으면 로그인한 사용자의 Firestore 자료와 GeminiService.callAgentStep을 쓴다.
-  final AskTools? tools;
-  final AskModelCall? callModel;
-  final void Function(AgentLogEntry entry)? logSink;
-  const AskScreen(
-      {super.key,
-      required this.request,
-      this.onOpenFittingRoom,
-      this.onNavigate,
-      this.tools,
-      this.callModel,
-      this.logSink});
+  const AskScreen({super.key, required this.controller, this.onOpenFittingRoom, this.onNavigate});
 
   @override
   State<AskScreen> createState() => _AskScreenState();
 }
 
 const _calendarTab = 3;
+
+const askExamples = [
+  '금요일 저녁 모임에 입을 옷 준비해줘',
+  '내일 비 오면 뭐 입지?',
+  '겨울 아우터 뭐 있는지 보고 가장 추운 날 입을 것 골라줘',
+];
 
 const _toolNames = {
   'get_calendar': '일정 확인',
@@ -61,152 +49,91 @@ const _toolIcons = {
   'ask_user': Icons.help_outline,
 };
 
-class _AskScreenState extends State<AskScreen> {
-  late String _request;
-  AskEngine? _engine;
-  int _runId = 0;
-  List<AskStep> _steps = const [];
-  AskOutcome? _outcome;
+String _timeLabel(DateTime t) =>
+    '${t.month}/${t.day} ${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
-  Completer<bool>? _confirm;
-  (DateTime, String)? _confirmArgs;
-  Completer<String?>? _question;
-  String? _questionText;
+const _endLabels = {
+  'finished': '답',
+  'cancelled': '멈춤',
+  'maxSteps': '여기까지 확인',
+  'invalidOutput': '실패',
+  'rateLimited': '실패',
+  'timeout': '시간 초과',
+  'error': '실패',
+};
+
+class _AskScreenState extends State<AskScreen> {
+  final _input = TextEditingController();
   final _answerCtl = TextEditingController();
 
-  bool _composing = false;
-  final _newCtl = TextEditingController();
+  AskController get _c => widget.controller;
 
   @override
   void initState() {
     super.initState();
-    _request = widget.request;
-    _start(_request);
+    // 첫 프레임 뒤에 — attach가 알리는 변경이 떠 있는 버튼의 빌드 중에 닿지 않게.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _attached = true;
+      _c.attach();
+      if (_c.history == null) _c.loadHistory();
+    });
   }
+
+  bool _attached = false;
 
   @override
   void dispose() {
-    _stop();
+    if (_attached) _c.detach();
+    _input.dispose();
     _answerCtl.dispose();
-    _newCtl.dispose();
     super.dispose();
   }
 
-  // 진행 중인 요청을 멈춘다 — 먼저 엔진을 멈춘 뒤 대기 중인 확인·질문을 "안 함"으로 닫는다.
-  void _stop() {
-    _engine?.cancel();
-    if (_confirm != null && !_confirm!.isCompleted) _confirm!.complete(false);
-    if (_question != null && !_question!.isCompleted) _question!.complete(null);
-    _confirm = null;
-    _question = null;
-  }
-
-  Future<void> _start(String request) async {
-    _stop();
-    final id = ++_runId;
-    setState(() {
-      _request = request;
-      _steps = const [];
-      _outcome = null;
-      _confirmArgs = null;
-      _questionText = null;
-      _composing = false;
-    });
-    final uid = widget.tools != null ? null : FirebaseAuth.instance.currentUser?.uid;
-    if (widget.tools == null && uid == null) {
-      setState(() => _outcome = const AskOutcome(AskEnd.error, '로그인한 뒤에 부탁할 수 있어요', [], 0));
-      return;
+  Future<void> _submit(String text) async {
+    if (text.trim().isEmpty) return;
+    if (_c.isRunning) {
+      final stop = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          content: const Text('진행 중인 부탁이 있어요. 멈추고 새로 부탁할까요?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('계속 진행')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('멈추고 새로 부탁')),
+          ],
+        ),
+      );
+      if (stop != true || !mounted) return;
     }
-    // 활동 내역 — 한 요청은 같은 relatedDocId로 묶는다.
-    final log = AskActivityLog(
-      write: widget.logSink ??
-          (uid == null ? (_) {} : (e) => unawaited(FirestoreService.addAgentLogSilently(uid, e))),
-      relatedId: 'ask_${DateTime.now().millisecondsSinceEpoch}',
-    );
-    log.started(request);
-    final engine = AskEngine(
-      tools: widget.tools ?? AskTools(FirestoreAskDataSource(uid!)),
-      callModel: widget.callModel ??
-          (prompt) async {
-            final r = await GeminiService.callAgentStep(prompt);
-            return AskModelReply(r.json, r.model);
-          },
-      buildPrompt: buildAskPrompt,
-      confirmPlan: (date, tpo) {
-        final c = Completer<bool>();
-        if (!mounted || id != _runId) return Future.value(false);
-        setState(() {
-          _confirm = c;
-          _confirmArgs = (date, tpo);
-        });
-        return c.future;
-      },
-      askUser: (question) {
-        final c = Completer<String?>();
-        if (!mounted || id != _runId) return Future.value(null);
-        setState(() {
-          _question = c;
-          _questionText = question;
-          _answerCtl.clear();
-        });
-        return c.future;
-      },
-      onUpdate: (steps) {
-        log.steps(steps);
-        if (mounted && id == _runId) setState(() => _steps = List.of(steps));
-      },
-    );
-    _engine = engine;
-    final outcome = await engine.run(request);
-    log.ended(outcome); // 화면을 떠나 멈춘 요청도 "멈춤"으로 남긴다
-    if (!mounted || id != _runId) return;
-    setState(() {
-      _outcome = outcome;
-      _steps = List.of(outcome.steps);
-      _confirmArgs = null;
-      _questionText = null;
-    });
+    _c.clear();
+    _input.clear();
+    _c.start(text);
   }
 
-  void _answerConfirm(bool ok) {
-    final c = _confirm;
-    setState(() {
-      _confirm = null;
-      _confirmArgs = null;
-    });
-    if (c != null && !c.isCompleted) c.complete(ok);
-  }
-
-  void _answerQuestion() {
-    final text = _answerCtl.text.trim();
-    if (text.isEmpty) return;
-    final c = _question;
-    setState(() {
-      _question = null;
-      _questionText = null;
-    });
-    if (c != null && !c.isCompleted) c.complete(text);
-  }
-
-  // 답 카드의 사진 — 마지막으로 나온 조합(등록·미리 보기, 하루짜리 일정 확인의 준비된 추천).
-  List<WardrobeItem> get _combo {
-    for (final s in _steps.reversed) {
-      if (s.items.isEmpty) continue;
-      if (s.action == 'add_plan' || s.action == 'preview_outfit') return s.items;
-      if (s.action == 'get_calendar' && s.args['from'] == s.args['to']) return s.items;
+  // [새로 부탁하기] — 진행 중이면 멈출지 묻고 첫 상태로.
+  Future<void> _newRequest() async {
+    if (_c.isRunning) {
+      final stop = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          content: const Text('진행 중인 부탁을 멈추고 새로 부탁할까요?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('계속 진행')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('멈추기')),
+          ],
+        ),
+      );
+      if (stop != true || !mounted) return;
     }
-    return const [];
+    _c.clear();
   }
 
-  bool get _waiting =>
-      _outcome == null &&
-      _confirmArgs == null &&
-      _questionText == null &&
-      (_steps.isEmpty || _steps.last.status != AskStepStatus.running);
+  void _openRecord(AskRecord r) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => AskRecordScreen(record: r)));
+  }
 
   @override
   Widget build(BuildContext context) {
-    final visible = [for (final s in _steps) if (s.action != 'finish') s];
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -218,50 +145,119 @@ class _AskScreenState extends State<AskScreen> {
       ),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const AgentMascot(size: 56),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(_request,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            // 확인·질문을 기다리는 동안은 진행 표시를 멈춘다(사용자 차례).
-            for (final s in visible) _StepTile(step: s, userTurn: _confirmArgs != null || _questionText != null),
-            if (_waiting) const _ThinkingRow(),
-            if (_confirmArgs != null) _confirmCard(_confirmArgs!),
-            if (_questionText != null) _questionCard(_questionText!),
-            if (_outcome != null) _answerCard(_outcome!),
-          ],
+        child: ListenableBuilder(
+          listenable: _c,
+          builder: (context, _) => _c.request == null ? _home() : _conversation(),
         ),
       ),
     );
   }
 
-  Widget _card({required Widget child, Color color = AppColors.blueVeryPale}) => Container(
-        margin: const EdgeInsets.only(top: 8, bottom: 12),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+  // 첫 상태 — 인사말, 예시 3개, 입력, 지난 부탁(최근 20건).
+  Widget _home() {
+    final history = _c.history;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      children: [
+        const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          AgentMascot(size: 56),
+          SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text('무엇을 도와드릴까요?\n옷장·일정·날씨를 확인해 코디를 도와드려요.',
+                  style: TextStyle(fontSize: 15, height: 1.4, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 16),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          for (final e in askExamples)
+            ActionChip(
+              label: Text(e, style: const TextStyle(fontSize: 12.5)),
+              backgroundColor: AppColors.blueVeryPale,
+              side: const BorderSide(color: AppColors.border),
+              onPressed: () => _submit(e),
+            ),
+        ]),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _input,
+          textInputAction: TextInputAction.send,
+          onSubmitted: _submit,
+          decoration: InputDecoration(
+            hintText: '말로 부탁해 보세요',
+            isDense: true,
+            border: const OutlineInputBorder(),
+            suffixIcon: IconButton(
+                tooltip: '부탁하기', icon: const Icon(Icons.send), onPressed: () => _submit(_input.text)),
+          ),
         ),
-        child: child,
-      );
+        const SizedBox(height: 28),
+        const Text('지난 부탁', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+        const SizedBox(height: 4),
+        if (history == null)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text('불러오는 중', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+          )
+        else if (history.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text('아직 없어요', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+          )
+        else
+          for (final r in history)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(r.request, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)),
+              subtitle: Text('${_timeLabel(r.createdAt)} · ${_endLabels[r.end] ?? r.end}',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              trailing: const Icon(Icons.chevron_right, color: AppColors.textDisabled),
+              onTap: () => _openRecord(r),
+            ),
+      ],
+    );
+  }
+
+  Widget _conversation() {
+    final visible = [for (final s in _c.steps) if (s.action != 'finish') s];
+    final waiting = _c.isRunning &&
+        !_c.userTurn &&
+        !_c.isStopping &&
+        (_c.steps.isEmpty || _c.steps.last.status != AskStepStatus.running);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      children: [
+        _RequestHeader(request: _c.request!),
+        const SizedBox(height: 20),
+        // 진행 표시는 실제로 진행 중일 때만 — 사용자 차례(확인·질문), 멈추는 중, 끝난 뒤에는 멈춘다
+        // (멈춘 요청의 마지막 단계는 실행 중 상태로 남을 수 있다).
+        for (final s in visible)
+          AskStepTile(step: s, showProgress: _c.isRunning && !_c.userTurn && !_c.isStopping),
+        if (waiting) const _ThinkingRow(text: '다음 단계를 고르는 중'),
+        if (_c.isStopping) const _ThinkingRow(text: '멈추는 중'),
+        if (_c.confirmArgs != null) _confirmCard(_c.confirmArgs!),
+        if (_c.question != null) _questionCard(_c.question!),
+        if (_c.outcome != null) _answerCard(_c.outcome!),
+        if (_c.isRunning) ...[
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            OutlinedButton.icon(
+              onPressed: _c.isStopping ? null : _c.stop,
+              icon: const Icon(Icons.stop_circle_outlined, size: 18),
+              label: const Text('멈추기'),
+            ),
+            TextButton(onPressed: _c.isStopping ? null : _newRequest, child: const Text('새로 부탁하기')),
+          ]),
+        ],
+      ],
+    );
+  }
 
   Widget _confirmCard((DateTime, String) args) {
     final (date, tpo) = args;
-    return _card(
+    return _AskCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -272,8 +268,8 @@ class _AskScreenState extends State<AskScreen> {
               style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
           const SizedBox(height: 10),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            OutlinedButton(onPressed: () => _answerConfirm(false), child: const Text('취소')),
-            FilledButton(onPressed: () => _answerConfirm(true), child: const Text('등록하기')),
+            OutlinedButton(onPressed: () => _c.answerConfirm(false), child: const Text('취소')),
+            FilledButton(onPressed: () => _c.answerConfirm(true), child: const Text('등록하기')),
           ]),
         ],
       ),
@@ -281,7 +277,14 @@ class _AskScreenState extends State<AskScreen> {
   }
 
   Widget _questionCard(String question) {
-    return _card(
+    void send() {
+      final t = _answerCtl.text;
+      if (t.trim().isEmpty) return;
+      _answerCtl.clear();
+      _c.answerQuestion(t);
+    }
+
+    return _AskCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -289,43 +292,29 @@ class _AskScreenState extends State<AskScreen> {
           const SizedBox(height: 8),
           TextField(
             controller: _answerCtl,
-            autofocus: true,
             textInputAction: TextInputAction.send,
-            onSubmitted: (_) => _answerQuestion(),
+            onSubmitted: (_) => send(),
             decoration: const InputDecoration(hintText: '답을 적어 주세요', isDense: true, border: OutlineInputBorder()),
           ),
           const SizedBox(height: 8),
-          FilledButton(onPressed: _answerQuestion, child: const Text('보내기')),
+          FilledButton(onPressed: send, child: const Text('보내기')),
         ],
       ),
     );
   }
 
   Widget _answerCard(AskOutcome o) {
-    final combo = o.end == AskEnd.finished ? _combo : const <WardrobeItem>[];
-    final stopped = o.end != AskEnd.finished;
+    final combo = o.end == AskEnd.finished ? askCombo(_c.steps) : const <WardrobeItem>[];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _card(
-          color: stopped ? AppColors.background : AppColors.bluePale,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                const AgentMascot(size: 24),
-                const SizedBox(width: 8),
-                Text(stopped ? '여기서 멈췄어요' : '답',
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
-              ]),
-              const SizedBox(height: 8),
-              Text(o.answer, style: const TextStyle(fontSize: 15, height: 1.45, color: AppColors.textPrimary)),
-              if (combo.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(spacing: 8, runSpacing: 8, children: [for (final i in combo) _ItemThumb(item: i)]),
-              ],
-            ],
-          ),
+        AskAnswerBox(
+          answer: o.answer,
+          stopped: o.end != AskEnd.finished,
+          thumbs: [
+            for (final i in combo)
+              AskItemThumb(id: i.id, imageUrl: i.imageUrl, cutoutImageUrl: i.cutoutImageUrl),
+          ],
         ),
         Wrap(spacing: 8, runSpacing: 8, children: [
           OutlinedButton.icon(
@@ -348,47 +337,145 @@ class _AskScreenState extends State<AskScreen> {
               label: const Text('피팅룸에서 입어 보기'),
             ),
           FilledButton.icon(
-            onPressed: () => setState(() => _composing = true),
+            onPressed: _newRequest,
             icon: const Icon(Icons.edit_outlined, size: 18),
             label: const Text('새로 부탁하기'),
           ),
         ]),
-        if (_composing) ...[
-          const SizedBox(height: 12),
-          TextField(
-            controller: _newCtl,
-            autofocus: true,
-            textInputAction: TextInputAction.send,
-            onSubmitted: (_) => _submitNew(),
-            decoration: InputDecoration(
-              hintText: '무엇을 부탁할까요?',
-              isDense: true,
-              border: const OutlineInputBorder(),
-              suffixIcon: IconButton(icon: const Icon(Icons.send), onPressed: _submitNew),
-            ),
-          ),
-        ],
       ],
     );
   }
+}
 
-  void _submitNew() {
-    final text = _newCtl.text.trim();
-    if (text.isEmpty) return;
-    _newCtl.clear();
-    _start(text);
+// 지난 부탁 다시 보기(읽기 전용).
+class AskRecordScreen extends StatelessWidget {
+  final AskRecord record;
+  const AskRecordScreen({super.key, required this.record});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+        title: Text('지난 부탁 · ${_timeLabel(record.createdAt)}',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+      ),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          children: [
+            _RequestHeader(request: record.request),
+            const SizedBox(height: 20),
+            for (final s in record.steps)
+              AskStepTile(
+                step: AskStep(
+                    thought: s.thought,
+                    action: s.action,
+                    args: const {},
+                    observation: s.summary.isEmpty ? null : s.summary,
+                    status: s.action == '-' ? AskStepStatus.failed : AskStepStatus.done),
+              ),
+            AskAnswerBox(
+              answer: record.answer,
+              stopped: !record.finished,
+              thumbs: [
+                for (final i in record.items)
+                  AskItemThumb(id: i.id, imageUrl: i.imageUrl, cutoutImageUrl: i.cutoutImageUrl),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
-class _StepTile extends StatelessWidget {
+class _RequestHeader extends StatelessWidget {
+  final String request;
+  const _RequestHeader({required this.request});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AgentMascot(size: 56),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(request,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AskCard extends StatelessWidget {
+  final Widget child;
+  final Color color;
+  const _AskCard({required this.child, this.color = AppColors.blueVeryPale});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(top: 8, bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: child,
+      );
+}
+
+class AskAnswerBox extends StatelessWidget {
+  final String answer;
+  final bool stopped;
+  final List<Widget> thumbs;
+  const AskAnswerBox({super.key, required this.answer, required this.stopped, this.thumbs = const []});
+
+  @override
+  Widget build(BuildContext context) {
+    return _AskCard(
+      color: stopped ? AppColors.background : AppColors.bluePale,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const AgentMascot(size: 24),
+            const SizedBox(width: 8),
+            Text(stopped ? '여기서 멈췄어요' : '답',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
+          ]),
+          const SizedBox(height: 8),
+          Text(answer, style: const TextStyle(fontSize: 15, height: 1.45, color: AppColors.textPrimary)),
+          if (thumbs.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(spacing: 8, runSpacing: 8, children: thumbs),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class AskStepTile extends StatelessWidget {
   final AskStep step;
-  final bool userTurn;
-  const _StepTile({required this.step, this.userTurn = false});
+  final bool showProgress;
+  const AskStepTile({super.key, required this.step, this.showProgress = false});
 
   @override
   Widget build(BuildContext context) {
     final failed = step.status == AskStepStatus.failed;
-    final running = step.status == AskStepStatus.running && !userTurn;
+    final running = step.status == AskStepStatus.running && showProgress;
     final obs = step.observation;
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -436,24 +523,27 @@ class _StepTile extends StatelessWidget {
 }
 
 class _ThinkingRow extends StatelessWidget {
-  const _ThinkingRow();
+  final String text;
+  const _ThinkingRow({required this.text});
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 14),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
       child: Row(children: [
-        SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-        SizedBox(width: 10),
-        Flexible(child: Text('다음 단계를 고르는 중', style: TextStyle(fontSize: 13, color: AppColors.textMuted))),
+        const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+        const SizedBox(width: 10),
+        Flexible(child: Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textMuted))),
       ]),
     );
   }
 }
 
-class _ItemThumb extends StatelessWidget {
-  final WardrobeItem item;
-  const _ItemThumb({required this.item});
+class AskItemThumb extends StatelessWidget {
+  final String id;
+  final String imageUrl;
+  final String? cutoutImageUrl;
+  const AskItemThumb({super.key, required this.id, required this.imageUrl, this.cutoutImageUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -468,9 +558,9 @@ class _ItemThumb extends StatelessWidget {
       ),
       child: SignedNetworkImage(
         collection: 'wardrobe',
-        id: item.id,
-        urlIndex: item.cutoutImageUrl != null ? 1 : 0,
-        fallbackUrl: item.cutoutImageUrl ?? item.imageUrl,
+        id: id,
+        urlIndex: cutoutImageUrl != null ? 1 : 0,
+        fallbackUrl: cutoutImageUrl ?? imageUrl,
         fit: BoxFit.contain,
         placeholder: (_, __) => const SizedBox.shrink(),
         errorWidget: (_, __, ___) => const Icon(Icons.image_not_supported_outlined, color: AppColors.textDisabled),

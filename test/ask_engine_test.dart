@@ -190,6 +190,26 @@ void main() {
     expect((await e.engine.run('x')).end, AskEnd.timeout);
   });
 
+  test('사용자 차례(확인·질문)에서 기다리는 시간은 요청 전체 시한에 세지 않는다(§10)', () async {
+    final data = FakeAskData(snap: askSnapshot(), prepareResult: false);
+    final model = _Script([
+      _a('ask_user', {'question': '언제인가요?'}),
+      _a('add_plan', {'date': '2026-11-20', 'tpo': '모임'}),
+      _a('finish', {'answer': '등록했어요'}),
+    ]);
+    final engine = AskEngine(
+      tools: askTools(data),
+      callModel: model.call,
+      buildPrompt: _prompt,
+      totalTimeout: const Duration(milliseconds: 150),
+      confirmPlan: (_, __) => Future.delayed(const Duration(milliseconds: 300), () => true),
+      askUser: (_) => Future.delayed(const Duration(milliseconds: 300), () => '금요일'),
+    );
+    final o = await engine.run('옷 좀 준비해줘');
+    expect(o.end, AskEnd.finished);
+    expect(data.writes.length, 1);
+  });
+
   group('뒤로 나가기(cancel)', () {
     test('모델 응답을 기다리는 중에 나가면 결과를 버리고 끝', () async {
       final gate = Completer<Map<String, dynamic>>();

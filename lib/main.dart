@@ -17,9 +17,12 @@ import 'screens/wardrobe_screen.dart';
 import 'screens/fitting_room_screen.dart';
 import 'screens/calendar_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/ask_screen.dart';
 import 'package:workmanager/workmanager.dart';
 import 'services/agent_planner.dart';
 import 'services/agent_sweeper.dart';
+import 'services/ask_bubble_prefs.dart';
+import 'services/ask_controller.dart';
 import 'services/background_agent.dart';
 import 'services/style_recommendations.dart';
 import 'services/fitting_job_controller.dart';
@@ -28,6 +31,7 @@ import 'services/notification_service.dart';
 import 'services/fcm_service.dart';
 import 'debug/similarity_check.dart';
 import 'firebase_options.dart';
+import 'widgets/ask_fab.dart';
 
 // 킬 스위치 — B단계에서 도입한 백그라운드 코드를 컴파일 타임에 통째로 끈다.
 // `--dart-define=BG_AGENT=false`로 빌드하면 등록 코드가 건너뛰어져 A단계와
@@ -205,9 +209,25 @@ class _AppShellState extends State<AppShell> {
   // 진행 중인 AI 분석/가상 피팅 작업과 결과가 유지된다.
   final FittingJobController _fittingJob = FittingJobController();
 
+  // AI에게 부탁하기(docs/task_agent_ask_v1.md §10) — 진행 상태도 같은 레벨에서 보관해 전용 화면을
+  // 닫아도 부탁이 이어진다. 말풍선은 한 번 누르기 전까지 앱을 열 때 잠깐 보여 준다.
+  final AskController _ask = AskController();
+  bool _askBubble = false;
+  Timer? _askBubbleTimer;
+
   @override
   void initState() {
     super.initState();
+    final bubbleUid = FirebaseAuth.instance.currentUser?.uid;
+    if (bubbleUid != null) {
+      unawaited(AskBubblePrefs.seen(bubbleUid).then((seen) {
+        if (seen || !mounted) return;
+        setState(() => _askBubble = true);
+        _askBubbleTimer = Timer(const Duration(seconds: 8), () {
+          if (mounted) setState(() => _askBubble = false);
+        });
+      }));
+    }
     // 첫 실행 사용 가이드(docs/task_demo_flow_v1.md 부분 C, §4-1) — 로그인 뒤 홈에 들어오면
     // 계정 단위로 판단해 띄운다. 첫 프레임 뒤라야 Navigator가 준비돼 있다.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -245,6 +265,8 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _fittingJob.dispose();
+    _ask.dispose();
+    _askBubbleTimer?.cancel();
     super.dispose();
   }
 
@@ -306,8 +328,23 @@ class _AppShellState extends State<AppShell> {
     });
   }
 
+  void _openAsk() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    _askBubbleTimer?.cancel();
+    if (_askBubble) setState(() => _askBubble = false);
+    if (uid != null) unawaited(AskBubblePrefs.markSeen(uid));
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => AskScreen(
+        controller: _ask,
+        onOpenFittingRoom: _sendRecommendationToFittingRoom,
+        onNavigate: (i) => setState(() => _tabIndex = i),
+      ),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
+    final askPlace = askFabPlacementFor(_tabIndex);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -324,6 +361,12 @@ class _AppShellState extends State<AppShell> {
             return Stack(
               children: [
                 _buildBody(),
+                Positioned(
+                  right: askPlace.right,
+                  top: askPlace.top,
+                  bottom: askPlace.bottom,
+                  child: AskFab(controller: _ask, onTap: _openAsk, showBubble: _askBubble),
+                ),
                 _FloatingFittingIcon(
                   jobController: _fittingJob,
                   onTap: _openFittingRoomFromFloatingIcon,
