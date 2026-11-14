@@ -17,8 +17,11 @@ class AskRunContext {
   final Future<T> Function<T>(Future<T> Function() wait) waitForUser;
   final bool Function() isCancelled;
   final AskFittingPort? fitting; // 가상 피팅 경로(없으면 try_on을 쓸 수 없다)
+  // 이번 턴의 앞선 preview_outfit이 보여 준 조합의 상의·아우터 옷 id(v2.1 B-1).
+  final Set<String> Function() shownTopsOuters;
   const AskRunContext({
     this.fitting,
+    this.shownTopsOuters = _noneShown,
     required this.tools,
     required this.confirmPlan,
     required this.askUser,
@@ -26,6 +29,8 @@ class AskRunContext {
     required this.isCancelled,
   });
 }
+
+Set<String> _noneShown() => const {};
 
 // 실행 도중 사용자가 멈췄거나 답하지 않고 떠났다 — 엔진은 요청을 멈춤으로 끝낸다.
 class AskCancelled implements Exception {
@@ -168,7 +173,7 @@ final List<AskToolSpec> askToolRegistry = [
       return null;
     },
     itemArgs: const ['keep', 'exclude'],
-    run: (ctx, args) async => _done(await ctx.tools.previewOutfit(args)),
+    run: (ctx, args) async => _done(await ctx.tools.previewOutfit(args, avoid: ctx.shownTopsOuters())),
   ),
   AskToolSpec(
     name: 'get_style_history',

@@ -251,6 +251,14 @@ class AskEngine {
       },
       isCancelled: () => _cancelled,
       fitting: fitting,
+      // 이번 턴의 앞선 preview_outfit이 보여 준 조합의 상의·아우터(v2.1 B-1) — 턴이 바뀌면 이어지지 않는다.
+      shownTopsOuters: () => {
+        for (final s in steps)
+          if (s.action == 'preview_outfit' && s.status == AskStepStatus.done)
+            for (final c in s.combos)
+              for (final i in c)
+                if (i.category == '상의' || i.category == '아우터') i.id,
+      },
     );
 
     AskOutcome end(AskEnd e, String answer) => AskOutcome(e, answer, steps, calls,

@@ -129,6 +129,9 @@ const askPreviewMaxCount = 5;
 const askAdjustWarmer = '더 따뜻하게';
 const askAdjustLighter = '더 가볍게';
 const askHistoryDays = 60; // 착장 기록을 보는 기간(v2 §2-F)
+// 같은 턴에 다시 부른 preview_outfit(v2.1 B-1) — 모델용 결과에 붙이는 한 줄.
+const askPreviewAvoidedNote = '앞서 보여 준 조합의 상의·아우터는 빼고 골랐어요.';
+const askPreviewOverlapNote = '앞서 보여 준 조합과 겹칠 수 있어요.';
 
 // 옷 번호 목록 인자 — 형식이 틀린 값은 버린다(검증은 등록부가 먼저 한다).
 List<int> askNumberList(Object? v) =>
@@ -461,7 +464,10 @@ class AskTools {
   // preview_outfit(date, tpo, count?, style?, keep?, exclude?, adjust?, unworn_first?) — 일일 추천과 같은
   // matchForWeather. 새 인자(v2 §2-C)는 조합 로직·점수를 건드리지 않고 넘기는 옷 목록을 거르는 방식으로만
   // 구현한다(adjust는 그 기온대를 대표하는 기온을 넣어 기존 기온대 규칙을 그대로 쓴다). 저장 없음.
-  Future<AskToolResult> previewOutfit(Map<String, dynamic> args) async {
+  // avoid(v2.1 B-1): 같은 턴의 앞선 preview_outfit이 보여 준 조합의 상의·아우터 — 한 번 부를 때 안에서
+  // 앞 조합의 상의·아우터를 빼는 것과 같은 방식으로 처음부터 뺀다(keep한 종류는 빼지 않는다). 빼고 나서
+  // 조합을 하나도 못 만들면 빼지 않고 다시 고른다. 비어 있으면(그 턴의 첫 미리 보기) 결과는 지금과 같다.
+  Future<AskToolResult> previewOutfit(Map<String, dynamic> args, {Set<String> avoid = const {}}) async {
     final date = parseAskDate(args['date']);
     final tpo = args['tpo'];
     if (date == null) return const AskToolResult('인자 오류: date는 YYYY-MM-DD 형식이어야 해요', ok: false);
@@ -551,53 +557,66 @@ class AskTools {
     final lines = <String>[];
     var weatherText = '';
     var fallback = false;
-    var used = <String>{}; // 앞 조합의 상의·아우터(다음 조합에서 뺀다)
-    for (var n = 0; n < count; n++) {
-      final w = [for (final i in pool) if (!used.contains(i.id) || keptCats.contains(i.category)) i];
-      if (w.length < 2) break;
-      final m = AgentPlanner.matchForWeather(wardrobe: w, formalityHint: formality, recentItemIds: recent, day: day);
-      if (m.match.candidates.isEmpty) {
-        if (n == 0) {
-          return AskToolResult('조합을 만들지 못했어요 — ${m.match.shortfall ?? '옷장이 부족해요'}\n$askBuyNote', ok: false);
+    String? failure;
+    var avoided = false; // 앞서 보여 준 상의·아우터를 빼고 골랐는가
+    for (final start in [if (avoid.isNotEmpty) avoid, <String>{}]) {
+      combos.clear();
+      lines.clear();
+      weatherText = '';
+      fallback = false;
+      failure = null;
+      var used = <String>{...start}; // 앞 조합의 상의·아우터(다음 조합에서 뺀다)
+      for (var n = 0; n < count; n++) {
+        final w = [for (final i in pool) if (!used.contains(i.id) || keptCats.contains(i.category)) i];
+        if (w.length < 2) break;
+        final m = AgentPlanner.matchForWeather(wardrobe: w, formalityHint: formality, recentItemIds: recent, day: day);
+        if (m.match.candidates.isEmpty) {
+          if (n == 0) failure = '조합을 만들지 못했어요 — ${m.match.shortfall ?? '옷장이 부족해요'}\n$askBuyNote';
+          break;
         }
+        var top = List.of(m.match.candidates.first.items);
+        // 지정한 옷은 기온대 규칙으로 빼지 않는다 — 걸러졌으면 그 종류 자리에 다시 넣는다.
+        for (final k in kept) {
+          if (top.any((i) => i.id == k.id)) continue;
+          final at = top.indexWhere((i) => i.category == k.category);
+          if (at >= 0) {
+            top[at] = k;
+          } else {
+            top.add(k);
+          }
+        }
+        final sig = (top.map((i) => i.id).toList()..sort()).join(',');
+        if (combos.any((c) => (c.map((i) => i.id).toList()..sort()).join(',') == sig)) break;
+        combos.add(top);
+        if (n == 0) {
+          fallback = m.match.isFallback;
+          if (day != null) {
+            weatherText = buildWeatherNote(
+              ctx: weatherContextFor(day),
+              baselineTop: m.baseline!.candidates.first.items,
+              weatherTop: top,
+              finalItems: top,
+              wardrobe: w,
+              removedIds: (m.fellBack || m.formalityOverride) ? const {} : m.filter!.removedIds,
+              isAssumed: snapshot!.isAssumed,
+              formalityHint: formality,
+              coldOuterRuleApplied: !m.fellBack && !m.formalityOverride && m.filter!.coldOuterRuleApplied,
+            ) ??
+                '';
+          } else {
+            weatherText = snapshot == null ? '예보를 불러오지 못해 날씨 없이 골랐어요' : '예보 범위 밖이라 날씨 없이 골랐어요';
+          }
+        }
+        used = {...used, for (final i in top) if (i.category == '상의' || i.category == '아우터') i.id};
+        lines.add(count == 1 ? top.map(_line).join(', ') : '조합 ${n + 1}: ${top.map(_line).join(', ')}');
+      }
+      if (combos.isNotEmpty) {
+        avoided = start.isNotEmpty;
         break;
       }
-      var top = List.of(m.match.candidates.first.items);
-      // 지정한 옷은 기온대 규칙으로 빼지 않는다 — 걸러졌으면 그 종류 자리에 다시 넣는다.
-      for (final k in kept) {
-        if (top.any((i) => i.id == k.id)) continue;
-        final at = top.indexWhere((i) => i.category == k.category);
-        if (at >= 0) {
-          top[at] = k;
-        } else {
-          top.add(k);
-        }
-      }
-      final sig = (top.map((i) => i.id).toList()..sort()).join(',');
-      if (combos.any((c) => (c.map((i) => i.id).toList()..sort()).join(',') == sig)) break;
-      combos.add(top);
-      if (n == 0) {
-        fallback = m.match.isFallback;
-        if (day != null) {
-          weatherText = buildWeatherNote(
-            ctx: weatherContextFor(day),
-            baselineTop: m.baseline!.candidates.first.items,
-            weatherTop: top,
-            finalItems: top,
-            wardrobe: w,
-            removedIds: (m.fellBack || m.formalityOverride) ? const {} : m.filter!.removedIds,
-            isAssumed: snapshot!.isAssumed,
-            formalityHint: formality,
-            coldOuterRuleApplied: !m.fellBack && !m.formalityOverride && m.filter!.coldOuterRuleApplied,
-          ) ??
-              '';
-        } else {
-          weatherText = snapshot == null ? '예보를 불러오지 못해 날씨 없이 골랐어요' : '예보 범위 밖이라 날씨 없이 골랐어요';
-        }
-      }
-      used = {...used, for (final i in top) if (i.category == '상의' || i.category == '아우터') i.id};
-      lines.add(count == 1 ? top.map(_line).join(', ') : '조합 ${n + 1}: ${top.map(_line).join(', ')}');
     }
+    if (combos.isEmpty) return AskToolResult(failure ?? '조합을 만들지 못했어요 — 옷장이 부족해요\n$askBuyNote', ok: false);
+    if (avoid.isNotEmpty) notes.add(avoided ? askPreviewAvoidedNote : askPreviewOverlapNote);
     if (outOfRange) weatherText = '$weatherText(오늘 기온대 기준)';
     final head = '${askDateLabel(date)} [$tpo] 미리 보기(저장 안 함)'
         '${count > 1 ? ' — 요청 $count개 중 ${combos.length}개' : ''}:';
