@@ -132,3 +132,6 @@ tools/fix_japanese_attributes/manifests/
 # 덤프와 모델 응답 원문이 담긴 실행 산출물이라 커밋하지 않는다.
 tools/text_probe/input/
 tools/text_probe/output/
+
+# demo_wardrobe 시드의 삭제 전 문서 전문 백업(tools/seed_demo_wardrobe) — 문서 id·이미지 URL이 들어 있어 로컬 전용.
+tools/seed_demo_wardrobe/manifests/
