@@ -19,6 +19,50 @@ import 'style_candidates_weather_check.dart';
 
 void main() {
   final path = Platform.environment['REAL_WARDROBE_JSON'];
+
+  // 일일 추천 기온대 표(판정 없이 출력만 — docs/task_demo_flow_v1.md §11 3단계). [일상]·[모임]·
+  // [결혼식](포멀) × 더움·온화·선선·추움·실제 예보, matchForWeather 1순위와 문구.
+  test('일일 추천 기온대 표(출력만)', () {
+    if (path == null) {
+      markTestSkipped('REAL_WARDROBE_JSON 경로를 넘길 때만 돈다');
+      return;
+    }
+    final raw = (jsonDecode(File(path).readAsStringSync()) as List).cast<Map<String, dynamic>>();
+    final wardrobe = [
+      for (final m in raw)
+        if (m['attributes'] != null)
+          WardrobeItem(
+            id: m['id'] as String,
+            imageUrl: '',
+            category: m['category'] as String,
+            subCategory: m['subCategory'] as String?,
+            createdAt: DateTime(2026),
+            attributes: ClothingAttributes.fromJson(m['attributes'] as Map<String, dynamic>),
+          ),
+    ];
+    String desc(WardrobeItem? i) =>
+        i == null ? '—' : '${i.attributes!.color} ${i.attributes!.tags.take(3).join('·')}(${i.attributes!.formality})';
+    WardrobeItem? cat(List<WardrobeItem> items, String c) => items.where((i) => i.category == c).firstOrNull;
+    for (final (tag, formality) in [('일상', '캐주얼'), ('모임', '세미포멀'), ('결혼식', '포멀')]) {
+      for (final (label, mx, mn) in [('더움 31/24', 31.0, 24.0), ('온화 22/14', 22.0, 14.0), ('선선 14/8', 14.0, 8.0), ('추움 3/−3', 3.0, -3.0), ('실제 16/7', 16.0, 7.0)]) {
+        final d = DailyWeather(date: DateTime(2026, 11, 15), maxTempC: mx, minTempC: mn, precipitationProbability: 10);
+        final m = AgentPlanner.matchForWeather(wardrobe: wardrobe, formalityHint: formality, day: d);
+        final top = m.match.candidates.first.items;
+        final note = buildWeatherNote(
+          ctx: weatherContextFor(d),
+          baselineTop: m.baseline!.candidates.first.items,
+          weatherTop: top,
+          finalItems: top,
+          wardrobe: wardrobe,
+          removedIds: (m.fellBack || m.formalityOverride) ? const {} : m.filter!.removedIds,
+          formalityHint: formality,
+          coldOuterRuleApplied: !m.fellBack && !m.formalityOverride && m.filter!.coldOuterRuleApplied,
+        );
+        print('DAILY|$tag $label|${desc(cat(top, '상의'))}|${desc(cat(top, '하의'))}|${desc(cat(top, '아우터'))}|'
+            '${desc(cat(top, '신발'))}|$note');
+      }
+    }
+  });
   test('실기기 옷장 점검 (사)·(아)', () {
     if (path == null) {
       markTestSkipped('REAL_WARDROBE_JSON 경로를 넘길 때만 돈다');
