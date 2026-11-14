@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -6,6 +9,15 @@ plugins {
     // 조건(파일 없음)이 더는 성립하지 않는다. FCM이 이 플러그인이 생성하는
     // 리소스에 의존하는 부분이 있어 여기서 켠다(handoff §5 함정 4).
     id("com.google.gms.google-services")
+}
+
+// 릴리스 서명 — android/key.properties(저장소에 넣지 않는다, .gitignore)에서 keystore를 읽는다.
+// keystore 파일은 저장소 밖에 둔다. key.properties가 없으면 릴리스 서명 설정이 비어 release
+// 빌드가 서명 단계에서 멈춘다(debug 키로 조용히 서명하지 않는다).
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
 }
 
 android {
@@ -35,9 +47,18 @@ android {
         multiDexEnabled = true
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+            storeFile = keystoreProperties.getProperty("storeFile")?.let { project.file(it) }
+            storePassword = keystoreProperties.getProperty("storePassword")
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }
