@@ -140,3 +140,6 @@ tools/seed_demo_wardrobe/manifests/
 android/key.properties
 *.jks
 *.keystore
+
+# tag_storage_owner(보안 최소 조치 S1) — 적용 manifest에 경로·uid가 들어 있어 저장소에 넣지 않는다
+tools/tag_storage_owner/manifests/
