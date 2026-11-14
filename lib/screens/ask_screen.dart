@@ -518,6 +518,27 @@ class _AskCard extends StatelessWidget {
       );
 }
 
+// 답의 "구매 제안:" 줄(앞에 "- "가 붙은 것 포함)을 본문에서 떼어 낸다 — 화면에 그릴 때만.
+// 저장되는 대화 내역, 다음 턴에 모델에게 주는 글, 프롬프트는 "구매 제안:" 그대로다.
+const askExtrasTitle = '옷장에 더하면 좋은 옷';
+const askExtrasNote = '지금 옷장에는 없는 옷이에요';
+
+({String body, List<String> extras}) askSplitExtras(String answer) {
+  final body = <String>[];
+  final extras = <String>[];
+  for (final line in answer.split('\n')) {
+    final t = line.trim();
+    final bare = t.startsWith('- ') ? t.substring(2).trimLeft() : t;
+    if (bare.startsWith(askBuyLabel)) {
+      final item = bare.substring(askBuyLabel.length).trim();
+      if (item.isNotEmpty) extras.add(item);
+    } else {
+      body.add(line);
+    }
+  }
+  return (body: body.join('\n').trim(), extras: extras);
+}
+
 class AskAnswerBox extends StatelessWidget {
   final String answer;
   final bool stopped;
@@ -526,6 +547,7 @@ class AskAnswerBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final (:body, :extras) = askSplitExtras(answer);
     return _AskCard(
       color: stopped ? AppColors.background : AppColors.bluePale,
       child: Column(
@@ -538,11 +560,59 @@ class AskAnswerBox extends StatelessWidget {
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
           ]),
           const SizedBox(height: 8),
-          Text(answer, style: const TextStyle(fontSize: 15, height: 1.45, color: AppColors.textPrimary)),
+          Text(body, style: const TextStyle(fontSize: 15, height: 1.45, color: AppColors.textPrimary)),
           if (thumbs.isNotEmpty) ...[
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 8, children: thumbs),
           ],
+          if (extras.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _ExtrasBox(items: extras),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// 옷장에 없지만 가진 옷과 어울리는 옷 종류 — 답 아래 한 묶음.
+class _ExtrasBox extends StatelessWidget {
+  final List<String> items;
+  const _ExtrasBox({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('ask-extras'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(askExtrasTitle,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+          const SizedBox(height: 2),
+          const Text(askExtrasNote, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          const SizedBox(height: 8),
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 2),
+                  child: Icon(Icons.add_circle_outline, size: 16, color: AppColors.blue),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(item, style: const TextStyle(fontSize: 14, height: 1.4, color: AppColors.textPrimary)),
+                ),
+              ]),
+            ),
         ],
       ),
     );
