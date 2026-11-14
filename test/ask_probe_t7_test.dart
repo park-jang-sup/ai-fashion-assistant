@@ -27,7 +27,6 @@ import 'package:ai_fashion_assistant/services/ask_engine.dart';
 import 'package:ai_fashion_assistant/services/ask_history.dart';
 import 'package:ai_fashion_assistant/services/ask_registry.dart';
 import 'package:ai_fashion_assistant/services/ask_tools.dart';
-import 'package:ai_fashion_assistant/services/gemini_api_exception.dart';
 import 'package:ai_fashion_assistant/services/gemini_service.dart';
 import 'package:ai_fashion_assistant/services/weather_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -204,6 +203,16 @@ Map<String, dynamic> _parseJson(String text) {
   return jsonDecode(cleaned.substring(start, end + 1)) as Map<String, dynamic>;
 }
 
+// 모델 답을 받지 못한 경우(통신 실패, HTTP 오류, 429, 빈 답) — 판정에서 "미달"이 아니라 "실행 오류"로
+// 따로 센다. 이유 글은 키를 가리고 300자로 자른다(요청 URL·헤더는 넣지 않는다).
+class _ProbeCallError implements Exception {
+  final String reason;
+  _ProbeCallError(String reason) : reason = _clip300(_mask(reason));
+  static String _clip300(String s) => s.length <= 300 ? s : s.substring(0, 300);
+  @override
+  String toString() => '실행 오류: $reason';
+}
+
 Future<String> _post(Uri url, Map<String, String> headers, Map<String, dynamic> body) async {
   final client = HttpClient();
   try {
@@ -213,10 +222,13 @@ Future<String> _post(Uri url, Map<String, String> headers, Map<String, dynamic> 
     req.add(utf8.encode(jsonEncode(body)));
     final res = await req.close();
     final text = await res.transform(utf8.decoder).join();
-    final masked = _mask(text);
-    if (res.statusCode == 429) throw RateLimitExceededException(masked);
-    if (res.statusCode != 200) throw HttpException('HTTP ${res.statusCode} ${masked.substring(0, masked.length.clamp(0, 300))}');
+    if (res.statusCode != 200) throw _ProbeCallError('HTTP ${res.statusCode} $text');
     return text;
+  } on _ProbeCallError {
+    rethrow;
+  } catch (e) {
+    // 소켓·TLS 오류 등. 예외 글에는 호스트만 들어가고 키는 헤더에만 있다(그래도 가린다).
+    throw _ProbeCallError('${e.runtimeType}: $e');
   } finally {
     client.close();
   }
@@ -247,6 +259,10 @@ Future<AskModelReply> _claude(String prompt) async {
     for (final b in (json['content'] as List? ?? const []))
       if ((b as Map)['type'] == 'text') b['text'] as String,
   ].join();
+  // 서버 어댑터는 refusal·빈 본문을 503으로 돌려 클라이언트 폴백을 태운다 — 형식 오류가 아니라 실행 오류.
+  if (json['stop_reason'] == 'refusal' || out.trim().isEmpty) {
+    throw _ProbeCallError('빈 답(stop_reason ${json['stop_reason']})');
+  }
   return AskModelReply(_parseJson(out), 'claude-sonnet-5-5');
 }
 
@@ -265,8 +281,13 @@ Future<AskModelReply> _gemini(String prompt) async {
         'generationConfig': GeminiService.agentStepGenerationConfig,
       });
   final json = jsonDecode(text) as Map<String, dynamic>;
-  final t = ((((json['candidates'] as List?)?.first as Map?)?['content'] as Map?)?['parts'] as List?)?.first as Map?;
-  return AskModelReply(_parseJson((t?['text'] as String?) ?? ''), 'gemini-3.5-flash');
+  final candidates = json['candidates'] as List?;
+  final parts =
+      candidates == null || candidates.isEmpty ? null : ((candidates.first as Map)['content'] as Map?)?['parts'] as List?;
+  final t = parts == null || parts.isEmpty ? null : (parts.first as Map)['text'] as String?;
+  // 앱(_extractTextFromResponse)은 후보·본문이 없으면 일반 예외로 끝낸다 — 형식 오류가 아니라 실행 오류.
+  if (t == null || t.trim().isEmpty) throw _ProbeCallError('빈 답(후보 ${candidates?.length ?? 0}개)');
+  return AskModelReply(_parseJson(t), 'gemini-3.5-flash');
 }
 
 // 가짜 모델(ASK_T7_MOCK) — 시나리오별 대본. 프롬프트의 마지막 [사용자 요청]과 단계 수로 고른다.
@@ -315,22 +336,34 @@ class _Run {
   final List<(DateTime, String)> writes;
   final List<List<String>> fittings;
   final AskTools tools;
+  // 모델 답을 받지 못한 경우 그 이유 — 있으면 이 실행은 판정하지 않고 "실행 오류"로 센다.
   final String? error;
-  _Run(this.s, this.target, this.rep, this.turns, this.writes, this.fittings, this.tools) : error = null;
+  _Run(this.s, this.target, this.rep, this.turns, this.writes, this.fittings, this.tools, this.error);
 }
+
+// 첫 호출부터 실패하면 바로 멈춘다 — 한 번이라도 답을 받기 전에 실행 오류가 나면 남은 시나리오를 시작하지 않는다.
+var _successfulCalls = 0;
+String? _abortReason;
 
 Future<_Run> _runScenario(_Scenario s, String target, int rep, AskModelCall call) async {
   final data = await _fixture(s.today);
   final fittings = <List<String>>[];
   late final AskTools tools;
   final latencies = <double>[];
+  String? callError;
   final c = AskController(
     currentUid: () => 'probe',
     toolsFor: (_) => tools = AskTools(data, now: () => DateTime(s.today.year, s.today.month, s.today.day, 10)),
     callModel: (p) async {
       final sw = Stopwatch()..start();
       try {
-        return await call(p);
+        final reply = await call(p);
+        _successfulCalls++;
+        return reply;
+      } on _ProbeCallError catch (e) {
+        callError ??= e.reason;
+        if (_successfulCalls == 0) _abortReason ??= e.reason;
+        rethrow;
       } finally {
         latencies.add(sw.elapsedMilliseconds / 1000);
       }
@@ -357,7 +390,10 @@ Future<_Run> _runScenario(_Scenario s, String target, int rep, AskModelCall call
     if (c.outcome!.end != AskEnd.finished) break;
   }
   c.dispose();
-  return _Run(s, target, rep, turns, data.writes, fittings, tools);
+  // 단계 시한(20초)에 걸려 답을 받지 못한 턴도 실행 오류로 센다.
+  final timedOut = turns.any((t) => t.outcome.end == AskEnd.timeout);
+  final error = callError ?? (timedOut ? '모델 응답 시간 초과(단계 20초)' : null);
+  return _Run(s, target, rep, turns, data.writes, fittings, tools, error);
 }
 
 // ── 판정(§3, 실행 전 고정) ──────────────────────────────────────────
@@ -374,6 +410,7 @@ List<AskStep> _valid(AskOutcome o) => [for (final s in o.steps) if (!s.hidden) s
 List<String> _actions(AskOutcome o) => [for (final s in _valid(o)) s.action];
 
 Map<String, Object?> _judge(_Run r) {
+  if (r.error != null) return {'error': r.error};
   final id = r.s.id;
   final all = [for (final t in r.turns) ..._valid(t.outcome)];
   final j1 = r.turns.every((t) => t.outcome.steps.every((s) => !s.hidden) && t.outcome.end != AskEnd.invalidOutput);
@@ -475,16 +512,23 @@ int _combosShown(_Run r, String answer) {
   return shown;
 }
 
+// K2(§3) — 첫 줄은 결론 한 문장("- "로 시작하지 않고, 문장 끝 부호 뒤에 다른 문장이 없다), 그 아래에
+// "- " 항목이 있다. run1을 §3으로 다시 볼 때 쓴 규칙 그대로(항목 개수 조건은 §3에 없다).
 bool _formatOk(String answer) {
   final lines = answer.trim().split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
   if (lines.isEmpty || lines.first.startsWith('- ')) return false;
+  final sentences = lines.first.split(RegExp(r'(?<=[.!?])\s+')).where((x) => x.trim().isNotEmpty).length;
   final items = lines.skip(1).where((l) => l.startsWith('- ')).length;
-  return items >= 2 && items <= 5;
+  return sentences == 1 && items >= 1;
 }
 
+// K3 — 도구 이름, 호출 횟수, 한도. "횟수"는 호출·조회처럼 내부 동작을 세는 말일 때만 잡는다
+// ("그대로 입은 횟수" 같은 착장 기록 설명은 내부 사정이 아니다).
+final _internalCount = RegExp(r'(호출|조회|검색|시도|도구)\s*횟수');
 bool _hasInternal(String answer) =>
     [for (final t in askToolRegistry) t.name].any(answer.contains) ||
-    ['호출', '한도', '상한', '횟수'].any(answer.contains);
+    ['호출', '한도', '상한'].any(answer.contains) ||
+    _internalCount.hasMatch(answer);
 
 // ── 보고서 ─────────────────────────────────────────────────────────
 String _report(List<_Run> runs) {
@@ -493,13 +537,14 @@ String _report(List<_Run> runs) {
     final rs = runs.where((r) => r.target == target).toList();
     if (rs.isEmpty) continue;
     final judged = [for (final r in rs) _judge(r)];
+    final errors = [for (final j in judged) if (j['error'] != null) j];
     String rate(String k) {
       final vs = [for (final j in judged) j[k]].whereType<bool>().toList();
       return '${vs.where((v) => v).length}/${vs.length}';
     }
 
     String rateList(String k) {
-      final vs = [for (final j in judged) ...(j[k] as List).cast<bool>()];
+      final vs = [for (final j in judged) ...((j[k] as List?) ?? const []).cast<bool>()];
       return '${vs.where((v) => v).length}/${vs.length}';
     }
 
@@ -518,6 +563,7 @@ String _report(List<_Run> runs) {
     b.writeln('| K1 핵심 조건(≥85%) | ${rate('K1')} |');
     b.writeln('| K2 답 형식(≥90%) | ${rateList('K2')} |');
     b.writeln('| K3 내부 사정 없음(≥95%) | ${rateList('K3')} |');
+    b.writeln('| 실행 오류(판정에서 뺌) | ${errors.length}건 |');
     b.writeln('| 턴당 평균 단계 수 | ${mean(turnSteps).toStringAsFixed(1)} |');
     b.writeln('| 단계(모델 호출)당 평균 지연 | ${mean(lat).toStringAsFixed(2)}초 |');
     b.writeln('| 턴당 평균 총 시간 | ${mean(turnSecs).toStringAsFixed(1)}초 |\n');
@@ -527,6 +573,10 @@ String _report(List<_Run> runs) {
       final r = rs[i];
       final j = judged[i];
       final order = [for (final t in r.turns) '${_actions(t.outcome).join('→')}(${t.outcome.end.name})'].join(' / ');
+      if (j['error'] != null) {
+        b.writeln('| ${r.s.id} | ${r.rep} | $order | 실행 오류: ${j['error']} | | | | | | | |');
+        continue;
+      }
       b.writeln('| ${r.s.id} | ${r.rep} | $order | ${yn(j['J1'])} | ${yn(j['J2'])} | ${yn(j['J3'])} | ${yn(j['J4'])} | ${yn(j['J6'])} | ${yn(j['K1'])} | ${yn(j['K2'])} | ${yn(j['K3'])} |');
     }
     b.writeln('\n### 답과 근거(J5 판정용)\n');
@@ -550,6 +600,37 @@ String _report(List<_Run> runs) {
 }
 
 void main() {
+  // 모델을 부르지 않고 저장된 결과(json)에 판정 코드를 다시 적용한다. K2·K3는 답 글로 다시 계산하고,
+  // 코드가 바뀌지 않은 나머지(J1~J4·J6·K1)는 저장된 판정을 그대로 센다.
+  //   ASK_T7_REJUDGE=t7_run1 flutter test test/ask_probe_t7_test.dart
+  test('프로브 T7 다시 판정(ASK_T7_REJUDGE=결과 이름일 때만)', () {
+    final name = _env['ASK_T7_REJUDGE'];
+    if (name == null || name.isEmpty) {
+      markTestSkipped('ASK_T7_REJUDGE=결과 이름 일 때만 실행한다');
+      return;
+    }
+    final runs = (jsonDecode(File('tools/text_probe/output/$name.json').readAsStringSync()) as List).cast<Map<String, dynamic>>();
+    for (final target in ['C', 'G']) {
+      final rs = [for (final r in runs) if (r['target'] == target) r];
+      if (rs.isEmpty) continue;
+      String rate(String k) {
+        final vs = [for (final r in rs) (r['judge'] as Map)[k]].whereType<bool>().toList();
+        return '${vs.where((v) => v).length}/${vs.length}';
+      }
+
+      final answers = [
+        for (final r in rs)
+          for (final t in (r['turns'] as List).cast<Map<String, dynamic>>())
+            if (t['end'] == 'finished') t['answer'] as String,
+      ];
+      final k2 = answers.where(_formatOk).length;
+      final k3 = answers.where((a) => !_hasInternal(a)).length;
+      // ignore: avoid_print
+      print('$target  J1 ${rate('J1')}  J2 ${rate('J2')}  J3 ${rate('J3')}  J4 ${rate('J4')}  J6 ${rate('J6')}  K1 ${rate('K1')}  '
+          'K2 $k2/${answers.length}  K3 $k3/${answers.length}');
+    }
+  });
+
   test('프로브 T7(ASK_T7=1일 때만)', () async {
     if (_env['ASK_T7'] != '1') {
       markTestSkipped('ASK_T7=1 일 때만 실행한다');
@@ -571,6 +652,7 @@ void main() {
     final pending = <Future<void>>[];
     for (final (target, rep, call) in jobs) {
       for (final s in scenarios) {
+        if (_abortReason != null) break;
         while (running >= 3) {
           await Future<void>.delayed(const Duration(milliseconds: 50));
         }
@@ -583,7 +665,7 @@ void main() {
             print(_mask('  $target ${s.id} r$rep: ${[for (final t in r.turns) _actions(t.outcome).join('→')].join(' / ')}'));
           } catch (e) {
             // ignore: avoid_print
-            print(_mask('  $target ${s.id} r$rep 오류: $e'));
+            print(_mask('  $target ${s.id} r$rep 오류: ${e.runtimeType}'));
           } finally {
             running--;
           }
@@ -602,6 +684,7 @@ void main() {
           'scenario': r.s.id,
           'rep': r.rep,
           'judge': _judge(r),
+          'error': r.error,
           'turns': [
             for (final t in r.turns)
               {
@@ -620,5 +703,6 @@ void main() {
     ])));
     // ignore: avoid_print
     print('결과: ${out.path}/$base.md');
+    if (_abortReason != null) fail(_mask('첫 호출부터 모델 답을 받지 못해 멈췄어요: $_abortReason'));
   }, timeout: const Timeout(Duration(minutes: 40)));
 }
