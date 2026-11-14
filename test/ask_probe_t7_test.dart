@@ -564,6 +564,9 @@ String _report(List<_Run> runs) {
     b.writeln('| K2 답 형식(≥90%) | ${rateList('K2')} |');
     b.writeln('| K3 내부 사정 없음(≥95%) | ${rateList('K3')} |');
     b.writeln('| 실행 오류(판정에서 뺌) | ${errors.length}건 |');
+    final turnsAll = [for (final r in rs) ...r.turns];
+    b.writeln('| finish 돌려보냄 / 줄 뺌(정보) | ${turnsAll.where((t) => t.outcome.finishReturned).length}턴 / '
+        '${turnsAll.where((t) => t.outcome.finishTrimmed > 0).length}턴(${turnsAll.fold<int>(0, (a, t) => a + t.outcome.finishTrimmed)}줄) |');
     b.writeln('| 턴당 평균 단계 수 | ${mean(turnSteps).toStringAsFixed(1)} |');
     b.writeln('| 단계(모델 호출)당 평균 지연 | ${mean(lat).toStringAsFixed(2)}초 |');
     b.writeln('| 턴당 평균 총 시간 | ${mean(turnSecs).toStringAsFixed(1)}초 |\n');
@@ -692,6 +695,8 @@ void main() {
                 'end': t.outcome.end.name,
                 'answer': t.outcome.answer,
                 'calls': t.outcome.modelCalls,
+                'finishReturned': t.outcome.finishReturned,
+                'finishTrimmed': t.outcome.finishTrimmed,
                 'latencies': t.latencies,
                 'steps': [
                   for (final s in t.outcome.steps)

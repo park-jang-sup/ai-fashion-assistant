@@ -14,6 +14,7 @@
 import 'dart:async';
 
 import '../models/wardrobe_item.dart';
+import 'ask_finish.dart';
 import 'ask_registry.dart';
 import 'ask_tools.dart';
 
@@ -88,7 +89,11 @@ class AskOutcome {
   final int modelCalls;
   final DateTime? plannedDate; // add_plan이 실제로 쓴 날짜
   final AskOutfit? outfit; // 이 턴에 마지막으로 보여 준 조합(다음 턴의 [현재 코디])
-  const AskOutcome(this.end, this.answer, this.steps, this.modelCalls, {this.plannedDate, this.outfit});
+  // finish 검사(run3 전 결정) — 이 턴에 새 옷을 권하는 말 때문에 finish를 돌려보냈는가, 답에서 뺀 줄 수.
+  final bool finishReturned;
+  final int finishTrimmed;
+  const AskOutcome(this.end, this.answer, this.steps, this.modelCalls,
+      {this.plannedDate, this.outfit, this.finishReturned = false, this.finishTrimmed = 0});
 }
 
 // 이어지는 대화(v2 §2-D) — 이전 턴은 사용자 말과 답만 프롬프트에 넣는다.
@@ -179,6 +184,8 @@ class AskEngine {
     var calls = 0;
     var invalidStreak = 0;
     final executed = <String, int>{}; // 도구별 실행 횟수(등록부의 요청당 상한과 비교)
+    var finishReturned = false; // 이 턴에 finish를 한 번 돌려보냈는가
+    var finishTrimmed = 0;
     final seenArgs = <String>{}; // 같은 인자 반복 막기(등록부의 dedupe)
     DateTime? plannedDate;
     final profile = await tools.profileLine(); // 프롬프트용 한 줄(있는 항목만)
@@ -199,8 +206,11 @@ class AskEngine {
       fitting: fitting,
     );
 
-    AskOutcome end(AskEnd e, String answer) =>
-        AskOutcome(e, answer, steps, calls, plannedDate: plannedDate, outfit: askOutfitOf(steps) ?? current);
+    AskOutcome end(AskEnd e, String answer) => AskOutcome(e, answer, steps, calls,
+        plannedDate: plannedDate,
+        outfit: askOutfitOf(steps) ?? current,
+        finishReturned: finishReturned,
+        finishTrimmed: finishTrimmed);
     String? outfitText() {
       final o = askOutfitOf(steps) ?? current;
       if (o == null) return null;
@@ -279,9 +289,27 @@ class AskEngine {
       onUpdate?.call(steps);
 
       if (action == 'finish') {
+        // buy 정리 + answer의 "구매 제안:" 줄을 buy로 옮긴 뒤, answer에 새 옷을 권하는 말이 있는지 엔진이 본다.
+        final parts = askSplitFinish(args['answer'] as String, args['buy']);
+        final hits = askFinishHits(parts.answerLines);
+        if (hits.isNotEmpty && !finishReturned && calls < askMaxModelCalls) {
+          // (가) 한 번 돌려보낸다 — 호출 한 번으로 센다. 화면에는 "답을 다듬고 있어요" 한 줄.
+          finishReturned = true;
+          step.observation = askFinishFeedback([for (final i in hits) parts.answerLines[i].trim()]);
+          step.display = askDisplayRevising;
+          step.status = AskStepStatus.done;
+          onUpdate?.call(steps);
+          continue;
+        }
+        // (나) 이미 돌려보냈거나 남은 호출이 없으면 걸린 줄을 빼고 받는다(첫 줄은 빼지 않는다).
+        final kept = [
+          for (var i = 0; i < parts.answerLines.length; i++)
+            if (i == 0 || !hits.contains(i)) parts.answerLines[i],
+        ];
+        finishTrimmed = parts.answerLines.length - kept.length;
         step.status = AskStepStatus.done;
         onUpdate?.call(steps);
-        return end(AskEnd.finished, (args['answer'] as String).trim());
+        return end(AskEnd.finished, AskFinishParts(kept, parts.buy).compose());
       }
 
       // 도구 실행 — 등록부의 요청당 상한을 엔진이 강제한다(모델의 말이 아니라).

@@ -7,6 +7,7 @@ import '../models/wardrobe_item.dart';
 import '../services/ask_controller.dart';
 import '../services/ask_dates.dart';
 import '../services/ask_engine.dart';
+import '../services/ask_finish.dart';
 import '../services/ask_history.dart';
 import '../services/ask_registry.dart';
 import '../widgets/agent_mascot.dart';
@@ -255,7 +256,11 @@ class _AskScreenState extends State<AskScreen> {
 
   List<Widget> _turn(AskTurn t, {required bool last, required bool first}) {
     // 화면에는 사용자용 단계만 — finish와 형식 오류(숨김)는 뺀다.
-    final visible = [for (final s in t.steps) if (s.action != 'finish' && !s.hidden) s];
+    // finish는 돌려보낸 것만("답을 다듬고 있어요" 한 줄) 보인다.
+    final visible = [
+      for (final s in t.steps)
+        if (!s.hidden && (s.action != 'finish' || s.display == askDisplayRevising)) s,
+    ];
     final running = last && _c.isRunning;
     final waiting = running &&
         !_c.userTurn &&
@@ -268,7 +273,10 @@ class _AskScreenState extends State<AskScreen> {
       // 진행 표시는 실제로 진행 중일 때만 — 사용자 차례(확인·질문), 멈추는 중, 끝난 뒤에는 멈춘다
       // (멈춘 요청의 마지막 단계는 실행 중 상태로 남을 수 있다).
       for (final s in visible) ...[
-        AskStepTile(step: s, showProgress: running && !_c.userTurn && !_c.isStopping),
+        if (s.action == 'finish')
+          const _RevisingRow()
+        else
+          AskStepTile(step: s, showProgress: running && !_c.userTurn && !_c.isStopping),
         if (s.fitting != null) AskFittingView(bytes: s.fitting!.bytes, url: s.fitting!.url, cacheKey: s.fitting!.cacheKey),
       ],
       if (waiting) const _ThinkingRow(text: '다음 단계를 고르는 중'),
@@ -557,6 +565,23 @@ class AskStepTile extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+// 엔진이 finish를 한 번 돌려보낸 단계 — 모델의 생각 문장 없이 한 줄만.
+class _RevisingRow extends StatelessWidget {
+  const _RevisingRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 14),
+      child: Row(children: [
+        Icon(Icons.edit_note, size: 18, color: AppColors.textMuted),
+        SizedBox(width: 6),
+        Flexible(child: Text(askDisplayRevising, style: TextStyle(fontSize: 13, color: AppColors.textMuted))),
+      ]),
     );
   }
 }
