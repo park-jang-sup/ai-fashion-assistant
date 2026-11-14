@@ -46,6 +46,21 @@ class AskRecordItem {
       cutoutImageUrl: m['cutoutImageUrl'] as String?);
 }
 
+// 답의 번호를 붙인 조합 줄("- 1. …(#n) + …")마다 그 줄에 적힌 옷 번호 — 그런 줄이 둘 이상일 때만
+// (하나뿐이거나 없으면 빈 목록, 답 아래 사진 한 줄은 지금처럼). 화면이 줄마다 사진을 그릴 때 쓴다.
+final _numberedComboLine = RegExp(r'^-\s*\d+\.\s');
+final _itemNumber = RegExp(r'#(\d+)');
+
+List<({int line, List<int> numbers})> askNumberedComboLines(String answer) {
+  final lines = answer.split('\n');
+  final out = [
+    for (var i = 0; i < lines.length; i++)
+      if (_numberedComboLine.hasMatch(lines[i].trim()))
+        (line: i, numbers: [for (final m in _itemNumber.allMatches(lines[i])) int.parse(m.group(1)!)]),
+  ];
+  return out.length >= 2 ? out : const [];
+}
+
 String _clipAnswer(String a) => a.length <= askRecordAnswerMax ? a : a.substring(0, askRecordAnswerMax);
 
 class AskRecordTurn {
@@ -58,6 +73,8 @@ class AskRecordTurn {
   // 가상 피팅 결과(v2 §2-E) — 사진 자체가 아니라 캐시 키·주소만.
   final String? fittingImageUrl;
   final String? fittingCacheKey;
+  // 번호를 붙인 조합 줄에 적힌 옷(번호 → 옷) — 대화 내역에서 다시 열어도 줄마다 사진을 그리게.
+  final Map<int, AskRecordItem> lineItems;
   const AskRecordTurn({
     required this.request,
     required this.createdAt,
@@ -67,12 +84,13 @@ class AskRecordTurn {
     this.items = const [],
     this.fittingImageUrl,
     this.fittingCacheKey,
+    this.lineItems = const {},
   });
 
   bool get finished => end == AskEnd.finished.name;
 
   factory AskRecordTurn.fromOutcome(String request, AskOutcome o, List<WardrobeItem> combo, DateTime at,
-          {String? fittingImageUrl, String? fittingCacheKey}) =>
+          {String? fittingImageUrl, String? fittingCacheKey, Map<int, WardrobeItem> lineItems = const {}}) =>
       AskRecordTurn(
         request: request,
         createdAt: at,
@@ -87,6 +105,7 @@ class AskRecordTurn {
         items: [for (final i in combo) AskRecordItem.of(i)],
         fittingImageUrl: fittingImageUrl,
         fittingCacheKey: fittingCacheKey,
+        lineItems: {for (final e in lineItems.entries) e.key: AskRecordItem.of(e.value)},
       );
 
   Map<String, dynamic> toMap() => {
@@ -98,6 +117,7 @@ class AskRecordTurn {
         'items': [for (final i in items) i.toMap()],
         if (fittingImageUrl != null) 'fittingImageUrl': fittingImageUrl,
         if (fittingCacheKey != null) 'fittingCacheKey': fittingCacheKey,
+        if (lineItems.isNotEmpty) 'lineItems': {for (final e in lineItems.entries) '${e.key}': e.value.toMap()},
       };
 
   factory AskRecordTurn.fromMap(Map<String, dynamic> m) => AskRecordTurn(
@@ -109,6 +129,10 @@ class AskRecordTurn {
         items: [for (final i in (m['items'] as List? ?? const [])) AskRecordItem.fromMap(Map<String, dynamic>.from(i as Map))],
         fittingImageUrl: m['fittingImageUrl'] as String?,
         fittingCacheKey: m['fittingCacheKey'] as String?,
+        lineItems: {
+          for (final e in (m['lineItems'] as Map? ?? const {}).entries)
+            if (int.tryParse('${e.key}') case final n?) n: AskRecordItem.fromMap(Map<String, dynamic>.from(e.value as Map)),
+        },
       );
 }
 

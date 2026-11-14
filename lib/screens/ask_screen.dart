@@ -483,6 +483,8 @@ class _AskScreenState extends State<AskScreen> {
             for (final i in combo)
               AskItemThumb(id: i.id, imageUrl: i.imageUrl, cutoutImageUrl: i.cutoutImageUrl),
           ],
+          lineItems: {for (final e in _c.askLineItems(o.answer).entries) e.key: AskRecordItem.of(e.value)},
+          recommendedIds: {for (final i in combo) i.id},
         ),
         if (last)
           Wrap(spacing: 8, runSpacing: 8, children: [
@@ -555,6 +557,8 @@ class AskRecordScreen extends StatelessWidget {
                   for (final it in record.turns[i].items)
                     AskItemThumb(id: it.id, imageUrl: it.imageUrl, cutoutImageUrl: it.cutoutImageUrl),
                 ],
+                lineItems: record.turns[i].lineItems,
+                recommendedIds: {for (final it in record.turns[i].items) it.id},
               ),
             ],
           ],
@@ -638,15 +642,78 @@ const askExtrasNote = '지금 옷장에는 없는 옷이에요';
   return (body: body.join('\n').trim(), extras: extras);
 }
 
+// 답 카드. 번호를 붙인 조합 줄("- 1. …(#n) + …")이 둘 이상이면 줄마다 그 줄의 옷 사진을 작게 한 줄로
+// 그리고(lineItems — 이 대화의 번호표로 찾은 옷, 없는 번호는 건너뛴다), 고른 조합(recommendedIds)과
+// 같은 줄에는 "추천"을 붙인다. 이때 맨 아래 사진 한 줄(thumbs)은 겹치므로 그리지 않는다.
 class AskAnswerBox extends StatelessWidget {
   final String answer;
   final bool stopped;
   final List<Widget> thumbs;
-  const AskAnswerBox({super.key, required this.answer, required this.stopped, this.thumbs = const []});
+  final Map<int, AskRecordItem> lineItems;
+  final Set<String> recommendedIds;
+  const AskAnswerBox(
+      {super.key,
+      required this.answer,
+      required this.stopped,
+      this.thumbs = const [],
+      this.lineItems = const {},
+      this.recommendedIds = const {}});
+
+  static const _textStyle = TextStyle(fontSize: 15, height: 1.45, color: AppColors.textPrimary);
+
+  List<Widget> _perLine(String body, List<({int line, List<int> numbers})> combos) {
+    final byLine = {for (final c in combos) c.line: c.numbers};
+    final lines = body.split('\n');
+    final out = <Widget>[];
+    final plain = <String>[];
+    void flush() {
+      if (plain.isEmpty) return;
+      out.add(Text(plain.join('\n'), style: _textStyle));
+      plain.clear();
+    }
+
+    for (var i = 0; i < lines.length; i++) {
+      final numbers = byLine[i];
+      if (numbers == null) {
+        plain.add(lines[i]);
+        continue;
+      }
+      flush();
+      out.add(Text(lines[i], style: _textStyle));
+      final seen = <String>{};
+      final items = [
+        for (final n in numbers)
+          if (lineItems[n] case final it? when seen.add(it.id)) it,
+      ];
+      if (items.isEmpty) continue;
+      final recommended = recommendedIds.isNotEmpty &&
+          seen.length == recommendedIds.length &&
+          seen.containsAll(recommendedIds);
+      out.add(Padding(
+        key: Key('ask-line-thumbs-$i'),
+        padding: const EdgeInsets.only(top: 4, bottom: 8, left: 12),
+        child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          for (final it in items)
+            AskItemThumb(id: it.id, imageUrl: it.imageUrl, cutoutImageUrl: it.cutoutImageUrl, size: 44),
+          if (recommended)
+            Container(
+              key: const Key('ask-line-recommended'),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: AppColors.blue, borderRadius: BorderRadius.circular(10)),
+              child: const Text('추천', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
+            ),
+        ]),
+      ));
+    }
+    flush();
+    return out;
+  }
 
   @override
   Widget build(BuildContext context) {
     final (:body, :extras) = askSplitExtras(answer);
+    final combos = askNumberedComboLines(body);
+    final perLine = combos.isNotEmpty;
     return _AskCard(
       color: stopped ? AppColors.background : AppColors.bluePale,
       child: Column(
@@ -659,8 +726,8 @@ class AskAnswerBox extends StatelessWidget {
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
           ]),
           const SizedBox(height: 8),
-          Text(body, style: const TextStyle(fontSize: 15, height: 1.45, color: AppColors.textPrimary)),
-          if (thumbs.isNotEmpty) ...[
+          if (perLine) ..._perLine(body, combos) else Text(body, style: _textStyle),
+          if (thumbs.isNotEmpty && !perLine) ...[
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 8, children: thumbs),
           ],
@@ -823,13 +890,14 @@ class AskItemThumb extends StatelessWidget {
   final String id;
   final String imageUrl;
   final String? cutoutImageUrl;
-  const AskItemThumb({super.key, required this.id, required this.imageUrl, this.cutoutImageUrl});
+  final double size;
+  const AskItemThumb({super.key, required this.id, required this.imageUrl, this.cutoutImageUrl, this.size = 72});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 72,
-      height: 72,
+      width: size,
+      height: size,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.white,

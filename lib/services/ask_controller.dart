@@ -94,6 +94,16 @@ class AskController extends ChangeNotifier {
   List<AskStep> get steps => _last?.steps ?? const [];
   AskOutcome? get outcome => _last?.outcome;
   AskOutfit? get currentOutfit => _outfit;
+
+  // 이 대화의 번호표로 찾은 옷(번호표에 없으면 null) — 답의 조합 줄마다 사진을 그릴 때.
+  WardrobeItem? itemByNumber(int number) => _tools?.book.item(number);
+
+  // 답의 번호를 붙인 조합 줄(둘 이상일 때)에 적힌 옷 — 번호표에 없는 번호는 건너뛴다.
+  Map<int, WardrobeItem> askLineItems(String answer) => {
+        for (final l in askNumberedComboLines(answer))
+          for (final n in l.numbers)
+            if (itemByNumber(n) case final i?) n: i,
+      };
   (DateTime, String)? get confirmArgs => _confirmArgs;
   String? get question => _question;
   bool get isRunning => _last != null && _last!.outcome == null;
@@ -221,6 +231,7 @@ class AskController extends ChangeNotifier {
       for (final t in (current() ? _turns : [turn]))
         if (t.outcome != null)
           AskRecordTurn.fromOutcome(t.request, t.outcome!, askCombo(t.outcome!), t.createdAt,
+              lineItems: askLineItems(t.outcome!.answer),
               fittingImageUrl: askFittingOf(t.outcome!.steps)?.url,
               fittingCacheKey: askFittingOf(t.outcome!.steps)?.cacheKey),
     ]);
