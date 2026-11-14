@@ -810,8 +810,9 @@ void main() {
       final run = await _runScenario(byId[r['scenario']]!, r['target'] as String, r['rep'] as int,
           (_) async => AskModelReply(Map<String, dynamic>.from(queue[i++]), 'replay'));
       runs.add(run);
-      final now = _judge(run);
-      final before = Map<String, dynamic>.from(r['judge'] as Map);
+      // T8 결과면 K4~K6·정보(judgeT8)도 함께 비교한다.
+      final now = {'judge': _judge(run), if (r.containsKey('judgeT8')) 'judgeT8': _judgeT8(run)};
+      final before = {'judge': r['judge'], if (r.containsKey('judgeT8')) 'judgeT8': r['judgeT8']};
       final same = jsonEncode(now) == jsonEncode(before);
       if (!same) {
         differ++;
@@ -820,7 +821,7 @@ void main() {
       }
     }
     final out = Directory('tools/text_probe/output')..createSync(recursive: true);
-    File('${out.path}/replay_$name.md').writeAsStringSync(_report(runs));
+    File('${out.path}/replay_$name.md').writeAsStringSync(_report(runs, t8: saved.any((r) => r.containsKey('judgeT8'))));
     // ignore: avoid_print
     print('다시 돌린 실행 ${runs.length}건, 판정이 저장과 다른 실행 $differ건 — ${out.path}/replay_$name.md');
     expect(differ, 0);
