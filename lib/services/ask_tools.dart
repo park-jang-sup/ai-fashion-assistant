@@ -202,7 +202,12 @@ class AskTools {
       final a = i.attributes!;
       return [i.category, i.subCategory ?? '', a.color, a.style, a.formality, ...a.tags].any((t) => t.contains(kw));
     }
-    final hits = wardrobe.where(matches).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    // 최근 등록 먼저, 같으면 id 순 — 같은 입력이면 늘 같은 순서(프로브가 같은 규칙으로 재현한다).
+    final hits = wardrobe.where(matches).toList()
+      ..sort((a, b) {
+        final c = b.createdAt.compareTo(a.createdAt);
+        return c != 0 ? c : a.id.compareTo(b.id);
+      });
     if (hits.isEmpty) return AskToolResult('일치하는 옷 없음(${category ?? '전체'}${kw != null ? ', "$kw"' : ''})');
     final shown = hits.take(8).toList();
     return AskToolResult(

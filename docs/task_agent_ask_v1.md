@@ -227,3 +227,11 @@ Dart 빌더 함수 하나로 만든다(순수 함수 + 골든 파일). 담을 �
 - 9: 묶이는 것은 **연속된** 같은 `relatedDocId` 줄이다(사이에 다른 줄이 끼면 따로 그린다). 모르는 `eventType`은 `default` 아이콘.
 - 11: 홈에는 로고가 없다. 순서는 제목("오늘 뭐 입지?") → 부제 → 날씨 줄 → 추천 코디 카드 → 주간 캘린더.
 - 마스코트: `assets/agent_mascot.png`가 있다. 앱 자산 폴더 관례는 없다(`pubspec.yaml`에 `assets` 항목 없음, 저장소의 png는 앱 아이콘·문서 그림뿐) — 화면 작업 때 `assets/images/`로 옮긴다.
+
+### 2026-11-14 §4-2~4 구현
+
+- 도구 계층(§4-2, `lib/services/ask_tools.dart`·`ask_data_source.dart`): 도구 함수 + 인자 검증, 실패는 관찰 글로, 관찰 1,500자 상한. `add_plan`은 `AgentPlanner.preparePlanNow`로 기존 `_prepareRecommendationFor`를 그대로 부른다(선제 추천과 같은 옷장·지역 설정, 같은 `_proactiveInFlight`로 묶음). `runProactiveCheck`도 진행 중인 실행이 있으면 끝나길 기다린 뒤 시작하게 했다(겹침 방지 — 이 경로 밖의 변경은 이것뿐). 일정에는 `createdVia: 'ask'`를 새 필드로 둔다(`source`의 manual/agent는 착장 기록 경로라 뜻이 맞지 않음, rules 변경 없음). 테스트 20건.
+- 3일 밖 날짜: 기존 준비 경로는 날짜 제한 없이 그 날짜의 예보(`forDate`)를 쓰므로 예보 범위(오늘 포함 7일) 안이면 바로 준비한다. 준비된 추천에는 예보 스냅샷이 남아, 그 날짜가 선제 추천 범위(3일)에 들어오면 기존 다시 계획 규칙(비 여부·기온 5°C)이 그대로 이어받는다. 7일 밖은 등록만 하고 "코디는 일정이 가까워지면 예보를 보고 준비해요".
+- 루프 엔진(§4-3, `lib/services/ask_engine.dart`): 모델·프롬프트·확인·되묻기를 주입받는다. `GeminiService.callAgentStep`이 기존 `_callProxyText`·`_parseJsonObject`·`withTextModelFallback`을 그대로 쓰는 얇은 통로(기존 호출 5종·골든 그대로). 테스트 14건.
+- 프롬프트 빌더(§4-4, `lib/services/ask_prompt.dart`): 첫 단계 프롬프트 1,491자. 28,000자를 넘으면 오래된 관찰부터 줄인다 — 관찰 1,500자 × 5단계 + 머리말로 6단계째 요청도 상한 안(테스트). 골든 2개(분석 골든 6개와 따로).
+- 프로브 T6 준비(§4-5): `test/ask_probe_dump_test.dart`(ASK_PROBE_DUMP=1일 때만) → `tools/text_probe/input/ask_t6.json`(git 추적 밖). 고정 자료 = 데모 옷장 고정 자료(`test/data`, 112벌) + 가짜 일정(내일 [데이트] 예정·추천 있음, 목요일 [출근] 예정·추천 없음, 지난 토요일 기록) + 7일 예보(내일 비 70%, 11/21(토) 최고 2°C로 가장 추움). `tools/text_probe/ask_probe.mjs`는 앱 엔진 규칙을 그대로 따르고, 실행 전에 프롬프트 재구성(Dart 출력과 글자 단위 일치)·옷장 검색(표본 78/78)을 대조한다. 가짜 모델(`--mock`)로 루프·판정·보고 경로 확인 — 9/9 통과(결과는 따로 저장).
