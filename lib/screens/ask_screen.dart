@@ -215,7 +215,8 @@ class _AskScreenState extends State<AskScreen> {
   }
 
   Widget _conversation() {
-    final visible = [for (final s in _c.steps) if (s.action != 'finish') s];
+    // 화면에는 사용자용 단계만 — finish와 형식 오류(숨김)는 뺀다.
+    final visible = [for (final s in _c.steps) if (s.action != 'finish' && !s.hidden) s];
     final waiting = _c.isRunning &&
         !_c.userTurn &&
         !_c.isStopping &&
@@ -470,7 +471,8 @@ class AskStepTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final failed = step.status == AskStepStatus.failed;
     final running = step.status == AskStepStatus.running && showProgress;
-    final obs = step.observation;
+    // 화면용 한 줄(v2). 그 이전 기록(v1)은 관찰의 첫 줄을 그대로 쓴다.
+    final obs = step.display ?? step.observation?.split('\n').first;
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
@@ -504,7 +506,7 @@ class AskStepTile extends StatelessWidget {
             const SizedBox(height: 4),
             Padding(
               padding: const EdgeInsets.only(left: 24),
-              child: Text(obs.split('\n').first,
+              child: Text(obs,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted)),

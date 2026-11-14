@@ -42,8 +42,10 @@ class AskToolSpec {
   final String description; // 프롬프트에 보일 설명
   final String displayName; // 화면·활동 내역의 한국어 이름
   final String? Function(Map args) validate; // 출력 규약 검증 — 맞으면 null
-  final int? limitPerRequest; // 요청당 실행 상한(null = 없음)
-  final String? limitMessage; // 상한에 걸렸을 때 관찰
+  final int? limitPerRequest; // 한 턴(사용자 말 하나)에서 실행 상한(null = 없음)
+  final String? limitMessage; // 상한에 걸렸을 때 관찰(모델용 — 화면에는 askDisplayBlocked)
+  final bool dedupe; // 같은 인자의 반복은 실행하지 않는다
+  final String? dedupeMessage;
   final bool writes; // 데이터를 쓰는가
   final bool needsConfirm; // 쓰기 전에 사용자 확인을 받는가
   final AskToolRun? run; // null = 엔진이 직접 처리(finish)
@@ -55,6 +57,8 @@ class AskToolSpec {
     required this.validate,
     this.limitPerRequest,
     this.limitMessage,
+    this.dedupe = false,
+    this.dedupeMessage,
     this.writes = false,
     this.needsConfirm = false,
     this.run,
@@ -63,9 +67,10 @@ class AskToolSpec {
   String get promptLine => '- $name $signature — $description';
 }
 
-// 요청 하나에서 search_wardrobe를 실행하는 상한(프로브 T6 run3, 사용자 결정).
-const askMaxWardrobeSearches = 2;
-const askWardrobeSearchLimitMessage = '옷장은 이미 두 번 조회했어요. 얻은 결과로 답하세요';
+// 한 턴에서 search_wardrobe를 실행하는 상한(v2 §2-B-3). 같은 인자의 반복은 따로 막는다.
+const askMaxWardrobeSearches = 3;
+const askWardrobeSearchLimitMessage = '옷장 조회는 한 번의 요청에 세 번까지예요. 이미 얻은 결과로 답하세요';
+const askRepeatMessage = '같은 조건으로 이미 조회했어요. 위 결과를 쓰세요';
 
 const _range = '{"from":"YYYY-MM-DD","to":"YYYY-MM-DD"}';
 const _dateTpo = '{"date":"YYYY-MM-DD","tpo":"상황 태그"}';
@@ -99,7 +104,7 @@ final List<AskToolSpec> askToolRegistry = [
     name: 'search_wardrobe',
     signature: '{"category":"상의|하의|아우터|신발|액세서리"(선택), "keyword":"글자"(선택)}',
     description: '옷장 조회. 인자가 없으면 종류별 벌수, 있으면 일치 벌수와 최대 8벌(종류·색·태그·격식). '
-        'category만 주면 그 종류 전체의 태그별 벌수와 한겨울용 옷 목록도 준다. 요청 하나에 두 번까지.',
+        'category만 주면 그 종류 전체의 태그별 벌수와 한겨울용 옷 목록도 준다. 요청 하나에 세 번까지, 같은 조건은 다시 조회하지 않는다.',
     displayName: '옷장 조회',
     validate: (args) {
       final c = args['category'];
@@ -108,10 +113,23 @@ final List<AskToolSpec> askToolRegistry = [
       if (k != null && (k is! String || k.trim().isEmpty)) return '출력 오류: keyword는 글자여야 해요';
       return null;
     },
-    // 같은 요청에서 옷장 조회를 되풀이하지 않게 2회까지만 실행한다(호출 횟수에는 들어간다).
+    // 한 턴에 3회까지, 같은 인자는 다시 실행하지 않는다(막힌 호출도 모델 호출 횟수에는 들어간다).
     limitPerRequest: askMaxWardrobeSearches,
     limitMessage: askWardrobeSearchLimitMessage,
+    dedupe: true,
+    dedupeMessage: askRepeatMessage,
     run: (ctx, args) async => _done(await ctx.tools.searchWardrobe(args)),
+  ),
+  AskToolSpec(
+    name: 'get_wardrobe_profile',
+    signature: '{}',
+    description: '옷장 전체 요약. 종류별 벌수, 종류마다 계절(여름/간절기/가을·겨울/한겨울용)과 격식 분포, 많은 색과 스타일, '
+        '한겨울용 아우터, 빈 부분(오늘 기온대에 맞는 옷이 부족한 종류, 격식별로 없는 종류). 옷장 전체를 볼 때 먼저 쓴다.',
+    displayName: '옷장 요약',
+    validate: (args) => null,
+    dedupe: true,
+    dedupeMessage: askRepeatMessage,
+    run: (ctx, args) async => _done(await ctx.tools.getWardrobeProfile(args)),
   ),
   AskToolSpec(
     name: 'preview_outfit',
@@ -138,7 +156,9 @@ final List<AskToolSpec> askToolRegistry = [
       final date = parseAskDate(args['date'])!;
       final confirmed = await ctx.waitForUser(() => ctx.confirmPlan(date, args['tpo'] as String));
       if (ctx.isCancelled()) throw const AskCancelled(); // 확인 없이 떠나면 쓰지 않는다
-      if (!confirmed) return const AskRunResult(AskToolResult('사용자가 취소함 — 일정을 등록하지 않았어요', ok: false));
+      if (!confirmed) {
+        return const AskRunResult(AskToolResult('사용자가 취소함 — 일정을 등록하지 않았어요', display: '등록하지 않았어요', ok: false));
+      }
       return AskRunResult(await ctx.tools.addPlan(args));
     },
   ),
@@ -156,7 +176,7 @@ final List<AskToolSpec> askToolRegistry = [
     run: (ctx, args) async {
       final answer = await ctx.waitForUser(() => ctx.askUser((args['question'] as String).trim()));
       if (ctx.isCancelled() || answer == null) throw const AskCancelled();
-      return AskRunResult(AskToolResult('사용자의 답: $answer'));
+      return AskRunResult(AskToolResult('사용자의 답: $answer', display: '답: $answer'));
     },
   ),
   AskToolSpec(

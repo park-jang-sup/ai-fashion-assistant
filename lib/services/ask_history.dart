@@ -66,8 +66,9 @@ class AskRecord {
         answer: o.answer,
         steps: [
           for (final s in o.steps)
-            if (s.action != 'finish')
-              AskRecordStep(action: s.action, thought: s.thought, summary: (s.observation ?? '').split('\n').first),
+            if (s.action != 'finish' && !s.hidden)
+              AskRecordStep(
+                  action: s.action, thought: s.thought, summary: s.display ?? (s.observation ?? '').split('\n').first),
         ],
         items: [for (final i in combo) AskRecordItem.of(i)],
       );

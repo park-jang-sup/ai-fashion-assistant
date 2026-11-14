@@ -17,7 +17,7 @@ import '../models/wardrobe_item.dart';
 import 'ask_registry.dart';
 import 'ask_tools.dart';
 
-export 'ask_registry.dart' show askMaxWardrobeSearches, askWardrobeSearchLimitMessage;
+export 'ask_registry.dart' show askMaxWardrobeSearches, askRepeatMessage, askWardrobeSearchLimitMessage;
 import 'gemini_api_exception.dart';
 
 // 도구 이름 목록 — 도구 등록부(ask_registry.dart)의 순서 그대로.
@@ -38,6 +38,7 @@ typedef AskPromptBuilder = String Function({
   required List<AskStep> steps,
   required DateTime today,
   int? remainingCalls,
+  String? profile,
 });
 
 // 이 횟수만큼 부른 뒤부터 프롬프트 단계 기록 끝에 남은 호출 수를 알린다(프로브 T6 다시 실행).
@@ -51,6 +52,10 @@ class AskStep {
   final Map<String, dynamic> args;
   String? observation;
   List<WardrobeItem> items; // 화면용 옷(마지막 답 카드의 사진)
+  // 화면·대화 내역·활동 내역에 보일 한 줄(v2 §2-B-1). 관찰(observation)은 모델용이다.
+  String? display;
+  // 형식 오류처럼 사용자에게 보이지 않는 단계.
+  final bool hidden;
   AskStepStatus status;
   final String? model;
   final Duration? latency;
@@ -60,6 +65,8 @@ class AskStep {
     required this.args,
     this.observation,
     this.items = const [],
+    this.display,
+    this.hidden = false,
     this.status = AskStepStatus.running,
     this.model,
     this.latency,
@@ -123,7 +130,9 @@ class AskEngine {
     var calls = 0;
     var invalidStreak = 0;
     final executed = <String, int>{}; // 도구별 실행 횟수(등록부의 요청당 상한과 비교)
+    final seenArgs = <String>{}; // 같은 인자 반복 막기(등록부의 dedupe)
     DateTime? plannedDate;
+    final profile = await tools.profileLine(); // 프롬프트용 한 줄(있는 항목만)
     final ctx = AskRunContext(
       tools: tools,
       confirmPlan: confirmPlan,
@@ -152,7 +161,8 @@ class AskEngine {
           request: request,
           steps: steps,
           today: tools.today,
-          remainingCalls: calls >= askRemainingNoticeAfter ? askMaxModelCalls - calls : null);
+          remainingCalls: calls >= askRemainingNoticeAfter ? askMaxModelCalls - calls : null,
+          profile: profile);
       calls++;
       final t0 = watch.elapsed;
       AskModelReply reply;
@@ -171,6 +181,7 @@ class AskEngine {
             action: '-',
             args: const {},
             observation: '출력 오류: JSON 하나로만 답해 주세요(${e.message})',
+            hidden: true,
             status: AskStepStatus.failed));
         onUpdate?.call(steps);
         continue;
@@ -188,6 +199,7 @@ class AskEngine {
             action: (reply.json['action'] as Object?)?.toString() ?? '-',
             args: reply.json['args'] is Map ? Map<String, dynamic>.from(reply.json['args'] as Map) : const {},
             observation: error,
+            hidden: true,
             status: AskStepStatus.failed,
             model: reply.model,
             latency: latency));
@@ -217,9 +229,13 @@ class AskEngine {
       final spec = askToolSpec(action)!;
       final AskToolResult result;
       final limit = spec.limitPerRequest;
-      if (limit != null && (executed[action] ?? 0) >= limit) {
-        result = AskToolResult(spec.limitMessage!, ok: false);
+      final argsKey = '$action ${_canonical(args)}';
+      if (spec.dedupe && seenArgs.contains(argsKey)) {
+        result = AskToolResult(spec.dedupeMessage!, display: askDisplayBlocked, ok: false);
+      } else if (limit != null && (executed[action] ?? 0) >= limit) {
+        result = AskToolResult(spec.limitMessage!, display: askDisplayBlocked, ok: false);
       } else {
+        if (spec.dedupe) seenArgs.add(argsKey);
         final AskRunResult r;
         try {
           r = await spec.run!(ctx, args);
@@ -232,11 +248,18 @@ class AskEngine {
       }
       if (_cancelled) return end(AskEnd.cancelled, '요청을 멈췄어요');
       step.observation = result.observation;
+      step.display = result.display ?? (result.ok ? null : askDisplayFailed);
       step.items = result.items;
       step.status = result.ok ? AskStepStatus.done : AskStepStatus.failed;
       onUpdate?.call(steps);
     }
     final last = lastObservation();
     return end(AskEnd.maxSteps, last.isEmpty ? '여기까지 확인했어요' : '여기까지 확인했어요 — $last');
+  }
+
+  // 인자 비교용 — 키 순서와 공백에 상관없이 같은 인자는 같은 글.
+  static String _canonical(Map<String, dynamic> args) {
+    final keys = args.keys.toList()..sort();
+    return keys.map((k) => '$k=${args[k]}').join('&');
   }
 }

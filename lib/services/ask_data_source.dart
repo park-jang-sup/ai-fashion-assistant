@@ -1,6 +1,7 @@
 // AI에게 부탁하기 — 로그인 사용자 본인의 데이터(docs/task_agent_ask_v1.md §2-2).
 // 도구 계층(ask_tools.dart)은 AskDataSource 인터페이스만 보고, 앱에서는 이 구현이
 // 기존 Firestore·예보 함수를 그대로 부른다. 쓰기는 addPlan 하나뿐이다.
+import '../models/user_profile.dart';
 import '../models/outfit_calendar_entry.dart';
 import '../models/recommendation_entry.dart';
 import '../models/wardrobe_item.dart';
@@ -37,6 +38,9 @@ class FirestoreAskDataSource implements AskDataSource {
 
   @override
   Future<Set<String>> recentItemIds() => AgentPlanner.recentItemIdsFor(uid);
+
+  @override
+  Future<UserProfile?> profile() => FirestoreService.getUserProfileSilently(uid);
 
   @override
   Future<AskPlanWrite> addPlan(DateTime date, String tpo, {required bool prepare}) async {

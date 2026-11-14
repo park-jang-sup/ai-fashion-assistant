@@ -1,4 +1,5 @@
 // AI에게 부탁하기 테스트 공용 가짜 데이터(옷장·일정·7일 예보) — 도구·엔진 테스트가 같이 쓴다.
+import 'package:ai_fashion_assistant/models/user_profile.dart';
 import 'package:ai_fashion_assistant/models/clothing_attributes.dart';
 import 'package:ai_fashion_assistant/models/outfit_calendar_entry.dart';
 import 'package:ai_fashion_assistant/models/recommendation_entry.dart';
@@ -71,6 +72,9 @@ class FakeAskData implements AskDataSource {
   Future<List<WardrobeItem>> wardrobe() async => items;
   @override
   Future<Set<String>> recentItemIds() async => const {};
+  UserProfile? userProfile;
+  @override
+  Future<UserProfile?> profile() async => userProfile;
   @override
   Future<AskPlanWrite> addPlan(DateTime date, String tpo, {required bool prepare}) async {
     writes.add((date, tpo, prepare));

@@ -224,7 +224,7 @@ void main() {
     expect(r.end, 'finished');
     expect(r.answer, '금요일 모임 일정을 등록했어요');
     expect([for (final s in r.steps) s.action], ['get_weather', 'add_plan']);
-    expect(r.steps.first.summary, startsWith('2026-11-20(금): 최고 13°C'));
+    expect(r.steps.first.summary, '11/20(금) 최고 13° 최저 5° · 선선');
     expect(r.createdAt, DateTime(2026, 11, 16, 10, 5));
     // 저장 형식 왕복
     final back = AskRecord.fromMap(r.toMap());

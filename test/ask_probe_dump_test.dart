@@ -10,6 +10,7 @@ import 'package:ai_fashion_assistant/constants/tpo_tags.dart';
 import 'package:ai_fashion_assistant/models/clothing_attributes.dart';
 import 'package:ai_fashion_assistant/models/outfit_calendar_entry.dart';
 import 'package:ai_fashion_assistant/models/recommendation_entry.dart';
+import 'package:ai_fashion_assistant/models/user_profile.dart';
 import 'package:ai_fashion_assistant/models/wardrobe_item.dart';
 import 'package:ai_fashion_assistant/services/ask_engine.dart';
 import 'package:ai_fashion_assistant/services/ask_prompt.dart';
@@ -74,6 +75,8 @@ class _ProbeData implements AskDataSource {
   Future<List<WardrobeItem>> wardrobe() async => items;
   @override
   Future<Set<String>> recentItemIds() async => const {};
+  @override
+  Future<UserProfile?> profile() async => null;
   // 쓰기 흉내 — 미리 보기 1순위 조합을 82점으로 "저장"한 것처럼 돌려준다(실제로 저장하지 않음).
   @override
   Future<AskPlanWrite> addPlan(DateTime date, String tpo, {required bool prepare}) async {

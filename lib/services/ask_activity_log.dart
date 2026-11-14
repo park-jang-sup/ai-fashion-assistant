@@ -37,9 +37,10 @@ class AskActivityLog {
     for (var i = 0; i < steps.length; i++) {
       final s = steps[i];
       final name = askToolDisplayName(s.action);
-      if (name == null || s.observation == null || _logged.contains(i)) continue;
+      if (name == null || s.hidden || s.observation == null || _logged.contains(i)) continue;
       _logged.add(i);
-      final detail = s.action == 'ask_user' ? '${s.args['question'] ?? ''}' : s.observation!;
+      // 화면용 한 줄만 남긴다(모델용 관찰은 남기지 않는다, v2 §2-B-1). 질문은 사용자의 답 대신 질문.
+      final detail = s.action == 'ask_user' ? '${s.args['question'] ?? ''}' : s.display ?? s.observation!;
       write(_entry(AgentLogEntry.typeAskStep, '$name — ${_clipLine(detail)}'));
     }
   }

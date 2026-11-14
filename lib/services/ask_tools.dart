@@ -11,6 +11,7 @@
 import '../constants/tpo_tags.dart';
 import '../models/outfit_calendar_entry.dart';
 import '../models/recommendation_entry.dart';
+import '../models/user_profile.dart';
 import '../models/wardrobe_item.dart';
 import 'agent_planner.dart';
 import 'weather_fit.dart';
@@ -30,6 +31,26 @@ const askCategories = ['상의', '하의', '아우터', '신발', '액세서리'
 const askSeasonTags = {
   '봄', '여름', '가을', '겨울', '봄가을', '간절기', '가을/겨울', '가을겨울', '사계절', '여름아우터', '양털안감', '퀼팅안감',
 };
+// get_wardrobe_profile(v2 §2-B-2) — 옷 한 벌의 계절 구분(weather_fit의 태그 묶음을 그대로 쓴다).
+const askSeasonBuckets = ['여름', '간절기', '가을·겨울', '한겨울용'];
+const askFormalities = ['캐주얼', '세미포멀', '포멀'];
+const askProfileMinFit = 3;
+
+String askSeasonOf(WardrobeItem i) {
+  if (isHeavyOuter(i)) return '한겨울용';
+  if (isSummerItem(i)) return '여름';
+  final tags = i.attributes?.tags.map((t) => t.trim()) ?? const <String>[];
+  if (tags.any((t) => weatherHotAvoidTags.contains(t) || t == '가을')) return '가을·겨울';
+  return '간절기';
+}
+
+// 지금 기온대에 맞는가 — 기온대 감점 대상이 아니고, 추움(선선은 상의 밖)에서 여름 계열이 아니다.
+bool askFitsBand(WardrobeItem i, WeatherContext ctx) {
+  if (bandAvoidReason(i, ctx) != null) return false;
+  final summerOut = ctx.band == TempBand.cold || (ctx.band == TempBand.cool && i.category != '상의');
+  return !(summerOut && isSummerItem(i));
+}
+
 const askSummaryTagMin = 2; // 종류·소재 태그는 2벌 이상인 것만
 const askSummaryTagMax = 12;
 const askWinterListMax = 8;
@@ -41,6 +62,8 @@ abstract class AskDataSource {
   Future<WeatherSnapshot?> weather();
   Future<List<WardrobeItem>> wardrobe();
   Future<Set<String>> recentItemIds();
+  // 사용자 프로필(키·체형·퍼스널 컬러·선호 스타일) — 없으면 null.
+  Future<UserProfile?> profile();
   // 쓰기 — 예정 일정 등록 + 기존 준비 경로로 코디 준비. prepare가 false면 등록만.
   Future<AskPlanWrite> addPlan(DateTime date, String tpo, {required bool prepare});
 }
@@ -51,15 +74,22 @@ class AskPlanWrite {
   const AskPlanWrite({required this.prepared, this.recommendation});
 }
 
-// 도구 결과 — 관찰 글(모델에 붙임)과 화면용 옷(마지막 답 카드의 사진).
+// 도구 결과 — 관찰 글(모델에 붙임), 화면용 한 줄(화면·대화 내역·활동 내역, v2 §2-B-1),
+// 화면용 옷(마지막 답 카드의 사진).
 class AskToolResult {
   final String observation;
+  final String? display;
   final List<WardrobeItem> items;
   final bool ok;
   // add_plan이 실제로 쓴 경우만 — 확인 카드·캘린더 이동용.
   final DateTime? plannedDate;
-  const AskToolResult(this.observation, {this.items = const [], this.ok = true, this.plannedDate});
+  const AskToolResult(this.observation, {this.display, this.items = const [], this.ok = true, this.plannedDate});
 }
+
+// 화면용 한 줄이 없는 실패(인자 오류 등)를 사용자 말로.
+const askDisplayFailed = '확인하지 못했어요';
+// 막힌 호출(상한·같은 인자 반복)을 사용자 말로.
+const askDisplayBlocked = '이미 확인한 내용으로 이어갈게요';
 
 // ── 인자 검증(순수) ────────────────────────────────────────────────
 final _datePattern = RegExp(r'^\d{4}-\d{2}-\d{2}$');
@@ -92,6 +122,14 @@ String _itemLine(WardrobeItem i) {
   final kind = i.category == '액세서리' ? (i.subCategory ?? '액세서리') : i.category;
   if (a == null) return '$kind(속성 없음)';
   return '$kind ${a.color} ${a.tags.take(3).join('·')}(${a.formality})';
+}
+
+// 화면용 — "11/17(화)", "블랙 카라티".
+String askShortDate(DateTime d) => '${d.month}/${d.day}(${_weekdays[d.weekday - 1]})';
+String askShortItem(WardrobeItem i) {
+  final a = i.attributes;
+  if (a == null) return i.category;
+  return a.tags.isEmpty ? '${a.color} ${i.category}' : '${a.color} ${a.tags.first}';
 }
 
 String _bandLabel(TempBand b) => switch (b) {
@@ -127,8 +165,12 @@ class AskTools {
       final entries = await data.calendar(from!, to!);
       final recs = (await data.recommendations(from, to)).where((r) => !r.dismissed && r.targetDate != null);
       final wardrobe = {for (final i in await data.wardrobe()) i.id: i};
-      if (entries.isEmpty) return AskToolResult('${askDateKey(from)}~${askDateKey(to)} 일정 없음');
+      final span = from == to ? askShortDate(from) : '${askShortDate(from)}~${askShortDate(to)}';
+      if (entries.isEmpty) {
+        return AskToolResult('${askDateKey(from)}~${askDateKey(to)} 일정 없음', display: '$span 일정 없음');
+      }
       final lines = <String>[];
+      final shown = <String>[];
       final items = <WardrobeItem>[];
       for (final e in entries..sort((a, b) => a.date.compareTo(b.date))) {
         final state = e.isPlanned ? '예정' : '기록';
@@ -148,8 +190,10 @@ class AskTools {
               '${rec.weatherNote != null ? ' · ${rec.weatherNote}' : ''}';
         }
         lines.add('${askDateLabel(e.date)} [${e.tpoTag}] $state — $recText');
+        shown.add('${askShortDate(e.date)} ${e.tpoTag}'
+            '${e.isPlanned ? (rec == null ? '(코디 준비 전)' : '(코디 준비됨)') : '(기록)'}');
       }
-      return AskToolResult(_clip(lines.join('\n')), items: items);
+      return AskToolResult(_clip(lines.join('\n')), display: '일정: ${shown.join(', ')}', items: items);
     } catch (e) {
       return AskToolResult('일정을 불러오지 못했어요: $e', ok: false);
     }
@@ -164,18 +208,31 @@ class AskTools {
     final snapshot = await _safeWeather();
     if (snapshot == null) return const AskToolResult('예보를 불러오지 못했어요', ok: false);
     final lines = <String>[];
+    var known = 0;
+    String? single;
     for (var d = from!; !d.isAfter(to!); d = d.add(const Duration(days: 1))) {
       final w = snapshot.forDate(d);
       if (w == null) {
         lines.add('${askDateLabel(d)}: 예보 범위 밖(오늘 포함 $askForecastDays일까지)');
         continue;
       }
+      known++;
       final ctx = weatherContextFor(w)!;
       lines.add('${askDateLabel(d)}: 최고 ${w.maxTempC.round()}°C 최저 ${w.minTempC.round()}°C '
           '강수 ${w.precipitationProbability}% · ${_bandLabel(ctx.band)}${ctx.rain ? ' · 비' : ''}');
+      single = '${askShortDate(d)} 최고 ${w.maxTempC.round()}° 최저 ${w.minTempC.round()}° · '
+          '${ctx.rain ? '비 ${w.precipitationProbability}%' : _bandLabel(ctx.band)}';
     }
     if (snapshot.isAssumed) lines.add('(테스트용 가정 예보)');
-    return AskToolResult(_clip(lines.join('\n')));
+    final String display;
+    if (known == 0) {
+      display = '예보는 $askForecastDays일까지라 그날 날씨는 아직 몰라요';
+    } else if (from == to) {
+      display = single!;
+    } else {
+      display = '${askShortDate(from)}~${askShortDate(to)} 예보를 확인했어요';
+    }
+    return AskToolResult(_clip(lines.join('\n')), display: display);
   }
 
   // search_wardrobe(category?, keyword?) — 인자가 없으면 종류별 벌수, 있으면 일치 벌수와 최대 8벌.
@@ -203,8 +260,10 @@ class AskTools {
       }
       final total = counts.values.fold(0, (a, b) => a + b);
       if (total == 0) return const AskToolResult('옷장이 비어 있어요', ok: false);
-      return AskToolResult('옷장 $total벌 — '
-          '${[for (final c in askCategories) if (counts[c] != null) '$c ${counts[c]}'].join(', ')}');
+      return AskToolResult(
+          '옷장 $total벌 — '
+          '${[for (final c in askCategories) if (counts[c] != null) '$c ${counts[c]}'].join(', ')}',
+          display: '옷장 $total벌을 확인했어요');
     }
     final kw = (keyword as String?)?.trim();
     bool matches(WardrobeItem i) {
@@ -222,13 +281,17 @@ class AskTools {
         final c = b.createdAt.compareTo(a.createdAt);
         return c != 0 ? c : a.id.compareTo(b.id);
       });
-    if (hits.isEmpty) return AskToolResult('일치하는 옷 없음(${category ?? '전체'}${kw != null ? ', "$kw"' : ''})');
+    final what = [if (category != null) category, if (kw != null) "'$kw'"].join(' ');
+    if (hits.isEmpty) {
+      return AskToolResult('일치하는 옷 없음(${category ?? '전체'}${kw != null ? ', "$kw"' : ''})',
+          display: '$what 옷은 없어요');
+    }
     final shown = hits.take(8).toList();
     final list = '일치 ${hits.length}벌${hits.length > 8 ? '(앞 8벌)' : ''}:\n'
         '${[for (var i = 0; i < shown.length; i++) '${i + 1}. ${_itemLine(shown[i])}'].join('\n')}';
     // category만 준 조회는 앞 8벌 밖을 다시 찾지 않게 그 종류 전체의 요약을 함께 준다.
     final summary = kw == null ? '\n${_categorySummary(category as String, hits)}' : '';
-    return AskToolResult(_clip(list + summary), items: shown);
+    return AskToolResult(_clip(list + summary), display: '$what ${hits.length}벌을 찾았어요', items: shown);
   }
 
   // 태그별 벌수는 많은 순, 같으면 글자 순(프로브가 같은 규칙으로 재현한다).
@@ -310,6 +373,7 @@ class AskTools {
     return AskToolResult(
       _clip('${askDateLabel(date)} [$tpo] 미리 보기(저장 안 함): ${top.map(_itemLine).join(', ')}\n'
           '날씨: $weatherText\n격식 차선: ${m.match.isFallback ? '예 — 일정 격식에 딱 맞는 조합이 없어요' : '아니요'}'),
+      display: '${askShortDate(date)} [$tpo] 코디: ${top.map(askShortItem).join(', ')}',
       items: top,
     );
   }
@@ -337,19 +401,19 @@ class AskTools {
       final planned = sameDay.where((e) => e.isPlanned).firstOrNull;
       if (planned != null) {
         return AskToolResult('${askDateLabel(date)}에는 이미 [${planned.tpoTag}] 예정 일정이 있어 새로 넣지 않았어요',
-            ok: false);
+            display: '${askShortDate(date)}에는 이미 ${planned.tpoTag} 일정이 있어 넣지 않았어요', ok: false);
       }
       // 예보 범위(오늘 포함 7일) 안이면 바로 준비, 밖이면 등록만.
       final inForecast = date.difference(today).inDays < askForecastDays;
       final w = await data.addPlan(date, tpo, prepare: inForecast);
       if (!inForecast) {
         return AskToolResult('${askDateLabel(date)} [$tpo] 일정을 등록했어요. 코디는 일정이 가까워지면 예보를 보고 준비해요',
-            plannedDate: date);
+            display: '${askShortDate(date)} $tpo 일정을 등록했어요', plannedDate: date);
       }
       final rec = w.recommendation;
       if (!w.prepared || rec == null) {
         return AskToolResult('${askDateLabel(date)} [$tpo] 일정을 등록했어요. 코디는 준비하지 못했어요 — 옷장에 맞는 조합이 없거나 평가에 실패했어요',
-            plannedDate: date);
+            display: '${askShortDate(date)} $tpo 일정을 등록했어요', plannedDate: date);
       }
       final wardrobe = {for (final i in await data.wardrobe()) i.id: i};
       final recItems = rec.itemIds.map((id) => wardrobe[id]).whereType<WardrobeItem>().toList();
@@ -357,12 +421,95 @@ class AskTools {
         _clip('${askDateLabel(date)} [$tpo] 일정을 등록하고 코디를 준비했어요: ${recItems.map(_itemLine).join(', ')}'
             '${rec.colorScore != null ? ' · ${rec.colorScore}점' : ''}'
             '${rec.weatherNote != null ? '\n날씨: ${rec.weatherNote}' : ''}'),
+        display: '${askShortDate(date)} $tpo 일정을 등록하고 코디를 준비했어요',
         items: recItems,
         plannedDate: date,
       );
     } catch (e) {
       return AskToolResult('일정을 등록하지 못했어요: $e', ok: false);
     }
+  }
+
+  // get_wardrobe_profile {} — 옷장 전체 요약(v2 §2-B-2). "전신"은 세지 않는다.
+  Future<AskToolResult> getWardrobeProfile(Map<String, dynamic> args) async {
+    final List<WardrobeItem> wardrobe;
+    try {
+      wardrobe = (await data.wardrobe()).where((i) => i.attributes != null && isAskCategory(i.category)).toList();
+    } catch (e) {
+      return AskToolResult('옷장을 불러오지 못했어요: $e', ok: false);
+    }
+    if (wardrobe.isEmpty) return const AskToolResult('옷장이 비어 있어요', display: '옷장이 비어 있어요', ok: false);
+    final byCat = {for (final c in askCategories) c: [for (final i in wardrobe) if (i.category == c) i]};
+    final lines = <String>[
+      '옷장 ${wardrobe.length}벌 — ${[for (final c in askCategories) if (byCat[c]!.isNotEmpty) '$c ${byCat[c]!.length}'].join(', ')}',
+    ];
+    for (final c in askCategories) {
+      final items = byCat[c]!;
+      if (items.isEmpty) continue;
+      final season = <String, int>{for (final s in askSeasonBuckets) s: 0};
+      final formal = <String, int>{for (final f in askFormalities) f: 0};
+      for (final i in items) {
+        season[askSeasonOf(i)] = season[askSeasonOf(i)]! + 1;
+        final f = i.attributes!.formality;
+        formal[f] = (formal[f] ?? 0) + 1;
+      }
+      lines.add('$c: 계절 ${season.entries.map((e) => '${e.key} ${e.value}').join('·')} / '
+          '격식 ${formal.entries.map((e) => '${e.key} ${e.value}').join('·')}');
+    }
+    final colors = <String, int>{};
+    final styles = <String, int>{};
+    for (final i in wardrobe) {
+      final a = i.attributes!;
+      colors[a.color] = (colors[a.color] ?? 0) + 1;
+      styles[a.style] = (styles[a.style] ?? 0) + 1;
+    }
+    lines.add('많은 색: ${_counted(colors, max: 6)}');
+    lines.add('많은 스타일: ${_counted(styles, max: 5)}');
+    final heavy = [for (final i in byCat['아우터']!) if (isHeavyOuter(i)) i];
+    lines.add(heavy.isEmpty
+        ? '한겨울용 아우터: 없음'
+        : '한겨울용 아우터 ${heavy.length}벌: ${heavy.take(askWinterListMax).map(_itemLine).join(', ')}');
+    // 빈 부분(계산) — 오늘 기온대에 맞는 옷이 3벌 미만인 종류, 격식별로 0벌인 종류(액세서리 제외).
+    final day = (await _safeWeather())?.forDate(today);
+    final ctx = day == null ? null : weatherContextFor(day, wardrobe: wardrobe);
+    final gaps = <String>[];
+    if (ctx != null) {
+      final short = [
+        for (final c in askCategories)
+          if (c != '액세서리' && byCat[c]!.where((i) => askFitsBand(i, ctx)).length < askProfileMinFit)
+            '$c ${byCat[c]!.where((i) => askFitsBand(i, ctx)).length}벌',
+      ];
+      gaps.add('오늘 기온대(${_bandLabel(ctx.band)})에 맞는 옷이 $askProfileMinFit벌 미만: ${short.isEmpty ? '없음' : short.join(', ')}');
+    } else {
+      gaps.add('오늘 예보가 없어 기온대 기준 빈 부분은 계산하지 않았어요');
+    }
+    final noFormal = [
+      for (final c in askCategories)
+        if (c != '액세서리')
+          for (final f in askFormalities)
+            if (!byCat[c]!.any((i) => i.attributes!.formality == f)) '$c $f',
+    ];
+    gaps.add('격식별로 0벌: ${noFormal.isEmpty ? '없음' : noFormal.join(', ')}');
+    lines.add('빈 부분 — ${gaps.join(' / ')}');
+    return AskToolResult(_clip(lines.join('\n')), display: '옷장 ${wardrobe.length}벌을 요약했어요');
+  }
+
+  // 프롬프트용 프로필 한 줄(있는 항목만) — 없으면 null.
+  Future<String?> profileLine() async {
+    UserProfile? p;
+    try {
+      p = await data.profile();
+    } catch (_) {
+      return null;
+    }
+    if (p == null) return null;
+    final parts = [
+      if (p.heightCm != null) '키 ${p.heightCm}cm',
+      if (p.bodyType != null && p.bodyType!.isNotEmpty) '체형 ${p.bodyType}',
+      if (p.personalColor != null && p.personalColor!.isNotEmpty) '퍼스널 컬러 ${p.personalColor}',
+      if (p.preferredStyles.isNotEmpty) '선호 스타일 ${p.preferredStyles.join('·')}',
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
   }
 
   Future<WeatherSnapshot?> _safeWeather() async {
