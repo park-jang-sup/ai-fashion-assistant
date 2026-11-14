@@ -19,9 +19,12 @@ class AskRunContext {
   final AskFittingPort? fitting; // 가상 피팅 경로(없으면 try_on을 쓸 수 없다)
   // 이번 턴의 앞선 preview_outfit이 보여 준 조합의 상의·아우터 옷 id(v2.1 B-1).
   final Set<String> Function() shownTopsOuters;
+  // 이번 턴의 preview_outfit이 이미 보여 준 조합 수(턴당 askTurnComboMax개까지).
+  final int Function() shownComboCount;
   const AskRunContext({
     this.fitting,
     this.shownTopsOuters = _noneShown,
+    this.shownComboCount = _noCombos,
     required this.tools,
     required this.confirmPlan,
     required this.askUser,
@@ -31,6 +34,22 @@ class AskRunContext {
 }
 
 Set<String> _noneShown() => const {};
+int _noCombos() => 0;
+
+// preview_outfit — 한 턴에 보여 주는 조합은 모두 합쳐 askTurnComboMax개까지(T8 run2 전 결정). 남은 수보다 큰
+// count는 남은 수로 줄여 고르고 한 줄을 붙이며, 남은 수가 0이면 실행하지 않는다. 합이 상한 안이면 그대로.
+Future<AskRunResult> _runPreview(AskRunContext ctx, Map<String, dynamic> args) async {
+  final left = askTurnComboMax - ctx.shownComboCount();
+  if (left <= 0) {
+    return const AskRunResult(AskToolResult(askTurnComboFullMessage, display: askDisplayBlocked, ok: false));
+  }
+  final count = args['count'] is int ? args['count'] as int : 1;
+  if (count <= left) return _done(await ctx.tools.previewOutfit(args, avoid: ctx.shownTopsOuters()));
+  final r = await ctx.tools.previewOutfit({...args, 'count': left}, avoid: ctx.shownTopsOuters());
+  if (!r.ok) return _done(r);
+  return _done(AskToolResult('${r.observation}\n${askTurnComboCutNote(r.combos.length)}',
+      display: r.display, items: r.items, combos: r.combos));
+}
 
 // 실행 도중 사용자가 멈췄거나 답하지 않고 떠났다 — 엔진은 요청을 멈춤으로 끝낸다.
 class AskCancelled implements Exception {
@@ -173,7 +192,7 @@ final List<AskToolSpec> askToolRegistry = [
       return null;
     },
     itemArgs: const ['keep', 'exclude'],
-    run: (ctx, args) async => _done(await ctx.tools.previewOutfit(args, avoid: ctx.shownTopsOuters())),
+    run: _runPreview,
   ),
   AskToolSpec(
     name: 'get_style_history',

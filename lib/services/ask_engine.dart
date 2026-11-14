@@ -47,6 +47,9 @@ typedef AskPromptBuilder = String Function({
 // 이 횟수만큼 부른 뒤부터 프롬프트 단계 기록 끝에 남은 호출 수를 알린다(프로브 T6 다시 실행).
 const askRemainingNoticeAfter = 4;
 
+// 출력을 규약 JSON으로 읽지 못했을 때 덧붙이는 말(T8 run2 전 결정) — 출력 상한에 잘린 답을 짧게 다시 내게.
+const askTruncatedHint = '답이 길어 잘렸을 수 있어요. answer를 더 짧게 쓰고, 조합 줄은 옷 이름과 번호만 적으세요.';
+
 enum AskStepStatus { running, done, failed }
 
 class AskStep {
@@ -259,6 +262,11 @@ class AskEngine {
               for (final i in c)
                 if (i.category == '상의' || i.category == '아우터') i.id,
       },
+      // 이번 턴의 preview_outfit이 이미 보여 준 조합 수(run2 전 결정 — 턴당 5개까지).
+      shownComboCount: () => [
+        for (final s in steps)
+          if (s.action == 'preview_outfit' && s.status == AskStepStatus.done) s.combos.length,
+      ].fold(0, (a, b) => a + b),
     );
 
     AskOutcome end(AskEnd e, String answer) => AskOutcome(e, answer, steps, calls,
@@ -304,7 +312,7 @@ class AskEngine {
             thought: '(출력을 읽지 못함)',
             action: '-',
             args: const {},
-            observation: '출력 오류: JSON 하나로만 답해 주세요(${e.message})',
+            observation: '출력 오류: JSON 하나로만 답해 주세요. $askTruncatedHint(${e.message})',
             hidden: true,
             status: AskStepStatus.failed));
         onUpdate?.call(steps);

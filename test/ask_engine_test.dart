@@ -96,6 +96,9 @@ void main() {
     final once = _engine([const FormatException('잘림'), _a('finish', {'answer': '네'})]);
     expect((await once.engine.run('x')).end, AskEnd.finished);
     expect(once.model.prompts[1], contains('출력 오류: JSON 하나로만'));
+    // 출력 상한에 잘린 답을 짧게 다시 내게(T8 run2 전 결정)
+    expect(once.model.prompts[1], contains('출력 오류: JSON 하나로만 답해 주세요. $askTruncatedHint(잘림)'));
+    expect(askTruncatedHint, '답이 길어 잘렸을 수 있어요. answer를 더 짧게 쓰고, 조합 줄은 옷 이름과 번호만 적으세요.');
     final twice = _engine([const FormatException('a'), const FormatException('b'), _a('finish', {'answer': '네'})]);
     final o = await twice.engine.run('x');
     expect(o.end, AskEnd.invalidOutput);

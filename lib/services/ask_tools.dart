@@ -132,6 +132,10 @@ const askHistoryDays = 60; // 착장 기록을 보는 기간(v2 §2-F)
 // 같은 턴에 다시 부른 preview_outfit(v2.1 B-1) — 모델용 결과에 붙이는 한 줄.
 const askPreviewAvoidedNote = '앞서 보여 준 조합의 상의·아우터는 빼고 골랐어요.';
 const askPreviewOverlapNote = '앞서 보여 준 조합과 겹칠 수 있어요.';
+// 한 턴에 preview_outfit이 보여 주는 조합은 모두 합쳐 이 수까지(T8 run2 전 결정, 엔진의 검사).
+const askTurnComboMax = 5;
+const askTurnComboFullMessage = '이번 답에는 이미 5세트를 골랐어요. 얻은 결과로 답하세요.';
+String askTurnComboCutNote(int n) => '한 답에는 5세트까지라 $n가지만 골랐어요.';
 
 // 옷 번호 목록 인자 — 형식이 틀린 값은 버린다(검증은 등록부가 먼저 한다).
 List<int> askNumberList(Object? v) =>
