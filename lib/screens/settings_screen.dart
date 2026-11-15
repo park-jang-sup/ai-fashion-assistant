@@ -18,6 +18,7 @@ import 'agent_log_screen.dart';
 import 'usage_guide_screen.dart';
 import 'body_profile_screen.dart';
 import 'scrap_screen.dart';
+import 'privacy_info_screen.dart';
 
 part 'test_tools_screen.dart';
 
@@ -439,7 +440,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 28),
                 const _SectionLabel('정보'),
                 _SettingsRow(label: '이용약관', onTap: () => _comingSoon('이용약관')),
-                _SettingsRow(label: '개인정보처리방침', onTap: () => _comingSoon('개인정보처리방침')),
+                _SettingsRow(
+                    label: '개인정보처리방침',
+                    onTap: () => Navigator.of(context)
+                        .push(MaterialPageRoute(builder: (_) => const PrivacyInfoScreen()))),
                 _SettingsRow(label: '오픈소스 라이선스', onTap: _openLicensePage),
                 const _SettingsRow(label: '앱 버전', trailingText: '1.0.0'),
                 _SettingsRow(label: '테스트 도구', sub: _testToolsSub, onTap: _openTestTools),
