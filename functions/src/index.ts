@@ -7,7 +7,8 @@ import {initializeApp} from "firebase-admin/app";
 import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
 import {getMessaging, SendResponse} from "firebase-admin/messaging";
 import {getStorage} from "firebase-admin/storage";
-import {evaluateRateLimit, RateLimitConfig, RateLimitKind, RateLimitState} from "./rate_limit";
+import {evaluateRateLimit, RateLimitConfig, RateLimitKind, RateLimitState, utcHourBucket} from "./rate_limit";
+import {fetchForecastWithRetry, ForecastCacheEntry, ForecastRateState, handleGetForecast, nextForecastRate} from "./forecast";
 import {evaluateCadenceGate} from "./cadence_gate";
 import {evaluatePayloadLimit, kindForModel, PAYLOAD_LIMIT_CONFIG} from "./payload_limit";
 import {planTokenCleanup, TokenSendResult} from "./fcm_token_cleanup";
@@ -1796,5 +1797,42 @@ export const sweepStorageTokens = onSchedule(
     // C-4b 설계(§12)의 "(C)의 건강 지표" - revoked가 계속 0이면 트리거가
     // 놓치는 게 없다는 뜻, 0이 아니면 트리거 지연/실패 경로가 있다는 신호.
     console.log(`[sweepStorageTokens] scanned=${scanned} revoked=${revoked}`);
+  }
+);
+
+// 예보 대신 받아 오기(getForecast) — 로직은 forecast.ts. 지역 키(앱의 지역 목록 이름)만
+// 받고 좌표는 받지 않는다. 기억은 forecast_cache/{지역 키}, 상한은 forecast_rate/{uid} —
+// 둘 다 firestore.rules에 match가 없어 클라이언트는 기본 거부이고 서버(Admin)만 읽고 쓴다
+// (rate_limits와 같은 방식). 로그는 지역 키와 결과(fresh·cache·stale·fail)만 남긴다.
+export const getForecast = onCall(
+  {region: "asia-northeast3", timeoutSeconds: 30, maxInstances: 10},
+  async (request) => {
+    const db = getFirestore();
+    return handleGetForecast(request.auth ? {uid: request.auth.uid} : undefined, request.data, {
+      now: () => Date.now(),
+      readCache: async (key) => {
+        const snap = await db.collection("forecast_cache").doc(key).get();
+        return snap.exists ? (snap.data() as ForecastCacheEntry) : undefined;
+      },
+      writeCache: async (key, entry) => {
+        await db.collection("forecast_cache").doc(key).set(entry);
+      },
+      fetchUpstream: (region) => fetchForecastWithRetry(region, fetch),
+      allowCall: async (uid) => {
+        const ref = db.collection("forecast_rate").doc(uid);
+        try {
+          return await db.runTransaction(async (tx) => {
+            const snap = await tx.get(ref);
+            const r = nextForecastRate(
+              snap.exists ? (snap.data() as ForecastRateState) : undefined, utcHourBucket(new Date()));
+            tx.set(ref, r.next);
+            return r.allowed;
+          });
+        } catch (_) {
+          return true; // 상한 판정 실패는 허용(fail-open) — checkAndRecordRateLimit과 같은 결
+        }
+      },
+      log: (line) => console.log(line),
+    });
   }
 );
