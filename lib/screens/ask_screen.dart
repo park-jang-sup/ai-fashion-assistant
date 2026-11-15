@@ -287,7 +287,7 @@ class _AskScreenState extends State<AskScreen> {
         textInputAction: TextInputAction.send,
         onSubmitted: _submit,
         decoration: InputDecoration(
-          hintText: _c.hasConversation ? '이어서 말해 보세요' : '말로 부탁해 보세요',
+          hintText: _c.hasConversation ? '글로 부탁해 보세요' : '무엇이든 부탁해 보세요',
           isDense: true,
           border: const OutlineInputBorder(),
           suffixIcon:
