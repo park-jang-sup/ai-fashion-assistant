@@ -15,7 +15,8 @@ class NotificationService {
 
   static Future<void> init() async {
     if (_initialized) return;
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    // 알림 전용 흰색 아이콘(res/drawable/ic_stat_dot.xml). 앱 아이콘을 그대로 쓰면 상태 표시줄에 색 덩어리로 보인다.
+    const androidInit = AndroidInitializationSettings('ic_stat_dot');
     const initSettings = InitializationSettings(android: androidInit);
     await _plugin.initialize(initSettings);
 
