@@ -13,6 +13,12 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- WorkManager 주기 작업: 기기 재부팅 후에도 등록된 작업이 다시 스케줄되도록 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- speech_to_text(음성 입력): 패키지 문서의 안드로이드 설정 그대로 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.BLUETOOTH"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
 
     <application
         android:label="DOT"
@@ -72,6 +78,10 @@
         <!-- image_picker: 갤러리 앱 탐색 (Android 11+) -->
         <intent>
             <action android:name="android.intent.action.GET_CONTENT"/>
+        </intent>
+        <!-- speech_to_text: 음성 인식 서비스 탐색 (targetSdk 30+) -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 </manifest>

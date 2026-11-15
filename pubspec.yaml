@@ -42,6 +42,8 @@ dependencies:
   # 세대와 짝이라 올리면 Firebase 스택 전체가 메이저 업그레이드된다. B단계는
   # FCM 추가가 목적이므로 지금 세대에 맞는 15.x로 고정한다.
   firebase_messaging: ^15.2.10
+  # 음성 입력(에이전트 입력창 마이크). 7.5.0+는 Flutter 3.44·Dart 3.12가 필요해 지금 SDK에 맞는 7.4.x.
+  speech_to_text: ^7.4.0
 
 dev_dependencies:
   flutter_test:

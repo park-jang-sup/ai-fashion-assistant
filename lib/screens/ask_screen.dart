@@ -10,6 +10,7 @@ import '../services/ask_engine.dart';
 import '../services/ask_finish.dart';
 import '../services/ask_history.dart';
 import '../services/ask_registry.dart';
+import '../services/voice_input.dart';
 import '../widgets/agent_mascot.dart';
 import '../widgets/full_screen_image_viewer.dart';
 import '../widgets/signed_network_image.dart';
@@ -24,13 +25,16 @@ class AskScreen extends StatefulWidget {
   // 전신 사진 바꾸기(채팅 안) — 등록된 전신 사진 목록과, 하나를 고르면 그것을 선택 상태로.
   final Future<List<WardrobeItem>> Function()? loadFullBodies;
   final ValueChanged<WardrobeItem>? onPickFullBody;
+  // 음성 입력 — 없으면 기기의 음성 인식(speech_to_text). 테스트는 가짜를 넣는다.
+  final VoiceEngine? voiceEngine;
   const AskScreen(
       {super.key,
       required this.controller,
       this.onOpenFittingRoom,
       this.onNavigate,
       this.loadFullBodies,
-      this.onPickFullBody});
+      this.onPickFullBody,
+      this.voiceEngine});
 
   @override
   State<AskScreen> createState() => _AskScreenState();
@@ -49,6 +53,11 @@ const _noFullBodyObservation = '전신 사진이 선택돼 있지 않아';
 
 bool askNoFullBody(List<AskStep> steps) => steps.any((s) =>
     s.action == 'try_on' && s.status == AskStepStatus.failed && (s.observation ?? '').startsWith(_noFullBodyObservation));
+
+// 입력창 안내 — 첫 화면은 고정, 이어서 말하기는 음성 입력을 쓸 수 있는지에 따라.
+const askHomeHint = '무엇이든 부탁해 보세요';
+const askContinueHintVoice = '글로 쓰거나 마이크를 눌러 말해 보세요';
+const askContinueHintText = '글로 부탁해 보세요';
 
 // 첫 상태의 예시(v2 §2-G).
 const askExamples = [
@@ -88,6 +97,7 @@ class _AskScreenState extends State<AskScreen> {
   final _answerCtl = TextEditingController();
 
   AskController get _c => widget.controller;
+  late final VoiceInput _voice = VoiceInput(widget.voiceEngine ?? SpeechToTextEngine.instance);
 
   List<WardrobeItem> _fullBodies = const [];
   bool _bodyPickerOpen = false;
@@ -114,6 +124,8 @@ class _AskScreenState extends State<AskScreen> {
   void initState() {
     super.initState();
     _loadFullBodies();
+    _c.addListener(_stopVoiceIfHidden);
+    _voice.prepare();
     // 첫 프레임 뒤에 — attach가 알리는 변경이 떠 있는 버튼의 빌드 중에 닿지 않게.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -127,15 +139,46 @@ class _AskScreenState extends State<AskScreen> {
 
   @override
   void dispose() {
+    _c.removeListener(_stopVoiceIfHidden);
+    _voice.dispose();
     if (_attached) _c.detach();
     _input.dispose();
     _answerCtl.dispose();
     super.dispose();
   }
 
+  // 듣고 있는 입력창이 화면에서 빠지면(턴 진행 중, 질문이 끝남) 듣기를 멈춘다.
+  void _stopVoiceIfHidden() {
+    final t = _voice.target;
+    if (t == null) return;
+    if ((t == _input && !_c.canContinue) || (t == _answerCtl && _c.question == null)) _voice.stop();
+  }
+
+  Future<void> _toggleVoice(TextEditingController target) async {
+    final r = await _voice.toggle(target);
+    if (r == VoiceToggle.denied && mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text(voiceDeniedMessage), behavior: SnackBarBehavior.floating));
+    }
+  }
+
+  Widget _micButton(TextEditingController target, Key key) {
+    final on = _voice.listening && _voice.target == target;
+    return IconButton(
+      key: key,
+      tooltip: on ? '듣기 멈추기' : '말로 입력',
+      isSelected: on,
+      style: on ? IconButton.styleFrom(backgroundColor: Colors.red.shade50) : null,
+      icon: Icon(on ? Icons.mic : Icons.mic_none, color: on ? Colors.red : null),
+      onPressed: () => _toggleVoice(target),
+    );
+  }
+
   // 사용자 말 보내기 — 대화가 있으면 다음 턴, 없으면 새 대화.
   void _submit(String text) {
     if (text.trim().isEmpty || !_c.canContinue) return;
+    _voice.stop();
     _input.clear();
     _c.start(text);
   }
@@ -188,7 +231,7 @@ class _AskScreenState extends State<AskScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: _c,
+      listenable: Listenable.merge([_c, _voice]),
       builder: (context, _) => Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
@@ -287,11 +330,15 @@ class _AskScreenState extends State<AskScreen> {
         textInputAction: TextInputAction.send,
         onSubmitted: _submit,
         decoration: InputDecoration(
-          hintText: _c.hasConversation ? '글로 부탁해 보세요' : '무엇이든 부탁해 보세요',
+          hintText: !_c.hasConversation
+              ? askHomeHint
+              : (_voice.available ? askContinueHintVoice : askContinueHintText),
           isDense: true,
           border: const OutlineInputBorder(),
-          suffixIcon:
-              IconButton(tooltip: '보내기', icon: const Icon(Icons.send), onPressed: () => _submit(_input.text)),
+          suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
+            if (_voice.available) _micButton(_input, const Key('ask-mic')),
+            IconButton(tooltip: '보내기', icon: const Icon(Icons.send), onPressed: () => _submit(_input.text)),
+          ]),
         ),
       );
 
@@ -393,6 +440,7 @@ class _AskScreenState extends State<AskScreen> {
     void send() {
       final t = _answerCtl.text;
       if (t.trim().isEmpty) return;
+      _voice.stop();
       _answerCtl.clear();
       _c.answerQuestion(t);
     }
@@ -407,7 +455,12 @@ class _AskScreenState extends State<AskScreen> {
             controller: _answerCtl,
             textInputAction: TextInputAction.send,
             onSubmitted: (_) => send(),
-            decoration: const InputDecoration(hintText: '답을 적어 주세요', isDense: true, border: OutlineInputBorder()),
+            decoration: InputDecoration(
+              hintText: '답을 적어 주세요',
+              isDense: true,
+              border: const OutlineInputBorder(),
+              suffixIcon: _voice.available ? _micButton(_answerCtl, const Key('ask-answer-mic')) : null,
+            ),
           ),
           const SizedBox(height: 8),
           FilledButton(onPressed: send, child: const Text('보내기')),
