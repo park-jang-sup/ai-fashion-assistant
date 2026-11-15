@@ -191,6 +191,42 @@ void main() {
     expect(t.logs.last.message, startsWith('AI에게 부탁 멈춤'));
   });
 
+  testWidgets('진행 중에는 아래 고정 줄에 멈추기 — 대화 내용 안에는 없고, 단계가 늘어도 움직이지 않으며, 끝나면 입력창', (tester) async {
+    final g0 = Completer<void>();
+    final g1 = Completer<void>();
+    final t = _ctl([
+      _a('get_weather', {'from': '2026-11-20', 'to': '2026-11-20'}),
+      _a('finish', {'answer': '금요일은 맑아요'}),
+    ], gates: {0: g0, 1: g1});
+    await tester.pumpWidget(_shell(t.c));
+    await _openScreen(tester);
+    await tester.enterText(find.byType(TextField), '금요일 날씨');
+    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await tester.pump();
+    final bar = find.byKey(const Key('ask-running-bar'));
+    final stop = find.byKey(const Key('ask-stop'));
+    expect(bar, findsOneWidget);
+    expect(find.descendant(of: bar, matching: find.text(askRunningLabel)), findsOneWidget);
+    expect(stop.hitTestable(), findsOneWidget);
+    expect(find.descendant(of: find.byType(ListView), matching: find.text('멈추기')), findsNothing);
+    expect(find.byType(TextField), findsNothing);
+    final before = tester.getTopLeft(stop);
+    g0.complete(); // 단계 하나가 더 그려진다
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('예보 확인'), findsOneWidget);
+    expect(tester.getTopLeft(stop), before);
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pump();
+    expect(tester.getTopLeft(stop), before);
+    g1.complete();
+    await tester.pumpAndSettle();
+    expect(bar, findsNothing);
+    expect(find.text('멈추기'), findsNothing);
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.byKey(const Key('ask-mic')), findsOneWidget);
+  });
+
   testWidgets('진행 중에 새 부탁을 하면 멈출지 묻는다', (tester) async {
     final gate = Completer<void>();
     final t = _ctl([_a('finish', {'answer': '첫 답'}), _a('finish', {'answer': '둘째 답'})], gates: {0: gate});

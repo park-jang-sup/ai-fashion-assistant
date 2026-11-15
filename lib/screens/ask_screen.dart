@@ -58,6 +58,7 @@ bool askNoFullBody(List<AskStep> steps) => steps.any((s) =>
 const askHomeHint = '무엇이든 부탁해 보세요';
 const askContinueHintVoice = '글로 쓰거나 마이크를 눌러 말해 보세요';
 const askContinueHintText = '글로 부탁해 보세요';
+const askRunningLabel = '진행 중이에요';
 
 // 첫 상태의 예시(v2 §2-G).
 const askExamples = [
@@ -352,16 +353,6 @@ class _AskScreenState extends State<AskScreen> {
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
             children: [
               for (var i = 0; i < turns.length; i++) ..._turn(turns[i], last: i == turns.length - 1, first: i == 0),
-              if (_c.isRunning) ...[
-                const SizedBox(height: 8),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  OutlinedButton.icon(
-                    onPressed: _c.isStopping ? null : _c.stop,
-                    icon: const Icon(Icons.stop_circle_outlined, size: 18),
-                    label: const Text('멈추기'),
-                  ),
-                ]),
-              ],
               if (_c.turnLimitReached)
                 const Padding(
                   padding: EdgeInsets.only(top: 12),
@@ -371,7 +362,10 @@ class _AskScreenState extends State<AskScreen> {
             ],
           ),
         ),
-        if (_c.canContinue)
+        // 진행 중에는 입력창 자리에 고정된 줄 — 스크롤이나 단계 추가로 움직이지 않는다.
+        if (_c.isRunning)
+          _runningBar()
+        else if (_c.canContinue)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: _inputField(),
@@ -379,6 +373,27 @@ class _AskScreenState extends State<AskScreen> {
       ],
     );
   }
+
+  Widget _runningBar() => Container(
+        key: const Key('ask-running-bar'),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: AppColors.divider)),
+        ),
+        child: Row(children: [
+          const Expanded(
+            child: Text(askRunningLabel, style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            key: const Key('ask-stop'),
+            onPressed: _c.isStopping ? null : _c.stop,
+            icon: const Icon(Icons.stop_circle_outlined, size: 18),
+            label: const Text('멈추기'),
+          ),
+        ]),
+      );
 
   List<Widget> _turn(AskTurn t, {required bool last, required bool first}) {
     // 화면에는 사용자용 단계만 — finish와 형식 오류(숨김)는 뺀다.
