@@ -14,6 +14,7 @@ import '../services/voice_input.dart';
 import '../widgets/agent_mascot.dart';
 import '../widgets/full_screen_image_viewer.dart';
 import '../widgets/signed_network_image.dart';
+import '../widgets/voice_mic_button.dart';
 
 // AI에게 부탁하기 전용 화면(docs/task_agent_ask_v1.md §2-5·§10). 진행 상태는 앱 수준의
 // AskController가 갖고, 이 화면은 그것을 보여 주기만 한다 — 닫아도 부탁은 이어지고, 떠 있는 버튼을
@@ -164,17 +165,13 @@ class _AskScreenState extends State<AskScreen> {
     }
   }
 
-  Widget _micButton(TextEditingController target, Key key) {
-    final on = _voice.listening && _voice.target == target;
-    return IconButton(
-      key: key,
-      tooltip: on ? '듣기 멈추기' : '말로 입력',
-      isSelected: on,
-      style: on ? IconButton.styleFrom(backgroundColor: Colors.red.shade50) : null,
-      icon: Icon(on ? Icons.mic : Icons.mic_none, color: on ? Colors.red : null),
-      onPressed: () => _toggleVoice(target),
-    );
-  }
+  Widget _micButton(TextEditingController target, Key key) => VoiceMicButton(
+        key: key,
+        listening: _voice.listening && _voice.target == target,
+        level: _voice.level,
+        levelSeen: () => _voice.levelSeen,
+        onPressed: () => _toggleVoice(target),
+      );
 
   // 사용자 말 보내기 — 대화가 있으면 다음 턴, 없으면 새 대화.
   void _submit(String text) {
