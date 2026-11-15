@@ -55,7 +55,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const _WeatherRow(),
+                const HomeWeatherRow(),
                 const SizedBox(height: 30),
                 // 제목은 추천이 가리키는 일정 날짜에 따라 바뀌므로 카드 안에서 그린다.
                 _RecommendationCard(onOpenFittingRoom: onOpenFittingRoom, onNavigate: onNavigate),
@@ -75,14 +75,22 @@ class HomeScreen extends StatelessWidget {
 // (UserProfile.regionLatitude/regionLongitude)을 쓰고, 미설정이면
 // 서울 기본값으로 폴백한다. 실패하면 하드코딩된 값으로 폴백하지 않고
 // "불러오지 못했다"고 정직하게 표시한다.
-class _WeatherRow extends StatefulWidget {
-  const _WeatherRow();
+// 실패 상태이면 앱이 다시 앞으로 나올 때와 날씨 칸(또는 "다시 시도")을 눌렀을 때 다시 받는다.
+typedef HomeWeatherLoader = Future<({WeatherSnapshot? snapshot, String regionName})> Function();
+
+const homeWeatherFailedText = '날씨 정보를 불러오지 못했어요';
+const homeWeatherRetryLabel = '다시 시도';
+
+class HomeWeatherRow extends StatefulWidget {
+  // 테스트용 — 없으면 로그인 사용자의 지역으로 WeatherService를 부른다.
+  final HomeWeatherLoader? loader;
+  const HomeWeatherRow({super.key, this.loader});
 
   @override
-  State<_WeatherRow> createState() => _WeatherRowState();
+  State<HomeWeatherRow> createState() => _HomeWeatherRowState();
 }
 
-class _WeatherRowState extends State<_WeatherRow> {
+class _HomeWeatherRowState extends State<HomeWeatherRow> with WidgetsBindingObserver {
   WeatherSnapshot? _weather;
   String? _regionName;
   bool _loading = true;
@@ -90,10 +98,39 @@ class _WeatherRowState extends State<_WeatherRow> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _retryIfFailed();
+  }
+
+  void _retryIfFailed() {
+    if (_loading || _weather != null) return;
+    setState(() => _loading = true);
     _load();
   }
 
   Future<void> _load() async {
+    final loader = widget.loader;
+    if (loader != null) {
+      final r = await loader();
+      if (!mounted) return;
+      setState(() {
+        _weather = r.snapshot;
+        _regionName = r.regionName;
+        _loading = false;
+      });
+      return;
+    }
     final uid = FirebaseAuth.instance.currentUser?.uid;
     final profile = uid != null ? await FirestoreService.getUserProfileSilently(uid) : null;
     final snapshot = await WeatherService.fetch(
@@ -142,9 +179,20 @@ class _WeatherRowState extends State<_WeatherRow> {
     }
     final weather = _weather;
     if (weather == null) {
-      return const Text(
-        '날씨 정보를 불러오지 못했어요',
-        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+      return InkWell(
+        key: const Key('home-weather-failed'),
+        onTap: _retryIfFailed,
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Flexible(
+            child: Text(homeWeatherFailedText, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          ),
+          TextButton(
+            onPressed: _retryIfFailed,
+            style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: const Size(0, 32)),
+            child: const Text(homeWeatherRetryLabel, style: TextStyle(fontSize: 13)),
+          ),
+        ]),
       );
     }
     final condition = weather.current.condition;

@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+
+import '../data/region_presets.dart';
 
 // weather_code(WMO) → 한국어 상태 + 아이콘 + 비/눈 여부. 에이전트(주간
 // 플랜/선제 추천)와 홈 화면이 공통으로 쓴다.
@@ -131,13 +134,44 @@ class WeatherService {
   // 요청 시한 — 실제 값은 10초 그대로다. 테스트만 짧게 바꿔 시간 초과 경로를 확인한다.
   static Duration _requestTimeout = const Duration(seconds: 10);
 
+  // 서버가 대신 받아 온 예보(getForecast, functions/src/forecast.ts) — 먼저 이것을 부르고,
+  // 실패하면 Open-Meteo에 직접 요청한다(직접 요청의 동작은 그대로). 2026-11-15 실기기에서
+  // 폰 → 날씨 서버 길이 몇 분씩 끊겨 10초 시간 초과가 이어졌다.
+  // 인자는 지역 키(region_presets의 이름)뿐 — 좌표는 보내지 않는다. 키가 없으면 서버가 서울로 본다.
+  static const _functionTimeout = Duration(seconds: 8);
+  static ForecastFunction _forecastFunction = _callGetForecast;
+
+  static Future<Map<String, dynamic>> _callGetForecast(String? regionKey) async {
+    final result = await FirebaseFunctions.instanceFor(region: 'asia-northeast3')
+        .httpsCallable('getForecast', options: HttpsCallableOptions(timeout: _functionTimeout))
+        .call({if (regionKey != null) 'region': regionKey})
+        .timeout(_functionTimeout);
+    // 플랫폼 채널의 Map<Object?, Object?>를 해석 코드가 읽는 Map<String, dynamic>으로.
+    return jsonDecode(jsonEncode(result.data)) as Map<String, dynamic>;
+  }
+
   @visibleForTesting
-  static void configureForTest({http.Client? client, Duration? requestTimeout}) {
+  static void configureForTest({http.Client? client, Duration? requestTimeout, ForecastFunction? forecastFunction}) {
     if (client != null) _client = client;
     if (requestTimeout != null) _requestTimeout = requestTimeout;
+    // 테스트에서 함수를 넣지 않으면 함수는 실패로 — 직접 요청 경로를 그대로 확인한다.
+    _forecastFunction = forecastFunction ?? (_) async => throw StateError('getForecast 없음(테스트)');
     _cache = null;
     _cachedAt = null;
+    _inFlight.clear();
   }
+
+  // 좌표 → 지역 키. 좌표가 없으면 null(서버가 서울로), 지역 목록에 없는 좌표면 함수를 쓰지 않는다.
+  static ({bool use, String? key}) _regionKeyFor(double? latitude, double? longitude) {
+    if (latitude == null && longitude == null) return (use: true, key: null);
+    for (final p in regionPresets) {
+      if (p.latitude == latitude && p.longitude == longitude) return (use: true, key: p.name);
+    }
+    return (use: false, key: null);
+  }
+
+  // 동시에 들어온 같은 지역 요청은 하나로 합친다(홈 화면과 선제 추천이 앱을 켤 때 같이 부른다).
+  static final Map<String, Future<WeatherSnapshot?>> _inFlight = {};
 
   // 시간 초과·네트워크 오류면 한 번만 바로 다시 시도한다(docs/task_demo_flow_v1.md §9-2) —
   // 2026-11-14 실기기에서 첫 조회가 10초 시간 초과로 실패해 예시 일정 추천이 날씨 없이
@@ -195,6 +229,45 @@ class WeatherService {
       return cached;
     }
 
+    final flightKey = '$lat,$lon';
+    final pending = _inFlight[flightKey];
+    if (pending != null) return pending;
+    final future = _fetchRemote(latitude, longitude, lat, lon);
+    _inFlight[flightKey] = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_inFlight[flightKey], future)) _inFlight.remove(flightKey);
+    }
+  }
+
+  static void _remember(WeatherSnapshot snapshot, double lat, double lon) {
+    _cache = snapshot;
+    _cachedAt = DateTime.now();
+    _cachedLatitude = lat;
+    _cachedLongitude = lon;
+    lastFetchOk = true;
+  }
+
+  static Future<WeatherSnapshot?> _fetchRemote(double? latitude, double? longitude, double lat, double lon) async {
+    final region = _regionKeyFor(latitude, longitude);
+    if (region.use) {
+      try {
+        final res = await _forecastFunction(region.key);
+        final snapshot = WeatherSnapshot.fromOpenMeteo(res['forecast'] as Map<String, dynamic>);
+        _remember(snapshot, lat, lon);
+        debugPrint('[WEATHER] 서버 조회 성공(${res['source']}): ${snapshot.current.tempC.round()}°C '
+            '${snapshot.current.condition.label}, 7일 예보 ${snapshot.daily.length}건');
+        return snapshot;
+      } catch (e) {
+        debugPrint('[WEATHER] 서버 조회 실패($e) — 직접 조회');
+      }
+    }
+    return _fetchDirect(lat, lon);
+  }
+
+  // Open-Meteo 직접 요청 — 서버 조회가 생기기 전과 같은 동작.
+  static Future<WeatherSnapshot?> _fetchDirect(double lat, double lon) async {
     try {
       final uri = Uri.parse(_baseUrl).replace(queryParameters: {
         'latitude': '$lat',
@@ -213,10 +286,7 @@ class WeatherService {
       final snapshot = WeatherSnapshot.fromOpenMeteo(
         jsonDecode(response.body) as Map<String, dynamic>,
       );
-      _cache = snapshot;
-      _cachedAt = DateTime.now();
-      _cachedLatitude = lat;
-      _cachedLongitude = lon;
+      _remember(snapshot, lat, lon);
       debugPrint('[WEATHER] 조회 성공: ${snapshot.current.tempC.round()}°C '
           '${snapshot.current.condition.label}, 7일 예보 ${snapshot.daily.length}건');
       lastFetchOk = true;
@@ -294,3 +364,6 @@ class WeatherService {
 }
 
 enum ForecastAssumption { none, rain, hot, mild, cool, cold }
+
+// getForecast 호출 — 지역 키를 받아 서버 응답({forecast, fetchedAt, source, region})을 돌려준다.
+typedef ForecastFunction = Future<Map<String, dynamic>> Function(String? regionKey);
