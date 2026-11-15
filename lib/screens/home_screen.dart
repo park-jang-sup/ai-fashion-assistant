@@ -165,7 +165,7 @@ class _HomeWeatherRowState extends State<HomeWeatherRow> with WidgetsBindingObse
           minTempC: w.current.tempC,
           precipitationProbability: 0,
         );
-    return weatherAdviceFor(weatherContextFor(today)!);
+    return weatherAdviceFor(weatherContextFor(today)!, rainProbability: today.precipitationProbability);
   }
 
   @override

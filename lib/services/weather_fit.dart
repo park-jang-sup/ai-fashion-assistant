@@ -454,8 +454,12 @@ String? buildWeatherNote({
 }
 
 // 홈 날씨 한 줄 조언(§2-4) — 추천과 같은 기온대 함수를 쓴다. 비가 오면 비 조언이 먼저.
-String weatherAdviceFor(WeatherContext ctx) {
-  if (ctx.rain) return '비 예보가 있어요, 우산을 챙기세요';
+// rainProbability(오늘 하루 최대 강수확률)를 주면 비 문구에 숫자를 보여 준다 — 홈은 같은 줄에
+// 지금 날씨("맑음 16°")를 함께 보여 주므로, 하루 중 언젠가의 확률이라는 걸 숫자로 드러낸다.
+String weatherAdviceFor(WeatherContext ctx, {int? rainProbability}) {
+  if (ctx.rain) {
+    return rainProbability != null ? '강수확률 $rainProbability%, 우산을 챙기세요' : '비 예보가 있어요, 우산을 챙기세요';
+  }
   return switch (ctx.band) {
     TempBand.hot => ctx.needsOuter ? '반팔에 아침저녁용 가벼운 아우터를 챙기세요' : '반팔이면 충분해요',
     TempBand.mild => ctx.needsOuter ? '긴팔에 아침저녁용 가벼운 아우터를 챙기세요' : '긴팔 한 장이면 충분해요',

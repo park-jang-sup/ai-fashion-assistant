@@ -512,6 +512,15 @@ void main() {
       expect(weatherAdviceFor(_ctx(max: 3, min: -3)), '두꺼운 아우터가 필요한 추운 날씨예요');
       expect(weatherAdviceFor(_ctx(max: 14, min: 8, rain: 80)), '비 예보가 있어요, 우산을 챙기세요');
     });
+
+    test('비이고 강수확률을 넘기면 숫자를 보여 준다', () {
+      expect(weatherAdviceFor(_ctx(max: 14, min: 8, rain: 53), rainProbability: 53), '강수확률 53%, 우산을 챙기세요');
+    });
+
+    test('비가 아니면 강수확률을 넘겨도 기온 문구 그대로', () {
+      expect(weatherAdviceFor(_ctx(max: 14, min: 8, rain: 30), rainProbability: 30), '긴팔에 가벼운 아우터를 걸치세요');
+      expect(weatherAdviceFor(_ctx(max: 31, min: 24), rainProbability: 0), '반팔이면 충분해요');
+    });
   });
 
   group('예보 가정(테스트용) — 네 기온대와 비', () {
