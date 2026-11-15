@@ -8,7 +8,16 @@ import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
 import {getMessaging, SendResponse} from "firebase-admin/messaging";
 import {getStorage} from "firebase-admin/storage";
 import {evaluateRateLimit, RateLimitConfig, RateLimitKind, RateLimitState, utcHourBucket} from "./rate_limit";
-import {fetchForecastWithRetry, ForecastCacheEntry, ForecastRateState, handleGetForecast, nextForecastRate} from "./forecast";
+import {
+  FORECAST_UPSTREAM_TIMEOUT_MS,
+  fetchForecastOnce,
+  ForecastCacheEntry,
+  forecastFetcher,
+  ForecastRateState,
+  handleGetForecast,
+  nextForecastRate,
+  runForecastRefresh,
+} from "./forecast";
 import {evaluateCadenceGate} from "./cadence_gate";
 import {evaluatePayloadLimit, kindForModel, PAYLOAD_LIMIT_CONFIG} from "./payload_limit";
 import {planTokenCleanup, TokenSendResult} from "./fcm_token_cleanup";
@@ -1803,7 +1812,12 @@ export const sweepStorageTokens = onSchedule(
 // 예보 대신 받아 오기(getForecast) — 로직은 forecast.ts. 지역 키(앱의 지역 목록 이름)만
 // 받고 좌표는 받지 않는다. 기억은 forecast_cache/{지역 키}, 상한은 forecast_rate/{uid} —
 // 둘 다 firestore.rules에 match가 없어 클라이언트는 기본 거부이고 서버(Admin)만 읽고 쓴다
-// (rate_limits와 같은 방식). 로그는 지역 키와 결과(fresh·cache·stale·fail)만 남긴다.
+// (rate_limits와 같은 방식). 로그는 지역 키, 결과(fresh·cache·stale·fail), 걸린 시간,
+// 날씨 서버 실패 종류만 남긴다.
+async function writeForecastCache(key: string, entry: ForecastCacheEntry): Promise<void> {
+  await getFirestore().collection("forecast_cache").doc(key).set(entry);
+}
+
 export const getForecast = onCall(
   {region: "asia-northeast3", timeoutSeconds: 30, maxInstances: 10},
   async (request) => {
@@ -1814,10 +1828,8 @@ export const getForecast = onCall(
         const snap = await db.collection("forecast_cache").doc(key).get();
         return snap.exists ? (snap.data() as ForecastCacheEntry) : undefined;
       },
-      writeCache: async (key, entry) => {
-        await db.collection("forecast_cache").doc(key).set(entry);
-      },
-      fetchUpstream: (region) => fetchForecastWithRetry(region, fetch),
+      writeCache: writeForecastCache,
+      fetchUpstream: forecastFetcher(fetch),
       allowCall: async (uid) => {
         const ref = db.collection("forecast_rate").doc(uid);
         try {
@@ -1832,6 +1844,21 @@ export const getForecast = onCall(
           return true; // 상한 판정 실패는 허용(fail-open) — checkAndRecordRateLimit과 같은 결
         }
       },
+      log: (line) => console.log(line),
+    });
+  }
+);
+
+// 예보 미리 받아 두기 — 20분마다 모든 지역을 받아 forecast_cache를 새것으로 둔다(로직은
+// forecast.ts runForecastRefresh). 그래서 getForecast는 대개 기억(cache)으로 바로 답한다.
+// 실패한 지역의 기존 기억은 그대로 두고, 일부가 실패해도 정상 종료한다.
+export const refreshForecastCache = onSchedule(
+  {schedule: "every 20 minutes", region: "asia-northeast3", timeoutSeconds: 120, maxInstances: 1},
+  async () => {
+    await runForecastRefresh({
+      now: () => Date.now(),
+      fetchOnce: (region) => fetchForecastOnce(region, fetch, FORECAST_UPSTREAM_TIMEOUT_MS),
+      writeCache: writeForecastCache,
       log: (line) => console.log(line),
     });
   }

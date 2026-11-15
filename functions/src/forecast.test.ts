@@ -7,11 +7,16 @@ import {
   ForecastBody,
   ForecastCacheEntry,
   ForecastDeps,
+  UpstreamMode,
+  UpstreamStatusError,
+  classifyUpstreamError,
   fetchForecastWithRetry,
+  forecastFetcher,
   forecastUrl,
   handleGetForecast,
   nextForecastRate,
   resolveRegionKey,
+  runForecastRefresh,
 } from "./forecast";
 import {FORECAST_REGIONS, SEOUL_REGION_KEY} from "./forecast_regions";
 
@@ -27,27 +32,33 @@ const BODY: ForecastBody = {
 const NOW = Date.parse("2026-11-15T05:00:00Z");
 const USER = {uid: "u"};
 
-function deps(opts: {cache?: ForecastCacheEntry; upstream?: () => Promise<ForecastBody>; allow?: boolean} = {}) {
+function deps(opts: {
+  cache?: ForecastCacheEntry;
+  upstream?: (mode: UpstreamMode) => Promise<ForecastBody>;
+  allow?: boolean;
+} = {}) {
   const store = new Map<string, ForecastCacheEntry>();
   const logs: string[] = [];
   let upstreamCalls = 0;
   const fetched: string[] = [];
+  const modes: UpstreamMode[] = [];
   const d: ForecastDeps = {
     now: () => NOW,
     readCache: async (key) => store.get(key),
     writeCache: async (key, entry) => {
       store.set(key, entry);
     },
-    fetchUpstream: async (region) => {
+    fetchUpstream: async (region, mode) => {
       upstreamCalls++;
+      modes.push(mode);
       fetched.push(Object.keys(FORECAST_REGIONS).find((k) => FORECAST_REGIONS[k] === region) ?? "?");
-      return (opts.upstream ?? (async () => BODY))();
+      return (opts.upstream ?? (async () => BODY))(mode);
     },
     allowCall: async () => opts.allow ?? true,
     log: (l) => logs.push(l),
   };
   if (opts.cache) store.set(SEOUL_REGION_KEY, opts.cache);
-  return {d, store, logs, calls: () => upstreamCalls, fetched};
+  return {d, store, logs, calls: () => upstreamCalls, fetched, modes};
 }
 
 async function rejectsWith(p: Promise<unknown>, code: string): Promise<void> {
@@ -93,7 +104,7 @@ run("기억이 없으면 받아 와서 기억하고, 받아 온 시각을 넣는
   assert.deepStrictEqual(r.forecast, BODY);
   assert.strictEqual(r.fetchedAt, new Date(NOW).toISOString());
   assert.strictEqual(t.store.get(SEOUL_REGION_KEY)?.fetchedAtMs, NOW);
-  assert.deepStrictEqual(t.logs, [`[forecast] region=${SEOUL_REGION_KEY} result=fresh`]);
+  assert.deepStrictEqual(t.logs, [`[forecast] region=${SEOUL_REGION_KEY} result=fresh ms=0`]);
 });
 
 run("30분 안이면 기억한 것을 주고 날씨 서버를 부르지 않는다", async () => {
@@ -118,7 +129,7 @@ run("날씨 서버 실패 때 6시간 안의 기억을 준다", async () => {
   const r = await handleGetForecast(USER, {region: SEOUL_REGION_KEY}, t.d);
   assert.strictEqual(r.source, "stale");
   assert.strictEqual(r.fetchedAt, new Date(at).toISOString());
-  assert.deepStrictEqual(t.logs, [`[forecast] region=${SEOUL_REGION_KEY} result=stale`]);
+  assert.deepStrictEqual(t.logs, [`[forecast] region=${SEOUL_REGION_KEY} result=stale ms=0 upstream=network`]);
 });
 
 run("날씨 서버가 실패하고 기억도 없으면(또는 6시간 지남) 실패를 돌려준다", async () => {
@@ -126,7 +137,61 @@ run("날씨 서버가 실패하고 기억도 없으면(또는 6시간 지남) �
   await rejectsWith(handleGetForecast(USER, {region: SEOUL_REGION_KEY}, none.d), "unavailable");
   const old = deps({cache: {forecast: BODY, fetchedAtMs: NOW - FORECAST_STALE_MS}, upstream: failing});
   await rejectsWith(handleGetForecast(USER, {region: SEOUL_REGION_KEY}, old.d), "unavailable");
-  assert.deepStrictEqual(old.logs, [`[forecast] region=${SEOUL_REGION_KEY} result=fail`]);
+  assert.deepStrictEqual(old.logs, [`[forecast] region=${SEOUL_REGION_KEY} result=fail ms=0 upstream=network`]);
+});
+
+const MIN = 60 * 1000;
+
+run("기억 31분 + 짧은 요청 실패 → stale, 짧은 요청 1번만(긴 요청 없음)", async () => {
+  const at = NOW - 31 * MIN;
+  const t = deps({cache: {forecast: BODY, fetchedAtMs: at}, upstream: failing});
+  const r = await handleGetForecast(USER, {region: SEOUL_REGION_KEY}, t.d);
+  assert.strictEqual(r.source, "stale");
+  assert.strictEqual(r.fetchedAt, new Date(at).toISOString());
+  assert.deepStrictEqual(t.modes, ["quick"]);
+  assert.strictEqual(t.store.get(SEOUL_REGION_KEY)?.fetchedAtMs, at); // 기억은 그대로
+});
+
+run("기억 31분 + 짧은 요청 성공 → fresh, 기억 갱신", async () => {
+  const t = deps({cache: {forecast: BODY, fetchedAtMs: NOW - 31 * MIN}});
+  const r = await handleGetForecast(USER, {region: SEOUL_REGION_KEY}, t.d);
+  assert.strictEqual(r.source, "fresh");
+  assert.strictEqual(r.fetchedAt, new Date(NOW).toISOString());
+  assert.deepStrictEqual(t.modes, ["quick"]);
+  assert.strictEqual(t.store.get(SEOUL_REGION_KEY)?.fetchedAtMs, NOW);
+  assert.deepStrictEqual(t.logs, [`[forecast] region=${SEOUL_REGION_KEY} result=fresh ms=0`]);
+});
+
+run("기억 없음 → 긴 요청(8초 + 다시 시도)", async () => {
+  const t = deps();
+  const r = await handleGetForecast(USER, {region: SEOUL_REGION_KEY}, t.d);
+  assert.strictEqual(r.source, "fresh");
+  assert.deepStrictEqual(t.modes, ["full"]);
+});
+
+run("기억 6시간 넘김 + 요청 실패 → unavailable, 긴 요청", async () => {
+  const t = deps({cache: {forecast: BODY, fetchedAtMs: NOW - FORECAST_STALE_MS - MIN}, upstream: failing});
+  await rejectsWith(handleGetForecast(USER, {region: SEOUL_REGION_KEY}, t.d), "unavailable");
+  assert.deepStrictEqual(t.modes, ["full"]);
+});
+
+run("로그의 실패 종류 — timeout·network·status, 걸린 시간", async () => {
+  const timeout = new DOMException("The operation was aborted due to timeout", "TimeoutError");
+  assert.strictEqual(classifyUpstreamError(timeout), "timeout");
+  assert.strictEqual(classifyUpstreamError(new TypeError("fetch failed")), "network");
+  assert.strictEqual(classifyUpstreamError(new UpstreamStatusError(503)), "status");
+  assert.strictEqual(classifyUpstreamError(new Error("unexpected forecast shape")), "status");
+  let clock = NOW;
+  const t = deps({
+    cache: {forecast: BODY, fetchedAtMs: NOW - 31 * MIN},
+    upstream: async () => {
+      clock += 2710;
+      throw timeout;
+    },
+  });
+  t.d.now = () => clock;
+  await handleGetForecast(USER, {region: SEOUL_REGION_KEY}, t.d);
+  assert.deepStrictEqual(t.logs, [`[forecast] region=${SEOUL_REGION_KEY} result=stale ms=2710 upstream=timeout`]);
 });
 
 run("상한을 넘으면 resource-exhausted", async () => {
@@ -193,6 +258,75 @@ run("직접 받기 — 시간 제한이 걸린다", async () => {
   const started = Date.now();
   await assert.rejects(fetchForecastWithRetry(FORECAST_REGIONS[SEOUL_REGION_KEY], slow, 50));
   assert.ok(Date.now() - started < 2000);
+});
+
+run("짧은 요청은 다시 시도하지 않고, 긴 요청은 한 번 다시 시도한다", async () => {
+  const region = FORECAST_REGIONS[SEOUL_REGION_KEY];
+  const quick = fakeFetch([() => {
+    throw new TypeError("fetch failed");
+  }, ok]);
+  await assert.rejects(forecastFetcher(quick.f)(region, "quick"));
+  assert.strictEqual(quick.calls(), 1);
+  const full = fakeFetch([() => {
+    throw new TypeError("fetch failed");
+  }, ok]);
+  assert.deepStrictEqual(await forecastFetcher(full.f)(region, "full"), BODY);
+  assert.strictEqual(full.calls(), 2);
+});
+
+function refreshDeps(failKeys: Set<string> = new Set()) {
+  const store = new Map<string, ForecastCacheEntry>();
+  const logs: string[] = [];
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const keyOf = (region: unknown) => Object.keys(FORECAST_REGIONS).find((k) => FORECAST_REGIONS[k] === region) ?? "?";
+  return {
+    store,
+    logs,
+    maxInFlight: () => maxInFlight,
+    d: {
+      now: () => NOW,
+      fetchOnce: async (region: (typeof FORECAST_REGIONS)[string]) => {
+        inFlight++;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise((r) => setTimeout(r, 1));
+        inFlight--;
+        if (failKeys.has(keyOf(region))) throw new TypeError("fetch failed");
+        return BODY;
+      },
+      writeCache: async (key: string, entry: ForecastCacheEntry) => {
+        store.set(key, entry);
+      },
+      log: (l: string) => logs.push(l),
+    },
+  };
+}
+
+run("미리 받아 두기 — 전부 성공하면 지역 수만큼 기록, 동시 4개까지", async () => {
+  const n = Object.keys(FORECAST_REGIONS).length;
+  const t = refreshDeps();
+  const r = await runForecastRefresh(t.d);
+  assert.deepStrictEqual(r, {ok: n, fail: 0});
+  assert.strictEqual(t.store.size, n);
+  for (const e of t.store.values()) assert.deepStrictEqual(e, {forecast: BODY, fetchedAtMs: NOW});
+  assert.ok(t.maxInFlight() <= 4, `동시 ${t.maxInFlight()}개`);
+  assert.deepStrictEqual(t.logs, [`[forecast-refresh] ok=${n} fail=0 ms=0`]);
+});
+
+run("미리 받아 두기 — 일부 실패: 성공한 것만 기록, 실패한 지역의 기억은 그대로, 예외 없음", async () => {
+  const keys = Object.keys(FORECAST_REGIONS);
+  const n = keys.length;
+  const failKeys = new Set([keys[0], keys[n - 1]]);
+  const t = refreshDeps(failKeys);
+  const old = {forecast: BODY, fetchedAtMs: NOW - 3 * 60 * MIN};
+  t.store.set(keys[0], old);
+  const r = await runForecastRefresh(t.d);
+  assert.deepStrictEqual(r, {ok: n - 2, fail: 2});
+  assert.strictEqual(t.store.get(keys[0]), old);
+  assert.strictEqual(t.store.has(keys[n - 1]), false);
+  assert.strictEqual(t.store.size, n - 1);
+  assert.deepStrictEqual(t.logs, [`[forecast-refresh] ok=${n - 2} fail=2 ms=0`]);
+  assert.ok(t.logs.every((l) => keys.every((k) => !l.includes(k))), "로그에 지역 이름이 없다");
 });
 
 let finished = 0;

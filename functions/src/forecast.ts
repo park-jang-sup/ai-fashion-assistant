@@ -10,7 +10,12 @@ import {FORECAST_REGIONS, ForecastRegion, SEOUL_REGION_KEY} from "./forecast_reg
 export const FORECAST_FRESH_MS = 30 * 60 * 1000; // 30분 안이면 기억한 것
 export const FORECAST_STALE_MS = 6 * 60 * 60 * 1000; // 날씨 서버 실패 때 6시간 안의 기억
 export const FORECAST_UPSTREAM_TIMEOUT_MS = 8000;
+// 기억이 30분~6시간이면 짧게 한 번만 묻는다 — 실패하면 바로 기억을 준다. 앱의 서버 함수
+// 시한(8초, lib/services/weather_service.dart) 안에 답하기 위해서다. 2026-11-15 날씨 서버가
+// 답하지 않을 때 8초 × 2회를 기다리느라 약 16초 뒤에야 stale을 돌려줘 앱이 먼저 포기했다.
+export const FORECAST_QUICK_TIMEOUT_MS = 2500;
 export const FORECAST_RATE_LIMIT_PER_HOUR = 120;
+export const FORECAST_REFRESH_CONCURRENCY = 4; // 미리 받아 두기 — 동시에 묻는 지역 수
 
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
 
@@ -47,11 +52,14 @@ export interface ForecastCacheEntry {
   fetchedAtMs: number;
 }
 
+// quick: FORECAST_QUICK_TIMEOUT_MS 한 번(다시 시도 없음), full: 8초 + 한 번 다시 시도.
+export type UpstreamMode = "quick" | "full";
+
 export interface ForecastDeps {
   now(): number;
   readCache(key: string): Promise<ForecastCacheEntry | undefined>;
   writeCache(key: string, entry: ForecastCacheEntry): Promise<void>;
-  fetchUpstream(region: ForecastRegion): Promise<ForecastBody>;
+  fetchUpstream(region: ForecastRegion, mode: UpstreamMode): Promise<ForecastBody>;
   // 상한 — 넘으면 false. 판정 자체가 실패하면 허용(fail-open)은 호출부 몫.
   allowCall(uid: string): Promise<boolean>;
   log(line: string): void;
@@ -82,8 +90,13 @@ export async function handleGetForecast(
 ): Promise<ForecastResponse> {
   if (!auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
   const key = resolveRegionKey((data as {region?: unknown} | null)?.region);
+  const started = deps.now();
+  // 로그는 지역 키, 결과, 걸린 시간, (날씨 서버 실패 때) 실패 종류만 — uid는 남기지 않는다.
+  const log = (result: string, err?: unknown): void =>
+    deps.log(`[forecast] region=${key} result=${result} ms=${deps.now() - started}` +
+      (err === undefined ? "" : ` upstream=${classifyUpstreamError(err)}`));
   if (!(await deps.allowCall(auth.uid))) {
-    deps.log(`[forecast] region=${key} result=rate-limited`);
+    log("rate-limited");
     throw new HttpsError("resource-exhausted", "호출량이 많아 잠시 후 다시 시도해주세요.");
   }
 
@@ -101,29 +114,106 @@ export async function handleGetForecast(
     region: key,
   });
 
-  if (cached && now - cached.fetchedAtMs >= 0 && now - cached.fetchedAtMs < FORECAST_FRESH_MS) {
-    deps.log(`[forecast] region=${key} result=cache`);
+  const age = cached ? now - cached.fetchedAtMs : -1;
+  if (cached && age >= 0 && age < FORECAST_FRESH_MS) {
+    log("cache");
     return respond(cached, "cache");
   }
 
-  try {
-    const forecast = await deps.fetchUpstream(FORECAST_REGIONS[key]);
+  const fresh = async (mode: UpstreamMode): Promise<ForecastResponse> => {
+    const forecast = await deps.fetchUpstream(FORECAST_REGIONS[key], mode);
     const entry = {forecast, fetchedAtMs: now};
     try {
       await deps.writeCache(key, entry);
     } catch (_) {
       // 기억하지 못해도 이번 응답은 준다
     }
-    deps.log(`[forecast] region=${key} result=fresh`);
+    log("fresh");
     return respond(entry, "fresh");
-  } catch (_) {
-    if (cached && now - cached.fetchedAtMs >= 0 && now - cached.fetchedAtMs < FORECAST_STALE_MS) {
-      deps.log(`[forecast] region=${key} result=stale`);
+  };
+
+  // 기억이 30분~6시간: 짧게 한 번만 묻고, 실패하면 바로 기억을 준다.
+  if (cached && age >= 0 && age < FORECAST_STALE_MS) {
+    try {
+      return await fresh("quick");
+    } catch (err) {
+      log("stale", err);
       return respond(cached, "stale");
     }
-    deps.log(`[forecast] region=${key} result=fail`);
+  }
+
+  // 기억이 없거나 6시간을 넘겼으면: 8초 + 한 번 다시 시도, 실패하면 unavailable.
+  try {
+    return await fresh("full");
+  } catch (err) {
+    log("fail", err);
     throw new HttpsError("unavailable", "예보를 받아 오지 못했습니다.");
   }
+}
+
+// 날씨 서버 실패의 종류(로그용). 200이 아닌 응답과 형태가 다른 응답은 status로 묶는다.
+export type UpstreamFailure = "timeout" | "network" | "status";
+
+export function classifyUpstreamError(err: unknown): UpstreamFailure {
+  if (err instanceof UpstreamStatusError) return "status";
+  if (err instanceof Error && err.message === "unexpected forecast shape") return "status";
+  const name = (err as {name?: unknown} | null)?.name;
+  if (name === "TimeoutError" || name === "AbortError") return "timeout";
+  return "network";
+}
+
+// 시간 제한을 두고 한 번만 묻는다.
+export async function fetchForecastOnce(
+  region: ForecastRegion,
+  fetchImpl: typeof fetch,
+  timeoutMs: number
+): Promise<ForecastBody> {
+  const res = await fetchImpl(forecastUrl(region), {signal: AbortSignal.timeout(timeoutMs)});
+  if (res.status !== 200) throw new UpstreamStatusError(res.status);
+  return pickForecastBody(await res.json());
+}
+
+// getForecast의 fetchUpstream — quick은 짧게 한 번, full은 8초 + 한 번 다시 시도.
+export function forecastFetcher(fetchImpl: typeof fetch): ForecastDeps["fetchUpstream"] {
+  return (region, mode) => mode === "quick" ?
+    fetchForecastOnce(region, fetchImpl, FORECAST_QUICK_TIMEOUT_MS) :
+    fetchForecastWithRetry(region, fetchImpl);
+}
+
+// 미리 받아 두기(refreshForecastCache, 20분마다) — 모든 지역을 받아 기억을 늘 새것으로 둔다.
+// 성공한 지역만 쓰고, 실패한 지역의 기존 기억은 건드리지 않는다. 어떤 지역이 실패해도 던지지 않는다.
+export interface ForecastRefreshDeps {
+  now(): number;
+  fetchOnce(region: ForecastRegion): Promise<ForecastBody>; // 8초 한 번, 다시 시도 없음
+  writeCache(key: string, entry: ForecastCacheEntry): Promise<void>;
+  log(line: string): void;
+}
+
+export async function runForecastRefresh(
+  deps: ForecastRefreshDeps,
+  concurrency = FORECAST_REFRESH_CONCURRENCY
+): Promise<{ok: number; fail: number}> {
+  const started = deps.now();
+  const keys = Object.keys(FORECAST_REGIONS);
+  let next = 0;
+  let ok = 0;
+  let fail = 0;
+  const worker = async (): Promise<void> => {
+    while (next < keys.length) {
+      const key = keys[next++];
+      try {
+        const forecast = await deps.fetchOnce(FORECAST_REGIONS[key]);
+        await deps.writeCache(key, {forecast, fetchedAtMs: deps.now()});
+        ok++;
+      } catch (_) {
+        fail++;
+      }
+    }
+  };
+  await Promise.all(Array.from({length: Math.min(concurrency, keys.length)}, worker));
+  // 지역 이름은 남기지 않는다 — 수와 걸린 시간만.
+  deps.log(`[forecast-refresh] ok=${ok} fail=${fail} ms=${deps.now() - started}`);
+  return {ok, fail};
 }
 
 // 시간 제한을 두고, 시간 초과·통신 오류면 한 번 다시 시도한다. 200이 아닌 응답과
@@ -133,11 +223,7 @@ export async function fetchForecastWithRetry(
   fetchImpl: typeof fetch,
   timeoutMs = FORECAST_UPSTREAM_TIMEOUT_MS
 ): Promise<ForecastBody> {
-  const once = async (): Promise<ForecastBody> => {
-    const res = await fetchImpl(forecastUrl(region), {signal: AbortSignal.timeout(timeoutMs)});
-    if (res.status !== 200) throw new UpstreamStatusError(res.status);
-    return pickForecastBody(await res.json());
-  };
+  const once = (): Promise<ForecastBody> => fetchForecastOnce(region, fetchImpl, timeoutMs);
   try {
     return await once();
   } catch (err) {
